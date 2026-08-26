@@ -34,6 +34,9 @@ state.mods.forEach((mod) => {
 if (!state.modCatalog || state.modCatalog.length < 20) state.modCatalog = clone(initialState.modCatalog)
 else state.modCatalog = state.modCatalog.map((mod) => ({ ...mod, ...clone(initialState.modCatalog.find((sample) => sample.id === mod.id) || {}) }))
 state.modCatalog.forEach((mod) => { mod.dependencies ||= []; mod.optionalDependencies ||= []; mod.versions ||= [mod.version] })
+if (!state.inputDevices) state.inputDevices = clone(initialState.inputDevices)
+else state.inputDevices = initialState.inputDevices.map((sample) => ({ ...clone(sample), ...(state.inputDevices.find((device) => device.id === sample.id) || {}) }))
+for (const [action, bindings] of Object.entries(initialState.bindings)) state.bindings[action] ||= clone(bindings)
 
 const destination = ref('play')
 const playerTab = ref('Local players')
@@ -50,6 +53,8 @@ const selectedCheckpoint = ref(state.saves[0]?.checkpoints?.[0]?.name)
 const selectedRuleKey = ref('difficulty')
 const selectedPlayer = ref(0)
 const selectedAction = ref('Menu Up')
+const selectedInputDeviceId = ref(state.inputDevices[0]?.id)
+const inputPickerSearch = ref('')
 const selectedSave = ref(state.saves[0]?.id)
 const selectedMod = ref(state.mods[0]?.id)
 const selectedCatalogMod = ref(state.modCatalog?.[0]?.id)
@@ -74,6 +79,23 @@ const mobileLibraryDetail = ref(false)
 const mobileQuestDetail = ref(false)
 const mobileRuleDetail = ref(false)
 let toastTimer
+
+const bindingActionMeta = {
+  'Menu Up': { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  'Menu Down': { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  'Menu Left': { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  'Menu Right': { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  Activate: { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  Cancel: { kind: 'Digital action', category: 'Menu', output: 'Boolean' },
+  Move: { kind: '2D analog output', category: 'Gameplay', output: '2D axis' },
+  Look: { kind: '2D analog output', category: 'Gameplay', output: '2D axis' },
+  Jump: { kind: 'Digital action', category: 'Gameplay', output: 'Boolean' },
+  Run: { kind: 'Digital action', category: 'Gameplay · Run group', output: 'Boolean' },
+  'Run Trigger': { kind: '1D analog output', category: 'Gameplay · Run group', output: '1D axis' },
+  Attack: { kind: 'Digital action', category: 'Gameplay', output: 'Boolean' },
+  Interact: { kind: 'Digital action', category: 'Gameplay', output: 'Boolean' },
+  Pause: { kind: 'Digital action', category: 'Menu / Gameplay', output: 'Boolean' },
+}
 
 const quests = [
   { id: 'violet-reach', name: 'The Violet Reach', region: 'Temple frontier', length: '6 stages', difficulty: 'Moderate', description: 'Follow a fractured relay signal through flooded archives, fungal crossings, and a temple complex waking beneath the mountain.', stages: ['North Pass', 'Mushroom Crossing', 'Flooded Archive', 'Temple Gate', 'The Relay', 'Violet Core'] },
@@ -153,6 +175,10 @@ const sessionContentSummary = computed(() => {
 })
 const modalProfile = computed(() => modal.value?.type === 'profile-history' ? state.profiles.find((item) => item.id === modal.value.payload) : null)
 const filteredBindings = computed(() => Object.entries(state.bindings).filter(([name]) => name.toLowerCase().includes(search.value.toLowerCase())))
+const currentBindingMeta = computed(() => bindingActionMeta[selectedAction.value] || { kind: 'Digital action', category: 'Game', output: 'Boolean' })
+const currentInputDevice = computed(() => state.inputDevices.find((device) => device.id === selectedInputDeviceId.value) || state.inputDevices[0])
+const localAssignablePlayers = computed(() => state.players.filter((player) => player.local && player.name !== 'Open Slot'))
+const manualInputChoices = computed(() => state.inputDevices.flatMap((device) => device.inputs.map((input) => ({ ...input, deviceId: device.id, deviceName: device.name }))).filter((input) => `${input.deviceName} ${input.label} ${input.kind}`.toLowerCase().includes(inputPickerSearch.value.toLowerCase())))
 const filteredCatalog = computed(() => state.modCatalog.filter((item) => {
   const haystack = `${item.name} ${item.author} ${item.category} ${item.tags.join(' ')}`.toLowerCase()
   return haystack.includes(search.value.toLowerCase()) && (!compatibleModsOnly.value || item.installable !== false)
@@ -200,6 +226,7 @@ function showModal(type, title, options = {}) {
 }
 
 function closeModal() {
+  if (modal.value?.type === 'capture') capture.value = null
   modal.value = null
   nextTick(focusFirstContent)
 }
@@ -448,17 +475,53 @@ function beginCapture(action, slot = null) {
   showModal('capture', 'Listening for input', { message: `Move an axis or press a button for “${action}”. Escape cancels.` })
 }
 
+function beginManualBinding(action, slot = null) {
+  inputPickerSearch.value = ''
+  showModal('input-picker', `Choose input for ${action}`, { payload: { action, slot } })
+}
+
+function bindingLabelForInput(action, input) {
+  const output = (bindingActionMeta[action] || {}).output || 'Boolean'
+  if (output === 'Boolean' && input.kind.includes('axis')) return `${input.deviceName} · ${input.label} → pressed at 35%`
+  if (output === '1D axis' && input.kind === 'Button') return `${input.deviceName} · ${input.label} → 1.0 while held`
+  if (output === '2D axis' && input.kind === 'Button') return `${input.deviceName} · ${input.label} → digital composite`
+  return `${input.deviceName} · ${input.label}`
+}
+
+function assignBinding(action, slot, label) {
+  const list = state.bindings[action]
+  if (slot === null || slot === undefined) list.push(label)
+  else list[slot] = label
+  selectedAction.value = action
+  notify(`Bound ${label}`)
+}
+
+function chooseManualInput(input) {
+  const payload = modal.value?.payload
+  if (!payload) return
+  assignBinding(payload.action, payload.slot, bindingLabelForInput(payload.action, input))
+  closeModal()
+}
+
+function assignDevicePlayer(device, playerId) {
+  device.assignedPlayerIds = playerId === null ? [] : [playerId]
+  notify(playerId === null ? `${device.name} is unassigned` : `${device.name} assigned to ${state.players.find((player) => player.id === playerId)?.name}`)
+}
+
+function pulseDeviceInput(input) {
+  const previous = input.value
+  input.value = input.kind === 'Button' ? 'DOWN' : input.kind === '2D axis' ? '+0.72, −0.38' : '0.76'
+  setTimeout(() => { input.value = previous }, 850)
+}
+
 function captureInput(event) {
   if (!capture.value || event.key === 'Escape') return
   event.preventDefault()
   const label = event.key.length === 1 ? `Keyboard ${event.key.toUpperCase()}` : `Keyboard ${event.key}`
-  const list = state.bindings[capture.value.action]
-  if (capture.value.slot === null) list.push(label)
-  else list[capture.value.slot] = label
+  const { action, slot } = capture.value
+  assignBinding(action, slot, label)
   capture.value = null
   modal.value = null
-  selectedAction.value = capture.value?.action || selectedAction.value
-  notify(`Bound ${label}`)
 }
 
 function removeBinding(action, index) {
@@ -798,8 +861,28 @@ onUnmounted(() => {
           </section>
 
           <section v-else-if="destination === 'controls'" class="screen controls-screen">
-            <div class="subnav"><button v-for="tab in ['Bindings','Input tuning']" :key="tab" data-focus :class="{ active: controlTab === tab }" @click="controlTab = tab">{{ tab }}</button><span class="bumper-hint"><kbd>Q</kbd><kbd>E</kbd> change section</span></div>
-            <template v-if="controlTab === 'Bindings'"><div class="toolbar controls-toolbar"><label class="search"><span>⌕</span><input data-focus v-model="search" placeholder="Filter actions…"></label><select data-focus v-model="state.bindProfile"><option v-for="profile in state.bindProfiles" :key="profile.id">{{ profile.name }}</option></select><div class="action-row bind-profile-actions"><button data-focus class="button compact" @click="showModal('new-bind-profile','New binding profile',{ value: 'Custom Binds' })">＋ New</button><button data-focus class="button compact" @click="showModal('rename-bind-profile','Rename binding profile',{ value: currentBindProfile?.name, payload: currentBindProfile?.id })">Rename</button><button data-focus class="button compact" @click="showModal('reset-bind-profile','Reset all bindings?',{ message: 'Registered actions return to their default keyboard and controller bindings.', danger: true })">Reset</button><button data-focus class="button compact danger" :disabled="state.bindProfiles.length <= 1" @click="showModal('delete-bind-profile','Delete binding profile?',{ payload: currentBindProfile?.id, message: 'Players using it will fall back to the first available profile.', danger: true })">Delete</button></div></div><div class="bindings-layout"><div class="binding-list panel"><button v-for="([action, binds]) in filteredBindings" :key="action" data-focus class="binding-row" :class="{ selected: selectedAction === action }" @click="selectedAction = action"><span><strong>{{ action }}</strong><small>{{ ['Move','Look'].includes(action) ? 'Analog action' : 'Button action' }}</small></span><span class="bind-summary">{{ binds[0] || 'UNBOUND' }}</span></button></div><div class="detail-panel panel"><p class="eyebrow">SELECTED ACTION</p><h2>{{ selectedAction }}</h2><p class="muted">Each action can have multiple device bindings.</p><div class="bind-slots"><div v-for="(binding,index) in state.bindings[selectedAction]" :key="`${binding}-${index}`" class="bind-slot"><span>{{ index+1 }}</span><strong>{{ binding }}</strong><button data-focus @click="beginCapture(selectedAction,index)">Replace</button><button data-focus class="remove" @click="removeBinding(selectedAction,index)">×</button></div></div><button data-focus class="button primary" @click="beginCapture(selectedAction)">＋ Add binding</button><p class="capture-note">Button, keyboard, 1D axis, and 2D stick capture are represented by this flow. The native version will apply deadzone/noise qualification.</p></div></div></template>
+            <div class="subnav"><button v-for="tab in ['Bindings','Devices','Input tuning']" :key="tab" data-focus :class="{ active: controlTab === tab }" @click="controlTab = tab">{{ tab }}</button><span class="bumper-hint"><kbd>Q</kbd><kbd>E</kbd> change section</span></div>
+
+            <template v-if="controlTab === 'Bindings'">
+              <div class="toolbar controls-toolbar">
+                <label class="search"><span>⌕</span><input data-focus v-model="search" placeholder="Filter actions…"></label>
+                <select data-focus v-model="state.bindProfile"><option v-for="profile in state.bindProfiles" :key="profile.id">{{ profile.name }}</option></select>
+                <div class="action-row bind-profile-actions"><button data-focus class="button compact" @click="showModal('new-bind-profile','New binding profile',{ value: 'Custom Binds' })">＋ New</button><button data-focus class="button compact" @click="showModal('rename-bind-profile','Rename binding profile',{ value: currentBindProfile?.name, payload: currentBindProfile?.id })">Rename</button><button data-focus class="button compact" @click="showModal('reset-bind-profile','Reset all bindings?',{ message: 'Registered actions return to their default keyboard and controller bindings.', danger: true })">Reset</button><button data-focus class="button compact danger" :disabled="state.bindProfiles.length <= 1" @click="showModal('delete-bind-profile','Delete binding profile?',{ payload: currentBindProfile?.id, message: 'Players using it will fall back to the first available profile.', danger: true })">Delete</button></div>
+              </div>
+              <div class="bindings-layout">
+                <div class="binding-list panel"><button v-for="([action, binds]) in filteredBindings" :key="action" data-focus class="binding-row" :class="{ selected: selectedAction === action }" @click="selectedAction = action"><span><strong>{{ action }}</strong><small>{{ bindingActionMeta[action]?.kind || 'Digital action' }} · {{ bindingActionMeta[action]?.category || 'Game' }}</small></span><span class="bind-summary">{{ binds[0] || 'UNBOUND' }}</span></button></div>
+                <div class="detail-panel panel binding-detail"><p class="eyebrow">SELECTED LOGICAL OUTPUT</p><h2>{{ selectedAction }}</h2><p class="muted">{{ currentBindingMeta.kind }}. Multiple physical controls and conversion rules may feed this output.</p><div v-if="currentBindingMeta.category.includes('Run group')" class="binding-group-note"><span>COMPOSED CONTROL</span><strong>Digital Run and analog Run Trigger are merged by Splonks at gameplay sampling.</strong></div><div class="bind-slots"><div v-for="(binding,index) in state.bindings[selectedAction]" :key="`${binding}-${index}`" class="bind-slot"><span>{{ index+1 }}</span><strong>{{ binding }}</strong><button data-focus @click="beginCapture(selectedAction,index)">Listen</button><button data-focus @click="beginManualBinding(selectedAction,index)">Choose</button><button data-focus class="remove" @click="removeBinding(selectedAction,index)">×</button></div></div><div class="action-row binding-add-actions"><button data-focus class="button primary" @click="beginCapture(selectedAction)">◎ Listen for input</button><button data-focus class="button" @click="beginManualBinding(selectedAction)">⌕ Choose manually</button></div><p class="capture-note">Listening is the fast path. Manual selection exposes every recognized device input and conversions such as axis → button threshold or button → full analog value.</p></div>
+              </div>
+            </template>
+
+            <template v-else-if="controlTab === 'Devices'">
+              <div class="device-summary-bar"><span><strong>{{ state.inputDevices.length }} recognized devices</strong><small>A local player may own any number of keyboards, pads, wheels, pedals, sticks, or HID controls.</small></span><button data-focus class="button compact" @click="refreshDevices">↻ Rescan</button></div>
+              <div class="bindings-layout device-workspace">
+                <div class="binding-list panel"><button v-for="device in state.inputDevices" :key="device.id" data-focus class="binding-row device-choice" :class="{ selected: selectedInputDeviceId === device.id }" @click="selectedInputDeviceId = device.id"><span><strong>{{ device.name }}</strong><small>{{ device.type }} · {{ device.connection }}</small></span><span class="device-owner-summary">{{ device.assignedPlayerIds.length ? device.assignedPlayerIds.map(id => state.players.find(player => player.id === id)?.name || `P${id}`).join(', ') : 'UNASSIGNED' }}</span></button></div>
+                <div v-if="currentInputDevice" class="detail-panel panel device-detail"><p class="eyebrow">RECOGNIZED INPUT DEVICE</p><h2>{{ currentInputDevice.name }}</h2><p class="muted">{{ currentInputDevice.connection }}. Assign this device to one local player; each player may own as many separate devices as needed.</p><div class="device-assignments"><span class="section-label">DEVICE OWNER</span><button data-focus class="device-assignment" :class="{ selected: !currentInputDevice.assignedPlayerIds.length }" @click="assignDevicePlayer(currentInputDevice,null)"><span class="assignment-radio"></span><span><strong>Unassigned</strong><small>Ignore this device for local gameplay.</small></span></button><button v-for="(player,index) in localAssignablePlayers" :key="player.id" data-focus class="device-assignment" :class="{ selected: currentInputDevice.assignedPlayerIds[0] === player.id }" @click="assignDevicePlayer(currentInputDevice,player.id)"><span class="assignment-radio"></span><span><strong>P{{ index+1 }} · {{ player.name }}</strong><small>{{ player.profile }} · {{ player.binds }}</small></span></button><div v-if="!localAssignablePlayers.length" class="muted">Add a local player before assigning devices.</div></div><div class="input-monitor"><div class="input-monitor-head"><span><strong>Live input explorer</strong><small>Move or press the physical control; highlighted values show what Gubsy recognizes.</small></span><b>{{ currentInputDevice.inputs.length }} INPUTS</b></div><button v-for="input in currentInputDevice.inputs" :key="input.label" data-focus class="input-monitor-row" :class="{ active: input.value !== 'UP' && !input.value.includes('0.00') && !input.value.includes('0.01') && !input.value.includes('0.02') && !input.value.includes('0.07') }" @click="pulseDeviceInput(input)"><span><strong>{{ input.label }}</strong><small>{{ input.kind }}</small></span><output>{{ input.value }}</output></button></div></div>
+              </div>
+            </template>
+
             <template v-else><div class="settings-layout"><div class="settings-list panel"><div class="panel-title"><div><p class="eyebrow">INPUT PROFILE</p><h3>Standard</h3></div><span class="save-indicator">{{ currentPlayer?.device }}</span></div><div v-for="item in [{key:'sensitivity',label:'Look sensitivity',note:'Horizontal and vertical camera speed.'},{key:'deadzone',label:'Stick deadzone',note:'Ignore small stick movement near center.'},{key:'vibration',label:'Vibration strength',note:'Controller rumble output.'}]" :key="item.key" class="setting-row"><div><strong>{{ item.label }}</strong><small>{{ item.note }}</small></div><label class="range-control"><input data-focus type="range" min="0" max="100" v-model.number="state.settings[item.key]"><output>{{ state.settings[item.key] }}%</output></label></div><div class="setting-row"><div><strong>Invert Y-axis</strong><small>Reverse vertical camera movement.</small></div><button data-focus class="toggle" :class="{ on: state.settings.invertY }" @click="state.settings.invertY = !state.settings.invertY"><span></span>{{ state.settings.invertY ? 'ON' : 'OFF' }}</button></div></div><aside class="preview-panel panel"><p class="eyebrow">DEVICE RESPONSE</p><div class="stick-preview"><span :style="{ transform: `translate(${state.settings.sensitivity/7}px, ${-state.settings.sensitivity/10}px)` }"></span></div><dl><dt>Device</dt><dd>{{ currentPlayer?.device }}</dd><dt>Deadzone</dt><dd>{{ state.settings.deadzone }}%</dd><dt>Vibration</dt><dd>{{ state.settings.vibration }}%</dd></dl></aside></div></template>
           </section>
 
@@ -826,7 +909,7 @@ onUnmounted(() => {
     <footer class="prompt-bar"><div><kbd>↑↓←→</kbd><span>Navigate</span><kbd>Enter</kbd><span>Select</span><kbd>Esc</kbd><span>Back</span><kbd>Q / E</kbd><span>Local section</span></div><div><span class="focus-light"></span> Focus graph active</div></footer>
 
     <div v-if="modal" class="modal-layer" @mousedown.self="closeModal">
-      <section class="modal" :class="{ wide: ['find-game','profile-history','disable-chain','uninstall-chain','runtime-mod-change'].includes(modal.type) }" role="dialog" aria-modal="true">
+      <section class="modal" :class="{ wide: ['find-game','profile-history','disable-chain','uninstall-chain','runtime-mod-change','input-picker'].includes(modal.type) }" role="dialog" aria-modal="true">
         <button data-focus class="modal-close" @click="closeModal">×</button>
         <p class="eyebrow">{{ modal.type === 'capture' ? 'INPUT CAPTURE' : modal.type === 'pause' ? 'GAME SUSPENDED' : modal.danger ? 'CONFIRM ACTION' : 'CURRENT LOBBY' }}</p>
         <h2>{{ modal.title }}</h2>
@@ -857,7 +940,8 @@ onUnmounted(() => {
           <div class="action-row modal-actions"><button data-focus class="button" @click="notify('Game list refreshed')">↻ Refresh</button><button data-focus class="button" @click="closeModal">Cancel</button></div>
         </div>
 
-        <div v-else-if="modal.type === 'capture'" class="capture-visual"><span></span><strong>Waiting for input…</strong><small>Axis movement will require a sustained threshold in native Gubsy.</small></div>
+        <div v-else-if="modal.type === 'input-picker'" class="manual-input-picker"><label class="search"><span>⌕</span><input data-focus v-model="inputPickerSearch" placeholder="Search device, control, or input type…"></label><div class="manual-input-list"><button v-for="input in manualInputChoices" :key="`${input.deviceId}-${input.label}`" data-focus class="manual-input-row" @click="chooseManualInput(input)"><span><strong>{{ input.label }}</strong><small>{{ input.deviceName }} · {{ input.kind }}</small></span><b>{{ bindingLabelForInput(modal.payload.action,input).includes('→') ? bindingLabelForInput(modal.payload.action,input).split('→')[1] : 'DIRECT' }}</b></button></div><p class="capture-note">All recognized controls are available here, including unnamed joystick axes and HID buttons. Conversion defaults can be tuned after adding the binding.</p><div class="action-row modal-actions"><button data-focus class="button" @click="closeModal">Cancel</button></div></div>
+        <div v-else-if="modal.type === 'capture'" class="capture-visual"><span></span><strong>Waiting for input…</strong><small>Press a button, move an axis, or turn a wheel. Gubsy will qualify noisy analog inputs before accepting one.</small></div>
         <div v-else-if="modal.type === 'pause'" class="pause-actions"><button data-focus class="button primary" @click="closeModal">Resume</button><button data-focus class="button" @click="closeModal(); playView = 'mods'; sessionModsTab = 'Current set'">Session mods</button><button data-focus class="button" @click="closeModal(); chooseDestination('settings')">Settings</button><button data-focus class="button danger" @click="sessionRunning = false; closeModal(); notify('Returned to title; queued runtime changes retained in lobby')">Return to title</button></div>
         <div v-else class="action-row modal-actions"><button data-focus class="button" :class="modal.danger ? 'danger' : 'primary'" @click="confirmModal">{{ modal.danger ? 'Confirm' : 'Continue' }}</button><button data-focus class="button" @click="capture = null; closeModal()">Cancel</button></div>
       </section>

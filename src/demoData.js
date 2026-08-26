@@ -11,6 +11,23 @@ export const initialState = {
     { id: 2, name: 'Open Slot', profile: 'Guest', binds: 'Default Binds', input: 'Standard', device: 'Press A to join', local: true, ready: false },
   ],
   devices: ['Xbox Wireless Controller', 'Keyboard + Mouse', 'DualSense Wireless Controller'],
+  inputDevices: [
+    { id: 'keyboard-main', name: 'Keyboard + Mouse', type: 'Keyboard / pointer', connection: 'Built in', assignedPlayerIds: [1], inputs: [
+      { label: 'Keyboard W', kind: 'Button', value: 'UP' }, { label: 'Keyboard Space', kind: 'Button', value: 'UP' }, { label: 'Mouse Left', kind: 'Button', value: 'UP' }, { label: 'Mouse X/Y', kind: '2D axis', value: '+0.00, −0.01' }, { label: 'Mouse Wheel', kind: '1D axis', value: '0.00' },
+    ] },
+    { id: 'xbox-main', name: 'Xbox Wireless Controller', type: 'Gamepad', connection: 'Bluetooth · SDL gamepad 0', assignedPlayerIds: [1], inputs: [
+      { label: 'A / South', kind: 'Button', value: 'UP' }, { label: 'B / East', kind: 'Button', value: 'UP' }, { label: 'Left Stick', kind: '2D axis', value: '+0.04, −0.02' }, { label: 'Left Trigger', kind: '1D axis', value: '0.00' }, { label: 'Right Trigger', kind: '1D axis', value: '0.18' }, { label: 'D-Pad Up', kind: 'Button', value: 'UP' },
+    ] },
+    { id: 'wheel-pedals', name: 'G29 Wheel + Pedals', type: 'Joystick', connection: 'USB · SDL joystick 1', assignedPlayerIds: [], inputs: [
+      { label: 'Axis 0 · Steering', kind: '1D axis', value: '−0.07' }, { label: 'Axis 1 · Accelerator', kind: '1D axis', value: '0.34' }, { label: 'Axis 2 · Brake', kind: '1D axis', value: '0.00' }, { label: 'Button 0', kind: 'Button', value: 'UP' }, { label: 'Hat 0 Up', kind: 'Button', value: 'UP' },
+    ] },
+    { id: 'hotas-stick', name: 'T.16000M Flight Stick', type: 'Joystick', connection: 'USB · SDL joystick 2', assignedPlayerIds: [], inputs: [
+      { label: 'Axes 0/1 · Stick', kind: '2D axis', value: '+0.01, +0.03' }, { label: 'Axis 2 · Twist', kind: '1D axis', value: '−0.02' }, { label: 'Axis 3 · Throttle', kind: '1D axis', value: '0.62' }, { label: 'Button 0 · Trigger', kind: 'Button', value: 'UP' }, { label: 'Hat 0 Right', kind: 'Button', value: 'DOWN' },
+    ] },
+    { id: 'macro-pad', name: 'Vega Macro Pad', type: 'Keyboard-like HID', connection: 'USB · keyboard 1', assignedPlayerIds: [1], inputs: [
+      { label: 'Key F13', kind: 'Button', value: 'UP' }, { label: 'Key F14', kind: 'Button', value: 'UP' }, { label: 'Encoder clockwise', kind: 'Button', value: 'UP' }, { label: 'Encoder counter-clockwise', kind: 'Button', value: 'UP' },
+    ] },
+  ],
   bindProfiles: [
     { id: 1, name: 'Default Binds', owner: 'Moss' },
     { id: 2, name: 'Southpaw', owner: 'Vega' },
@@ -32,7 +49,9 @@ export const initialState = {
     'Move': ['Left Stick', 'Keyboard WASD'],
     'Look': ['Right Stick', 'Mouse XY'],
     'Jump': ['Gamepad A', 'Keyboard Space'],
-    'Attack': ['Right Trigger', 'Mouse Left'],
+    'Run': ['Gamepad B', 'Left Bumper', 'Right Bumper'],
+    'Run Trigger': ['Left Trigger · threshold 35%'],
+    'Attack': ['Right Trigger → pressed at 35%', 'Mouse Left'],
     'Interact': ['Gamepad X', 'Keyboard E'],
     'Pause': ['Gamepad Menu', 'Keyboard Escape'],
   },
