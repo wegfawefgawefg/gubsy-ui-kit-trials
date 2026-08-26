@@ -57,6 +57,13 @@ button to restore the original fake dataset.
 - A full Play-lobby mod workspace where catalog content can be installed and
   activated in one action. Progression records exact package/version manifests
   and can restore its set without overwriting that record.
+- The same mod workspace is reachable from the running-session pause menu. Mods
+  declare hot-safe, next-stage, or new-session lifecycle behavior; unsafe changes
+  can be queued, applied while preserving namespaced state, or removed with an
+  explicit state/entity cleanup.
+- Typed settings contributed by active mods appear in the game-provided session
+  editor with visible source attribution. The 1280×720/tablet breakpoint keeps
+  the list and detail inspector side-by-side with contained scrolling.
 - Responsive desktop, compact desktop/4:3, and narrow layouts.
 
 This is intentionally a UX/state prototype. It does not import Arbor or Gubsy;

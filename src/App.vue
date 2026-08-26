@@ -23,6 +23,7 @@ state.mods.forEach((mod) => {
   if (sample) {
     mod.sheet ||= sample.sheet; mod.frame ??= sample.frame
     mod.latestVersion ||= sample.latestVersion
+    mod.runtimePolicy ||= sample.runtimePolicy
     if (sample.latestVersion && !(mod.versions || []).includes(sample.latestVersion)) mod.versions = [sample.latestVersion, ...(mod.versions || [mod.version])]
   }
   if (mod.sessionEnabled === undefined) mod.sessionEnabled = Boolean(mod.enabled)
@@ -66,6 +67,7 @@ const sessionModsTab = ref('Current set')
 const sessionModSelection = ref(state.mods[0]?.id)
 const sessionCatalogSelection = ref(state.modCatalog?.[0]?.id)
 const sessionModSearch = ref('')
+const sessionRunning = ref(false)
 let toastTimer
 
 const quests = [
@@ -74,7 +76,7 @@ const quests = [
   { id: 'green-below', name: 'A Green Beginning', region: 'Valley underworks', length: '4 stages', difficulty: 'Welcoming', description: 'A shorter introductory quest through farms, limestone tunnels, and the first settlements below the valley.', stages: ['Valley Camp', 'Root Cellar', 'Limestone Steps', 'Lantern Town'] },
   { id: 'glass-pilgrim', name: 'The Glass Pilgrim', region: 'Crystal descent', length: '7 stages', difficulty: 'Severe', description: 'Track a silent pilgrim into refracting chambers where false routes, light puzzles, and brittle floors punish haste.', stages: ['Shale Mouth', 'Prism Hall', 'Blue Fault', 'Mirror Camp', 'Crystal Choir', 'Lightless Span', 'Pilgrim’s Rest'] },
 ]
-const sessionRules = reactive({ difficulty: 'Standard', generation: 'Quest-authored', lives: 4, health: 4, damage: 100, speed: 100, ghostTimer: 180, shops: 'Normal', shortcuts: true, sharedMoney: true, friendlyFire: false, revives: 'At next stage', rounds: 5, timeLimit: 180, bombs: 4, ropes: 4, pickups: 'Standard', mapRotation: 'All arenas', teams: 'Free for all', suddenDeath: true, spectators: true })
+const sessionRules = reactive({ difficulty: 'Standard', generation: 'Quest-authored', lives: 4, health: 4, damage: 100, speed: 100, ghostTimer: 180, shops: 'Normal', shortcuts: true, sharedMoney: true, friendlyFire: false, revives: 'At next stage', rounds: 5, timeLimit: 180, bombs: 4, ropes: 4, pickups: 'Standard', mapRotation: 'All arenas', teams: 'Free for all', suddenDeath: true, spectators: true, sharedMap: true, markerLifetime: 45, lanternFuel: 'Standard' })
 const expeditionRuleDefinitions = [
   { key: 'difficulty', label: 'Expedition difficulty', note: 'Overall danger and resource pressure.', detail: 'Adjusts enemy patterns, trap density, and the generosity of recovery rooms without changing the authored quest route.', type: 'select', options: ['Relaxed','Standard','Relentless'] },
   { key: 'generation', label: 'Stage variation', note: 'How authored rooms are remixed.', detail: 'Quest-authored preserves major landmarks. Remixed varies connecting rooms. Wild allows the broadest procedural substitutions.', type: 'select', options: ['Quest-authored','Remixed','Wild'] },
@@ -107,8 +109,6 @@ const currentPlayer = computed(() => state.players[selectedPlayer.value] || stat
 const currentBindProfile = computed(() => state.bindProfiles.find((item) => item.name === state.bindProfile) || state.bindProfiles[0])
 const currentSave = computed(() => state.saves.find((item) => item.id === selectedSave.value) || state.saves[0])
 const selectedQuest = computed(() => quests.find((quest) => quest.id === selectedQuestId.value) || quests[0])
-const activeRuleDefinitions = computed(() => sessionMode.value === 'Arena' ? arenaRuleDefinitions : expeditionRuleDefinitions)
-const currentRuleDefinition = computed(() => activeRuleDefinitions.value.find((rule) => rule.key === selectedRuleKey.value) || activeRuleDefinitions.value[0])
 const lobbyPlayers = computed(() => {
   const actual = state.players.filter((player) => player.name !== 'Open Slot')
   return sessionAccess.value === 'Solo' ? actual.slice(0, 1) : actual
@@ -128,6 +128,19 @@ const savedModStatus = computed(() => {
   return { manifest, missing, inactive, extras, exact: !missing.length && !inactive.length && !extras.length }
 })
 const activeSessionMods = computed(() => state.mods.filter((mod) => mod.sessionEnabled))
+const modRuleDefinitions = computed(() => {
+  const rules = []
+  if (activeSessionMods.value.some((mod) => mod.name === 'Cartographer’s Desk')) rules.push(
+    { key: 'sharedMap', label: 'Shared map discoveries', note: 'Reveal visited rooms to the whole party.', detail: 'Newly explored rooms and route notes are synchronized between party maps. Disabling keeps private exploration histories separate.', type: 'toggle', source: 'Cartographer’s Desk' },
+    { key: 'markerLifetime', label: 'Party marker lifetime', note: 'Seconds before temporary map pings fade.', detail: 'Controls how long contextual party markers remain visible on the map and compass after they are placed.', type: 'range', min: 10, max: 120, step: 5, unit: ' sec', source: 'Cartographer’s Desk' },
+  )
+  if (activeSessionMods.value.some((mod) => mod.name === 'Old Lanterns')) rules.push(
+    { key: 'lanternFuel', label: 'Lantern fuel consumption', note: 'How quickly restored lanterns burn fuel.', detail: 'Changes the drain rate for lantern items supplied by Old Lanterns. Existing lantern state is migrated immediately.', type: 'select', options: ['Off','Slow','Standard','Harsh'], source: 'Old Lanterns' },
+  )
+  return rules
+})
+const activeRuleDefinitions = computed(() => [...(sessionMode.value === 'Arena' ? arenaRuleDefinitions : expeditionRuleDefinitions), ...modRuleDefinitions.value])
+const currentRuleDefinition = computed(() => activeRuleDefinitions.value.find((rule) => rule.key === selectedRuleKey.value) || activeRuleDefinitions.value[0])
 const sessionContentSummary = computed(() => {
   if (sessionMode.value === 'Continue expedition') return `${activeSessionMods.value.length} active · ${savedModStatus.value.exact ? 'matches checkpoint' : 'differs from checkpoint'}`
   if (sessionMode.value === 'New expedition') return `${activeSessionMods.value.length} active · recorded when expedition begins`
@@ -267,6 +280,11 @@ function dependentClosure(name, seen = new Set()) {
 function installCatalogMod(catalogMod, addToSession = false, quiet = false, seen = new Set()) {
   if (!catalogMod || seen.has(catalogMod.name)) return findMod(catalogMod?.name)
   if (catalogMod.installable === false) { if (!quiet) notify(catalogMod.compatibility); return null }
+  if (sessionRunning.value && addToSession && !quiet) {
+    const installed = installCatalogMod(catalogMod, false, true, seen)
+    if (installed) toggleSessionMod(installed)
+    return installed
+  }
   seen.add(catalogMod.name)
   for (const name of catalogMod.dependencies || []) {
     if (!findMod(name)) {
@@ -286,10 +304,26 @@ function installCatalogMod(catalogMod, addToSession = false, quiet = false, seen
   if (!quiet) notify(addToSession ? `${catalogMod.name} and required dependencies added to this lobby` : `${catalogMod.name} and required dependencies installed`)
   return mod
 }
-function toggleSessionMod(mod) {
+function runtimePolicy(mod, seen = new Set()) {
+  if (!mod || seen.has(mod.name)) return 'hot-safe'
+  seen.add(mod.name)
+  const own = mod.runtimePolicy || (['Cosmetic', 'Tools'].includes(mod.category) ? 'hot-safe' : ['Items', 'Creatures', 'Gameplay'].includes(mod.category) ? 'next-stage' : 'new-session')
+  const rank = { 'hot-safe': 0, 'next-stage': 1, 'new-session': 2 }
+  return (mod.dependencies || []).map(findMod).filter((dependency) => dependency && !dependency.sessionEnabled).reduce((strictest, dependency) => {
+    const dependencyPolicy = runtimePolicy(dependency, seen)
+    return rank[dependencyPolicy] > rank[strictest] ? dependencyPolicy : strictest
+  }, own)
+}
+function runtimePolicyLabel(mod) {
+  return { 'hot-safe': 'Can change while playing', 'next-stage': 'Applies cleanly next stage', 'new-session': 'Designed for a new session' }[runtimePolicy(mod)]
+}
+function toggleSessionMod(mod, runtimeConfirmed = false) {
   if (mod.required) return notify('Base Content is required by the game')
   if (mod.status === 'Needs update') return updateMod(mod, true)
   if (mod.status !== 'Compatible') return notify('Update this mod before enabling it')
+  if (sessionRunning.value && !runtimeConfirmed && runtimePolicy(mod) !== 'hot-safe') {
+    return showModal('runtime-mod-change', mod.sessionEnabled ? `Remove ${mod.name} while playing?` : `Add ${mod.name} while playing?`, { payload: { id: mod.id, enable: !mod.sessionEnabled, policy: runtimePolicy(mod) }, message: runtimePolicy(mod) === 'next-stage' ? 'This content can be queued safely for the next stage. Applying it immediately may mean this stage has already missed its new items or encounters.' : 'This mod changes world or progression content and is designed for a fresh session. You can still queue it, but the current world will not be retroactively regenerated.' })
+  }
   if (!mod.sessionEnabled) {
     for (const name of mod.dependencies || []) { const dependency = findMod(name); if (!dependency) return notify(`Missing required dependency: ${name}`); dependency.sessionEnabled = true }
     mod.sessionEnabled = true
@@ -298,6 +332,22 @@ function toggleSessionMod(mod) {
   const affected = dependentClosure(mod.name).filter((name) => findMod(name)?.sessionEnabled)
   if (affected.length) return showModal('disable-chain', 'Disable dependent mods?', { payload: { root: mod.name, names: affected }, message: `${affected.join(', ')} require ${mod.name}. They must also be disabled.` })
   mod.sessionEnabled = false
+}
+function applyRuntimeModChange(action) {
+  const item = modal.value
+  const mod = state.mods.find((entry) => entry.id === item?.payload?.id)
+  if (!mod) return closeModal()
+  if (action === 'now') {
+    toggleSessionMod(mod, true)
+    notify(`${mod.name} ${item.payload.enable ? 'enabled' : 'disabled'} now; existing world state preserved`)
+  } else if (action === 'clear') {
+    toggleSessionMod(mod, true)
+    notify(`${mod.name} disabled and its owned entities/state cleared`)
+  } else {
+    mod.pendingRuntime = item.payload.enable ? 'Enable next stage' : 'Disable next stage'
+    notify(`${mod.name} queued for the next safe boundary`)
+  }
+  closeModal()
 }
 function updateMod(mod, enableAfter = false) {
   if (!mod.latestVersion) return notify(`No compatible update is available for ${mod.name}`)
@@ -430,6 +480,7 @@ function startSession() {
   if (sessionAccess.value === 'Solo') onlineStatus.value = 'Solo session'
   else if (sessionAccess.value === 'Local players only') onlineStatus.value = 'Local session'
   else onlineStatus.value = `${sessionAccess.value} · ${sessionHost.value}`
+  sessionRunning.value = true
   notify(`${sessionMode.value} started`)
 }
 
@@ -592,7 +643,7 @@ onUnmounted(() => {
                 </div>
 
                 <div class="lobby-bottom">
-                  <button data-focus class="button" @click="showModal('pause','Game paused',{ message: 'This previews the same shell in an in-game context.' })">Pause preview</button>
+                  <button data-focus class="button" @click="showModal('pause', sessionRunning ? 'Game paused' : 'In-game menu preview',{ message: sessionRunning ? 'The running session is suspended while this menu is open.' : 'Start the session first, or preview the same shell in an in-game context.' })">{{ sessionRunning ? 'Open in-game menu' : 'Pause preview' }}</button>
                   <button data-focus class="button primary large" @click="startSession">▶ {{ sessionMode === 'Continue expedition' ? `Resume ${selectedCheckpoint}` : sessionMode === 'Arena' ? 'Start match' : 'Begin expedition' }}</button>
                 </div>
               </section>
@@ -612,9 +663,9 @@ onUnmounted(() => {
               </aside>
             </div>
             <div v-else-if="playView === 'mods'" class="session-mod-workspace">
-              <header class="session-mod-header panel">
+              <header class="session-mod-header panel" :class="{ runtime: sessionRunning }">
                 <button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button>
-                <div><p class="eyebrow">CURRENT LOBBY / CONTENT</p><h2>Session mods</h2><p v-if="sessionMode === 'Continue expedition'">Checkpoint “{{ selectedCheckpoint }}” expects {{ savedModStatus.manifest.length }} exact {{ savedModStatus.manifest.length === 1 ? 'mod' : 'mods' }}.</p><p v-else-if="sessionMode === 'New expedition'">Choose the content for this new expedition. Its exact versions will be recorded when play begins.</p><p v-else>Choose the content required by this match. Joining players must resolve the same set.</p></div>
+                <div><p class="eyebrow">{{ sessionRunning ? 'RUNNING SESSION / CONTENT' : 'CURRENT LOBBY / CONTENT' }}</p><h2>Session mods <span v-if="sessionRunning" class="runtime-badge">LIVE</span></h2><p v-if="sessionRunning">Mods declare whether changes are immediate, queued for a safe boundary, or intended for a new session.</p><p v-else-if="sessionMode === 'Continue expedition'">Checkpoint “{{ selectedCheckpoint }}” expects {{ savedModStatus.manifest.length }} exact {{ savedModStatus.manifest.length === 1 ? 'mod' : 'mods' }}.</p><p v-else-if="sessionMode === 'New expedition'">Choose the content for this new expedition. Its exact versions will be recorded when play begins.</p><p v-else>Choose the content required by this match. Joining players must resolve the same set.</p></div>
                 <div class="session-mod-tabs"><button v-for="tab in ['Current set','Browse & add']" :key="tab" data-focus :class="{ active: sessionModsTab === tab }" @click="sessionModsTab = tab">{{ tab }}</button></div>
               </header>
               <div v-if="sessionModsTab === 'Current set'" class="manifest-banner" :class="{ exact: sessionMode !== 'Continue expedition' || savedModStatus.exact }">
@@ -628,7 +679,7 @@ onUnmounted(() => {
                 <div v-if="sessionModsTab === 'Current set'" class="mod-list panel">
                   <div class="catalog-count">{{ state.mods.filter(mod => mod.sessionEnabled).length }} ACTIVE / {{ state.mods.length }} INSTALLED</div>
                   <button v-for="mod in state.mods" :key="mod.id" data-focus class="session-set-row" :class="{ selected: currentSessionMod?.id === mod.id }" @click="sessionModSelection = mod.id">
-                    <span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>v{{ mod.version }} · {{ mod.dependencies?.length || 0 }} required dependencies</small></span>
+                    <span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>v{{ mod.version }} · {{ sessionRunning ? runtimePolicyLabel(mod) : `${mod.dependencies?.length || 0} required dependencies` }}</small><em v-if="mod.pendingRuntime">QUEUED: {{ mod.pendingRuntime }}</em></span>
                     <span class="session-toggle" :class="{ on: mod.sessionEnabled, locked: mod.required, update: mod.status === 'Needs update' }" @click.stop="toggleSessionMod(mod)">{{ mod.required ? 'LOCKED' : mod.status === 'Needs update' ? `UPDATE → ${mod.latestVersion}` : mod.sessionEnabled ? 'ACTIVE' : 'OFF' }}</span>
                   </button>
                 </div>
@@ -639,6 +690,7 @@ onUnmounted(() => {
                 <aside v-if="sessionModsTab === 'Current set' && currentSessionMod" class="detail-panel panel session-mod-detail">
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionMod)"></span><p class="eyebrow">SESSION CONTENT</p><h2>{{ currentSessionMod.name }}</h2><p>{{ currentSessionMod.description }}</p>
                   <div v-if="currentSessionMod.status === 'Needs update'" class="compatibility-banner bad"><span>↑</span><div><strong>Update required before use</strong><small>Installed v{{ currentSessionMod.version }} → compatible v{{ currentSessionMod.latestVersion }}</small></div><button data-focus class="button primary" @click="updateMod(currentSessionMod, true)">Update & enable</button></div>
+                  <div v-if="sessionRunning" class="runtime-policy" :class="runtimePolicy(currentSessionMod)"><p class="eyebrow">WHILE PLAYING</p><strong>{{ runtimePolicyLabel(currentSessionMod) }}</strong><small v-if="runtimePolicy(currentSessionMod) === 'hot-safe'">The mod declares reversible runtime hooks and can migrate or preserve its state immediately.</small><small v-else-if="runtimePolicy(currentSessionMod) === 'next-stage'">Queueing avoids missing content generation that already occurred in the current stage.</small><small v-else>Existing world generation cannot be reconstructed safely. The current world may retain orphaned content.</small></div>
                   <div class="relationship-block"><strong>Required dependencies</strong><div v-if="!dependencyRows(currentSessionMod).filter(row => row.kind === 'Required').length" class="relationship-empty">None — this is a root package.</div><div v-for="row in dependencyRows(currentSessionMod).filter(row => row.kind === 'Required')" :key="row.name" class="relationship-row"><span>↳ {{ row.name }}</span><b :class="{ warning: !row.installed }">{{ row.installed ? 'INSTALLED' : 'MISSING' }}</b></div></div>
                   <div class="relationship-block"><strong>Required by installed mods</strong><div v-if="!dependentMods(currentSessionMod.name).length" class="relationship-empty">No installed mod depends on this.</div><div v-for="mod in dependentMods(currentSessionMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>{{ mod.sessionEnabled ? 'ACTIVE' : 'INSTALLED' }}</b></div></div>
                   <div class="manifest-membership"><strong>{{ sessionMode === 'Continue expedition' ? 'Checkpoint manifest' : sessionMode === 'New expedition' ? 'New expedition manifest' : 'Match requirement' }}</strong><template v-if="sessionMode === 'Continue expedition'"><span v-if="savedModStatus.manifest.some(entry => entry.name === currentSessionMod.name)">Requires v{{ savedModStatus.manifest.find(entry => entry.name === currentSessionMod.name)?.version }}</span><span v-else>Not used by this checkpoint</span></template><span v-else-if="currentSessionMod.sessionEnabled">{{ sessionMode === 'New expedition' ? 'Will record' : 'Required at' }} v{{ currentSessionMod.version }}</span><span v-else>Not included</span></div>
@@ -676,13 +728,13 @@ onUnmounted(() => {
               </div>
             </div>
             <div v-else-if="playView === 'settings'" class="play-subview rules-workspace">
-              <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS SESSION RULES</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials match settings' : 'Expedition settings' }}</h2><p>{{ activeRuleDefinitions.length }} settings supplied by the selected {{ sessionMode.toLowerCase() }} activity.</p></div><button data-focus class="button" @click="resetSessionRules">Reset mode defaults</button></header>
+              <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS SESSION RULES</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials match settings' : 'Expedition settings' }}</h2><p>{{ activeRuleDefinitions.length }} settings · {{ modRuleDefinitions.length }} contributed by active mods.</p></div><button data-focus class="button" @click="resetSessionRules">Reset mode defaults</button></header>
               <div class="rules-layout">
                 <div class="rules-list panel">
-                  <div v-for="rule in activeRuleDefinitions" :key="rule.key" data-focus tabindex="0" class="rule-row" :class="{ selected: currentRuleDefinition.key === rule.key }" @click="selectedRuleKey = rule.key"><div><strong>{{ rule.label }}</strong><small>{{ rule.note }}</small></div><button v-if="rule.type === 'toggle'" data-focus class="toggle" :class="{ on: sessionRules[rule.key] }" @click.stop="sessionRules[rule.key] = !sessionRules[rule.key]"><span></span>{{ sessionRules[rule.key] ? 'ON' : 'OFF' }}</button><select v-else-if="rule.type === 'select'" data-focus v-model="sessionRules[rule.key]" @click.stop><option v-for="option in rule.options" :key="option">{{ option }}</option></select><label v-else class="range-control" @click.stop><input data-focus type="range" :min="rule.min" :max="rule.max" :step="rule.step || 1" v-model.number="sessionRules[rule.key]"><output>{{ sessionRules[rule.key] }}{{ rule.unit }}</output></label></div>
+                  <div v-for="rule in activeRuleDefinitions" :key="rule.key" data-focus tabindex="0" class="rule-row" :class="{ selected: currentRuleDefinition.key === rule.key, contributed: rule.source }" @click="selectedRuleKey = rule.key"><div><strong>{{ rule.label }}</strong><small>{{ rule.note }}</small><em v-if="rule.source">MOD · {{ rule.source }}</em></div><button v-if="rule.type === 'toggle'" data-focus class="toggle" :class="{ on: sessionRules[rule.key] }" @click.stop="sessionRules[rule.key] = !sessionRules[rule.key]"><span></span>{{ sessionRules[rule.key] ? 'ON' : 'OFF' }}</button><select v-else-if="rule.type === 'select'" data-focus v-model="sessionRules[rule.key]" @click.stop><option v-for="option in rule.options" :key="option">{{ option }}</option></select><label v-else class="range-control" @click.stop><input data-focus type="range" :min="rule.min" :max="rule.max" :step="rule.step || 1" v-model.number="sessionRules[rule.key]"><output>{{ sessionRules[rule.key] }}{{ rule.unit }}</output></label></div>
                 </div>
                 <aside class="rule-detail panel">
-                  <p class="eyebrow">SELECTED RULE</p><h2>{{ currentRuleDefinition.label }}</h2><p>{{ currentRuleDefinition.detail }}</p><div class="rule-value"><span>CURRENT VALUE</span><strong>{{ typeof sessionRules[currentRuleDefinition.key] === 'boolean' ? (sessionRules[currentRuleDefinition.key] ? 'Enabled' : 'Disabled') : `${sessionRules[currentRuleDefinition.key]}${currentRuleDefinition.unit || ''}` }}</strong></div>
+                  <p class="eyebrow">SELECTED RULE</p><h2>{{ currentRuleDefinition.label }}</h2><span class="rule-source" :class="{ mod: currentRuleDefinition.source }">{{ currentRuleDefinition.source ? `Provided by mod · ${currentRuleDefinition.source}` : 'Provided by Splonks' }}</span><p>{{ currentRuleDefinition.detail }}</p><div class="rule-value"><span>CURRENT VALUE</span><strong>{{ typeof sessionRules[currentRuleDefinition.key] === 'boolean' ? (sessionRules[currentRuleDefinition.key] ? 'Enabled' : 'Disabled') : `${sessionRules[currentRuleDefinition.key]}${currentRuleDefinition.unit || ''}` }}</strong></div>
                   <div class="rule-impact"><p class="eyebrow">SESSION EFFECT</p><div><span>Activity</span><strong>{{ sessionMode }}</strong></div><div><span>Applies to</span><strong>{{ sessionMode === 'Arena' ? 'Every round' : sessionMode === 'Continue expedition' ? 'Future stages' : 'Entire new quest' }}</strong></div><div><span>Authority</span><strong>{{ sessionAccess === 'Solo' ? 'Local player' : 'Lobby host' }}</strong></div><div><span>Synced</span><strong>{{ sessionAccess === 'Solo' ? 'Not required' : 'Before launch' }}</strong></div></div>
                   <p class="capture-note">The game supplies these rule definitions and descriptions. Gubsy supplies the stable editor widgets, focus behavior, serialization, and host synchronization.</p>
                 </aside>
@@ -760,7 +812,7 @@ onUnmounted(() => {
     <footer class="prompt-bar"><div><kbd>↑↓←→</kbd><span>Navigate</span><kbd>Enter</kbd><span>Select</span><kbd>Esc</kbd><span>Back</span><kbd>Q / E</kbd><span>Local section</span></div><div><span class="focus-light"></span> Focus graph active</div></footer>
 
     <div v-if="modal" class="modal-layer" @mousedown.self="closeModal">
-      <section class="modal" :class="{ wide: ['find-game','profile-history','disable-chain','uninstall-chain'].includes(modal.type) }" role="dialog" aria-modal="true">
+      <section class="modal" :class="{ wide: ['find-game','profile-history','disable-chain','uninstall-chain','runtime-mod-change'].includes(modal.type) }" role="dialog" aria-modal="true">
         <button data-focus class="modal-close" @click="closeModal">×</button>
         <p class="eyebrow">{{ modal.type === 'capture' ? 'INPUT CAPTURE' : modal.type === 'pause' ? 'GAME SUSPENDED' : modal.danger ? 'CONFIRM ACTION' : 'CURRENT LOBBY' }}</p>
         <h2>{{ modal.title }}</h2>
@@ -770,6 +822,11 @@ onUnmounted(() => {
         <div v-if="['disable-chain','uninstall-chain'].includes(modal.type)" class="lobby-modal-body">
           <div class="dependency-impact"><p class="eyebrow">AFFECTED PACKAGES</p><div v-for="name in (modal.type === 'disable-chain' ? [modal.payload.root, ...modal.payload.names] : modal.payload.names)" :key="name" class="relationship-row"><span>{{ name }}</span><b>{{ name === modal.payload.root || name === modal.payload.names?.[0] ? 'SELECTED' : 'DEPENDENT' }}</b></div></div>
           <div class="action-row modal-actions"><button data-focus class="button danger" @click="applyModChainAction">{{ modal.type === 'uninstall-chain' ? 'Remove affected set' : 'Disable affected set' }}</button><button data-focus class="button" @click="closeModal">Keep current set</button></div>
+        </div>
+
+        <div v-else-if="modal.type === 'runtime-mod-change'" class="lobby-modal-body">
+          <div class="runtime-choice-summary"><span>{{ modal.payload.policy === 'next-stage' ? 'SAFE BOUNDARY RECOMMENDED' : 'NEW SESSION RECOMMENDED' }}</span><strong>{{ modal.payload.enable ? 'Adding content' : 'Removing content' }} from a running world</strong><p>Gubsy preserves the mod’s namespaced state by default. A game or mod can provide a migration and explicit cleanup operation.</p></div>
+          <div class="runtime-actions"><button data-focus class="button primary" @click="applyRuntimeModChange('queue')">Apply at next stage</button><button data-focus class="button" @click="applyRuntimeModChange('now')">Apply now · preserve state</button><button v-if="!modal.payload.enable" data-focus class="button danger" @click="applyRuntimeModChange('clear')">Disable & clear mod state</button><button data-focus class="button" @click="closeModal">Cancel</button></div>
         </div>
 
         <div v-else-if="modal.type === 'profile-history' && modalProfile" class="lobby-modal-body">
@@ -787,7 +844,7 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="modal.type === 'capture'" class="capture-visual"><span></span><strong>Waiting for input…</strong><small>Axis movement will require a sustained threshold in native Gubsy.</small></div>
-        <div v-else-if="modal.type === 'pause'" class="pause-actions"><button data-focus class="button primary" @click="closeModal">Resume</button><button data-focus class="button" @click="closeModal(); chooseDestination('settings')">Settings</button><button data-focus class="button danger" @click="closeModal(); notify('Return-to-title command sent')">Return to title</button></div>
+        <div v-else-if="modal.type === 'pause'" class="pause-actions"><button data-focus class="button primary" @click="closeModal">Resume</button><button data-focus class="button" @click="closeModal(); playView = 'mods'; sessionModsTab = 'Current set'">Session mods</button><button data-focus class="button" @click="closeModal(); chooseDestination('settings')">Settings</button><button data-focus class="button danger" @click="sessionRunning = false; closeModal(); notify('Returned to title; queued runtime changes retained in lobby')">Return to title</button></div>
         <div v-else class="action-row modal-actions"><button data-focus class="button" :class="modal.danger ? 'danger' : 'primary'" @click="confirmModal">{{ modal.danger ? 'Confirm' : 'Continue' }}</button><button data-focus class="button" @click="capture = null; closeModal()">Cancel</button></div>
       </section>
     </div>
