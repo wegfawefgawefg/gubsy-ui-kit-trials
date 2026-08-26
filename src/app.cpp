@@ -4,6 +4,8 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/SystemInterface.h>
 
@@ -64,6 +66,18 @@ std::string escape_attribute(const std::string &value) {
     }
   }
   return result;
+}
+
+std::string format_setting_value(const std::string &id,
+                                 const std::string &value) {
+  if (value == "true")
+    return "ON";
+  if (value == "false" || value.empty())
+    return "OFF";
+  if (id == "brightness" || id.find("volume") != std::string::npos ||
+      id == "camera-shake" || id == "render-scale")
+    return value + "%";
+  return value;
 }
 
 std::string mod_image(size_t index) {
@@ -187,18 +201,22 @@ void GubsyApp::SelectToolScreen(int index) {
   case 7:
     state_.destination = Destination::Settings;
     state_.settings_tab = "Display";
+    state_.selected_setting = "Fullscreen";
     break;
   case 8:
     state_.destination = Destination::Settings;
     state_.settings_tab = "Audio";
+    state_.selected_setting = "Master volume";
     break;
   case 9:
     state_.destination = Destination::Settings;
     state_.settings_tab = "Accessibility";
+    state_.selected_setting = "Text scale";
     break;
   case 10:
     state_.destination = Destination::Settings;
     state_.settings_tab = "Gameplay";
+    state_.selected_setting = "Context tutorials";
     break;
   case 11:
     state_.destination = Destination::Controls;
@@ -320,6 +338,48 @@ bool GubsyApp::RunSelfTest() {
     return false;
   }
 
+  SelectToolScreen(7);
+  Update();
+  context_->Update();
+  auto *resolution = dynamic_cast<Rml::ElementFormControl *>(
+      document_->QuerySelector("[data-action='setting-value-resolution']"));
+  auto *brightness = dynamic_cast<Rml::ElementFormControl *>(
+      document_->QuerySelector("[data-action='setting-value-brightness']"));
+  if (!resolution || !brightness)
+    return false;
+  resolution->SetValue("1280 × 720");
+  resolution->DispatchEvent(Rml::EventId::Change, {});
+  brightness->SetValue("77");
+  brightness->DispatchEvent(Rml::EventId::Change, {});
+  if (state_.setting_values["resolution"] != "1280 × 720" ||
+      state_.setting_values["brightness"] != "77" ||
+      state_.selected_setting != "Brightness")
+    return false;
+  auto *fullscreen = dynamic_cast<Rml::ElementFormControl *>(
+      document_->QuerySelector("[data-action='setting-value-fullscreen']"));
+  if (!fullscreen)
+    return false;
+  const Rml::Vector2f checkbox_position =
+      fullscreen->GetAbsoluteOffset(Rml::BoxArea::Border) +
+      fullscreen->GetBox().GetSize(Rml::BoxArea::Border) * 0.5f;
+  context_->ProcessMouseMove(static_cast<int>(checkbox_position.x),
+                             static_cast<int>(checkbox_position.y), 0);
+  context_->ProcessMouseButtonDown(0, 0);
+  context_->ProcessMouseButtonUp(0, 0);
+  if (state_.setting_values["fullscreen"] != "false")
+    return false;
+  brightness->Focus(true);
+  SDL_Event adjust_range{};
+  adjust_range.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  adjust_range.gbutton.button = SDL_GAMEPAD_BUTTON_DPAD_RIGHT;
+  if (!HandleSdlEvent(adjust_range) ||
+      state_.setting_values["brightness"] != "78")
+    return false;
+  resolution->Focus(true);
+  if (!HandleSdlEvent(adjust_range) ||
+      state_.setting_values["resolution"] != "1920 × 1080")
+    return false;
+
   SelectToolScreen(0);
   Update();
   context_->Update();
@@ -337,10 +397,16 @@ bool GubsyApp::RunSelfTest() {
     toast->SetInnerRML("");
     toast->SetClass("visible", false);
   }
-  SelectToolScreen(3);
+  SelectToolScreen(7);
   Update();
   context_->Update();
-  if (!click("session-browse") || !state_.session_mod_browse)
+  auto *open_select = dynamic_cast<Rml::ElementFormControlSelect *>(
+      document_->QuerySelector("[data-action='setting-value-resolution']"));
+  if (!open_select)
+    return false;
+  open_select->Focus(true);
+  open_select->ShowSelectBox();
+  if (!open_select->IsSelectBoxVisible())
     return false;
   return true;
 }
@@ -360,7 +426,38 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
         state_.control_filter = control->GetValue();
       else if (action == "search-catalog")
         state_.mod_filter = control->GetValue();
-      else {
+      else if (action.rfind("setting-value-", 0) == 0) {
+        const std::string id = action.substr(14);
+        std::string value = control->GetValue();
+        if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
+          value = event.GetParameter<bool>("checked", false) ? "true" : "false";
+        if (id == "render-scale" || id == "brightness" ||
+            id == "master-volume" || id == "music-volume" ||
+            id == "effects-volume" || id == "dialogue-volume" ||
+            id == "camera-shake")
+          value =
+              std::to_string(static_cast<int>(std::lround(std::stof(value))));
+        state_.setting_values[id] = value.empty() ? "false" : value;
+        state_.selected_setting = element->GetAttribute<Rml::String>(
+            "data-setting-name", state_.selected_setting);
+        Rml::ElementList rows;
+        document_->QuerySelectorAll(rows, ".setting-row");
+        for (Rml::Element *row : rows)
+          row->SetClass("selected", false);
+        if (Rml::Element *row = document_->GetElementById("setting-row-" + id))
+          row->SetClass("selected", true);
+        const std::string formatted =
+            format_setting_value(id, state_.setting_values[id]);
+        if (Rml::Element *label = document_->GetElementById("value-" + id))
+          label->SetInnerRML(formatted);
+        if (Rml::Element *title =
+                document_->GetElementById("setting-detail-title"))
+          title->SetInnerRML(state_.selected_setting);
+        if (Rml::Element *current =
+                document_->GetElementById("setting-detail-current"))
+          current->SetInnerRML(formatted);
+        return;
+      } else {
         HandleAction(action);
         return;
       }
@@ -368,6 +465,8 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
       return;
     }
   }
+  if (action.rfind("setting-value-", 0) == 0)
+    return;
   HandleAction(action);
 }
 
@@ -424,6 +523,35 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
     }
   }
   if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+    if ((event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
+         event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) &&
+        context_->GetFocusElement()) {
+      const int direction =
+          event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT ? 1 : -1;
+      if (auto *input = dynamic_cast<Rml::ElementFormControlInput *>(
+              context_->GetFocusElement());
+          input && input->GetAttribute<Rml::String>("type", "") == "range") {
+        const float minimum = input->GetAttribute<float>("min", 0.0f);
+        const float maximum = input->GetAttribute<float>("max", 100.0f);
+        const float step = input->GetAttribute<float>("step", 1.0f);
+        const float value = std::clamp(std::stof(input->GetValue()) +
+                                           step * static_cast<float>(direction),
+                                       minimum, maximum);
+        input->SetValue(std::to_string(value));
+        input->DispatchEvent(Rml::EventId::Change, {});
+        return true;
+      }
+      if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(
+              context_->GetFocusElement())) {
+        const int count = select->GetNumOptions();
+        if (count > 0) {
+          const int next = (select->GetSelection() + direction + count) % count;
+          select->SetSelection(next);
+          select->DispatchEvent(Rml::EventId::Change, {});
+        }
+        return true;
+      }
+    }
     switch (event.gbutton.button) {
     case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
       NavigateFocus(-1, 0);
@@ -687,6 +815,14 @@ void GubsyApp::HandleAction(const std::string &action) {
     state_.player_tab = action.substr(11);
   } else if (action.rfind("settings-tab-", 0) == 0) {
     state_.settings_tab = action.substr(13);
+    if (state_.settings_tab == "Display")
+      state_.selected_setting = "Fullscreen";
+    else if (state_.settings_tab == "Audio")
+      state_.selected_setting = "Master volume";
+    else if (state_.settings_tab == "Accessibility")
+      state_.selected_setting = "Text scale";
+    else
+      state_.selected_setting = "Context tutorials";
   } else if (action.rfind("controls-tab-", 0) == 0) {
     state_.controls_tab = action.substr(13);
   } else if (action.rfind("mods-tab-", 0) == 0) {
@@ -706,10 +842,18 @@ void GubsyApp::HandleAction(const std::string &action) {
     };
     if (state_.destination == Destination::Players)
       cycle(state_.player_tab, {"Local players", "Profiles", "Devices"});
-    else if (state_.destination == Destination::Settings)
+    else if (state_.destination == Destination::Settings) {
       cycle(state_.settings_tab,
             {"Display", "Audio", "Accessibility", "Gameplay"});
-    else if (state_.destination == Destination::Controls)
+      if (state_.settings_tab == "Display")
+        state_.selected_setting = "Fullscreen";
+      else if (state_.settings_tab == "Audio")
+        state_.selected_setting = "Master volume";
+      else if (state_.settings_tab == "Accessibility")
+        state_.selected_setting = "Text scale";
+      else
+        state_.selected_setting = "Context tutorials";
+    } else if (state_.destination == Destination::Controls)
       cycle(state_.controls_tab, {"Bindings", "Devices", "Input tuning"});
     else if (state_.destination == Destination::Mods)
       cycle(state_.mods_tab, {"Installed", "Browse catalog"});
@@ -874,7 +1018,7 @@ std::string GubsyApp::BuildPlayLobby() const {
       << (!state_.party_pane ? "phone-hidden" : "")
       << R"("><div class="panel-heading"><div><small>PLAYERS</small><h2>Your party</h2></div><b>OFFLINE</b></div><div class="player"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>READY</b></div>)";
   for (int i = 0; i < 3; ++i)
-    out << R"(<button data-focus data-action="add-player" class="open-slot">＋<span>Open slot<small>Invite a friend or add locally</small></span></button>)";
+    out << R"(<button data-focus data-action="add-player" class="open-slot">+<span>Open slot<small>Invite a friend or add locally</small></span></button>)";
   out << R"(<div class="pair"><button data-focus data-action="copy-link" class="button">Invite / copy link</button><button data-focus data-action="find-games" class="button">Friends &amp; public games</button></div><dl class="summary"><dt>CONTENT</dt><dd>7 mods</dd><dt>RULESET</dt><dd>Standard</dd><dt>NETWORK</dt><dd>Automatic</dd></dl></aside></div>)";
   return out.str();
 }
@@ -1114,9 +1258,9 @@ std::string GubsyApp::BuildPlayers() const {
       << selected_class(state_.player_tab == "Devices")
       << R"(">Devices</button><span>LB / RB change section</span></div>)";
   if (state_.player_tab == "Local players") {
-    out << R"(<div class="master-detail"><section class="panel master-list"><div class="section-title"><span><small>LOCAL ROSTER</small><strong>2 / 4 players</strong></span><button data-focus data-action="add-player" class="button primary">＋</button></div><button data-focus data-action="profile-moss" class="list-row selected"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>)"
+    out << R"(<div class="master-detail"><section class="panel master-list"><div class="section-title"><span><small>LOCAL ROSTER</small><strong>2 / 4 players</strong></span><button data-focus data-action="add-player" class="button primary">+</button></div><button data-focus data-action="profile-moss" class="list-row selected"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>)"
         << (state_.player_ready ? "READY" : "NOT READY")
-        << R"(</b></button><button data-focus data-action="add-player" class="list-row"><em>P2</em><span><strong>Open slot</strong><small>Invite or join locally</small></span><b>OPEN</b></button></section><aside class="panel detail"><small>PLAYER 1 DETAILS</small><h2>Moss</h2><div class="form-row"><span>Player profile<small>Persistent identity and history</small></span><button data-focus data-action="profile-moss" class="select-button">Moss⌄</button></div><div class="form-row"><span>Bindings<small>Independent action map</small></span><button data-focus data-action="bindings" class="select-button">Default Binds⌄</button></div><div class="form-row"><span>Input tuning<small>Deadzone and response profile</small></span><button data-focus data-action="tuning" class="select-button">Standard⌄</button></div><h3>ASSIGNED DEVICES · MANY ALLOWED</h3><div class="device-chip"><span>Xbox Wireless Controller<small>Gamepad · connected</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="device-chip"><span>T-LCM Pedals<small>Pedal axis set · optional</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="actions"><button data-focus data-action="assign-device" class="button">＋ Assign device</button><button data-focus data-action="toggle-ready" class="button primary">)"
+        << R"(</b></button><button data-focus data-action="add-player" class="list-row"><em>P2</em><span><strong>Open slot</strong><small>Invite or join locally</small></span><b>OPEN</b></button></section><aside class="panel detail"><small>PLAYER 1 DETAILS</small><h2>Moss</h2><div class="form-row"><span>Player profile<small>Persistent identity and history</small></span><button data-focus data-action="profile-moss" class="select-button">Moss⌄</button></div><div class="form-row"><span>Bindings<small>Independent action map</small></span><button data-focus data-action="bindings" class="select-button">Default Binds⌄</button></div><div class="form-row"><span>Input tuning<small>Deadzone and response profile</small></span><button data-focus data-action="tuning" class="select-button">Standard⌄</button></div><h3>ASSIGNED DEVICES · MANY ALLOWED</h3><div class="device-chip"><span>Xbox Wireless Controller<small>Gamepad · connected</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="device-chip"><span>T-LCM Pedals<small>Pedal axis set · optional</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="actions"><button data-focus data-action="assign-device" class="button">+ Assign device</button><button data-focus data-action="toggle-ready" class="button primary">)"
         << (state_.player_ready ? "Mark not ready" : "Mark ready")
         << R"(</button></div></aside></div>)";
   } else if (state_.player_tab == "Profiles") {
@@ -1130,7 +1274,7 @@ std::string GubsyApp::BuildPlayers() const {
         {"profile-moss", "MO", "Moss", "38h 22m · 84 runs · 21 wins"},
         {"profile-vega", "VE", "Vega", "14h 11m · 31 runs · 4 wins"},
         {"profile-guest", "GU", "Guest", "Never · 0 runs · 0 wins"}};
-    out << R"(<section class="panel profile-workspace"><div class="section-title"><span><small>PROFILE LIBRARY</small><strong>3 profiles</strong></span><button data-focus data-action="new-profile" class="button primary">＋ New profile</button></div><div class="profile-cards">)";
+    out << R"(<section class="panel profile-workspace"><div class="section-title"><span><small>PROFILE LIBRARY</small><strong>3 profiles</strong></span><button data-focus data-action="new-profile" class="button primary">+ New profile</button></div><div class="profile-cards">)";
     for (const Profile &profile : profiles)
       out << R"(<button data-focus data-action=")" << profile.action
           << R"(" class=")"
@@ -1195,67 +1339,140 @@ std::string GubsyApp::BuildSettings() const {
   std::vector<Setting> settings;
   if (state_.settings_tab == "Display")
     settings = {
-        {"Fullscreen", "Fullscreen", "Use the entire selected display", "ON"},
-        {"Display resolution", "Display resolution",
+        {"fullscreen", "Fullscreen", "Use the entire selected display", "ON"},
+        {"resolution", "Display resolution",
          "Output resolution for this display", "1920 × 1080⌄"},
-        {"Render scale", "Render scale", "Internal 3D resolution", "100%⌄"},
-        {"Frame cap", "Frame cap", "Maximum simulation frames per second",
+        {"render-scale", "Render scale", "Internal 3D resolution", "100%⌄"},
+        {"frame-cap", "Frame cap", "Maximum simulation frames per second",
          "144 FPS⌄"},
-        {"Brightness", "Brightness", "Fine-tune scene visibility", "64%"},
-        {"VSync", "Vertical synchronization", "Avoid tearing when supported",
+        {"brightness", "Brightness", "Fine-tune scene visibility", "64%"},
+        {"vsync", "Vertical synchronization", "Avoid tearing when supported",
          "Adaptive⌄"}};
   else if (state_.settings_tab == "Audio")
     settings = {
-        {"Master volume", "Master volume", "Final output gain", "82%"},
-        {"Music volume", "Music volume", "Dynamic score and menus", "64%"},
-        {"Effects volume", "Effects volume", "World and combat effects", "90%"},
-        {"Dialogue volume", "Dialogue volume", "Spoken character audio",
+        {"master-volume", "Master volume", "Final output gain", "82%"},
+        {"music-volume", "Music volume", "Dynamic score and menus", "64%"},
+        {"effects-volume", "Effects volume", "World and combat effects", "90%"},
+        {"dialogue-volume", "Dialogue volume", "Spoken character audio",
          "100%"},
-        {"Dynamic range", "Dynamic range", "Balance quiet and loud sounds",
+        {"dynamic-range", "Dynamic range", "Balance quiet and loud sounds",
          "Night⌄"},
-        {"Output device", "Output device", "Active system audio sink",
+        {"output-device", "Output device", "Active system audio sink",
          "Default⌄"}};
   else if (state_.settings_tab == "Accessibility")
     settings = {
-        {"Text scale", "Text scale", "Interface and subtitle text", "125%⌄"},
-        {"High contrast", "High contrast focus",
+        {"text-scale", "Text scale", "Interface and subtitle text", "125%⌄"},
+        {"high-contrast", "High contrast focus",
          "Thicker focus and state markers", "ON"},
-        {"Reduce motion", "Reduce motion", "Replace movement with fades",
+        {"reduce-motion", "Reduce motion", "Replace movement with fades",
          "OFF"},
-        {"Color filter", "Color vision filter",
+        {"color-filter", "Color vision filter",
          "Transform critical color pairs", "Deuteranopia⌄"},
-        {"Hold assists", "Hold input assists",
+        {"hold-assists", "Hold input assists",
          "Convert repeated holds to toggles", "ON"},
-        {"Narration", "Menu narration", "Read focus changes and descriptions",
+        {"narration", "Menu narration", "Read focus changes and descriptions",
          "OFF"}};
   else
-    settings = {{"Tutorials", "Context tutorials",
+    settings = {{"tutorials", "Context tutorials",
                  "Show relevant mechanic reminders", "Smart⌄"},
-                {"Camera shake", "Camera shake",
+                {"camera-shake", "Camera shake",
                  "Impact-driven camera movement", "35%"},
-                {"Auto pause", "Pause when disconnected",
+                {"auto-pause", "Pause when disconnected",
                  "Pause local sessions on device loss", "ON"},
-                {"Checkpoint hints", "Checkpoint hints",
+                {"checkpoint-hints", "Checkpoint hints",
                  "Show route and recovery guidance", "ON"},
-                {"Speedrun timer", "Speedrun timer",
+                {"speedrun-timer", "Speedrun timer",
                  "Persistent run split overlay", "OFF"},
-                {"Telemetry", "Anonymous telemetry",
+                {"telemetry", "Anonymous telemetry",
                  "Share performance-only diagnostics", "OFF"}};
   out << settings.size()
       << R"( options</strong></span><b>SAVED LOCALLY</b></div>)";
-  for (const Setting &setting : settings)
-    out << R"(<button data-focus data-action="setting-)" << setting.id
-        << R"(" class=")"
+  auto value_for = [&](const std::string &id) {
+    const auto it = state_.setting_values.find(id);
+    return it == state_.setting_values.end() ? std::string{} : it->second;
+  };
+  auto is_toggle = [](const std::string &id) {
+    return id == "fullscreen" || id == "high-contrast" ||
+           id == "reduce-motion" || id == "hold-assists" || id == "narration" ||
+           id == "auto-pause" || id == "checkpoint-hints" ||
+           id == "speedrun-timer" || id == "telemetry";
+  };
+  auto is_range = [](const std::string &id) {
+    return id == "render-scale" || id == "brightness" ||
+           id == "master-volume" || id == "music-volume" ||
+           id == "effects-volume" || id == "dialogue-volume" ||
+           id == "camera-shake";
+  };
+  auto options_for = [](const std::string &id) -> std::vector<std::string> {
+    if (id == "resolution")
+      return {"1280 × 720", "1920 × 1080", "2560 × 1440", "3840 × 2160"};
+    if (id == "frame-cap")
+      return {"60 FPS", "120 FPS", "144 FPS", "Unlimited"};
+    if (id == "vsync")
+      return {"Off", "On", "Adaptive"};
+    if (id == "dynamic-range")
+      return {"Night", "Medium", "Wide"};
+    if (id == "output-device")
+      return {"Default", "HDMI", "USB Headset"};
+    if (id == "text-scale")
+      return {"100%", "125%", "150%", "200%"};
+    if (id == "color-filter")
+      return {"Off", "Deuteranopia", "Protanopia", "Tritanopia"};
+    if (id == "tutorials")
+      return {"Off", "Smart", "Always"};
+    return {};
+  };
+  std::string selected_id = "fullscreen";
+  for (const Setting &setting : settings) {
+    const std::string id = setting.id;
+    const std::string value = value_for(id);
+    if (state_.selected_setting == setting.name)
+      selected_id = id;
+    out << R"(<div id="setting-row-)" << id << R"(" data-action="setting-)"
+        << setting.name << R"(" class=")"
         << selected_class(state_.selected_setting == setting.name,
                           "setting-row")
         << R"("><span><strong>)" << setting.name << R"(</strong><small>)"
-        << setting.note << R"(</small></span><b>)" << setting.value
-        << R"(</b></button>)";
-  out << R"(</div></section><aside class="panel detail setting-detail"><small>LIVE PREVIEW</small><h2>)"
+        << setting.note << R"(</small></span><div class="setting-control">)";
+    if (is_toggle(id)) {
+      out << R"(<input data-focus data-action="setting-value-)" << id
+          << R"(" data-setting-name=")" << setting.name
+          << R"(" class="setting-toggle" type="checkbox" value="true")";
+      if (value == "true")
+        out << R"( checked="checked")";
+      out << R"(/><b id="value-)" << id << R"(">)"
+          << format_setting_value(id, value) << R"(</b>)";
+    } else if (is_range(id)) {
+      const int minimum = id == "render-scale" ? 50 : 0;
+      const int maximum = id == "render-scale" ? 150 : 100;
+      out << R"(<input data-focus data-action="setting-value-)" << id
+          << R"(" data-setting-name=")" << setting.name
+          << R"(" class="setting-range" type="range" min=")" << minimum
+          << R"(" max=")" << maximum << R"(" step="1" value=")"
+          << escape_attribute(value) << R"("/><b id="value-)" << id << R"(">)"
+          << format_setting_value(id, value) << R"(</b>)";
+    } else {
+      out << R"(<select data-focus data-action="setting-value-)" << id
+          << R"(" data-setting-name=")" << setting.name
+          << R"(" class="setting-select">)";
+      for (const std::string &option : options_for(id)) {
+        out << R"(<option value=")" << escape_attribute(option) << R"(")";
+        if (option == value)
+          out << R"( selected="selected")";
+        out << R"(>)" << option << R"(</option>)";
+      }
+      out << R"(</select>)";
+    }
+    out << R"(</div></div>)";
+  }
+  const std::string selected_value = value_for(selected_id);
+  out << R"(</div></section><aside class="panel detail setting-detail"><small>SELECTED SETTING</small><h2 id="setting-detail-title">)"
       << state_.selected_setting
-      << R"(</h2><p>This setting is applied through a typed game-provided schema. The preview shows its final effect before the value is committed.</p><div class="preview-art"><div></div><span>Readable at final output size</span></div><div class="impact"><h3>SETTING CONTEXT</h3><div class="kv"><span>Scope</span><b>Current machine</b></div><div class="kv"><span>Applies</span><b>Immediately</b></div><div class="kv"><span>Profile</span><b>Vega</b></div><div class="kv"><span>Restart</span><b>Not required</b></div></div><button data-focus data-action="apply-setting" class="button primary">Apply )"
+      << R"(</h2><p>Change the native control directly. Values stay in local prototype state and the game-facing provider would validate and commit them.</p><div class="value-box setting-current"><small>CURRENT VALUE</small><strong id="setting-detail-current">)"
+      << format_setting_value(selected_id, selected_value)
+      << R"(</strong></div><div class="impact"><h3>SETTING CONTEXT</h3><div class="kv"><span>Scope</span><b>Current machine</b></div><div class="kv"><span>Applies</span><b>Immediately</b></div><div class="kv"><span>Profile</span><b>Vega</b></div><div class="kv"><span>Restart</span><b>Not required</b></div></div><div class="detail-actions"><button data-focus data-action="apply-setting" class="button primary">Apply )"
       << state_.settings_tab
-      << R"( settings</button><button data-focus data-action="reset-category" class="button">Reset category</button></aside></div>)";
+      << R"( settings</button><button data-focus data-action="reset-category" class="button">Reset category</button></div></aside></div>)";
   return out.str();
 }
 
@@ -1287,7 +1504,7 @@ std::string GubsyApp::BuildControls() const {
         {"Brake", "Scalar action · Vehicle", "Left Trigger"}};
     out << R"(<div class="toolbar"><input data-focus data-action="filter-actions" class="search-field" type="text" value=")"
         << escape_attribute(state_.control_filter)
-        << R"(" placeholder="Filter actions…"/><button data-focus data-action="select-bind-profile" class="select-button">Default Binds⌄</button><button data-focus data-action="new-binds" class="button">＋ New</button><button data-focus data-action="rename-binds" class="button">Rename</button><button data-focus data-action="reset-binds" class="button">Reset</button><button data-focus data-action="delete-binds" class="button danger">Delete</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
+        << R"(" placeholder="Filter actions…"/><button data-focus data-action="select-bind-profile" class="select-button">Default Binds⌄</button><button data-focus data-action="new-binds" class="button">+ New</button><button data-focus data-action="rename-binds" class="button">Rename</button><button data-focus data-action="reset-binds" class="button">Reset</button><button data-focus data-action="delete-binds" class="button danger">Delete</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
     for (const Action &action : actions) {
       if (!contains_ci(action.name, state_.control_filter) &&
           !contains_ci(action.type, state_.control_filter) &&
@@ -1304,7 +1521,7 @@ std::string GubsyApp::BuildControls() const {
     out << R"(</section><aside class="panel detail binding-detail"><small>SELECTED LOGICAL ACTION</small><h2>)"
         << state_.selected_action
         << R"(</h2><p>Logical actions accept multiple physical controls. A binding may listen for input or explicitly browse a device, control, direction, conversion, and qualifier.</p><div class="binding-row"><em>1</em><span><strong>D-Pad Up</strong><small>Xbox Wireless Controller · digital</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="binding-row"><em>2</em><span><strong>Keyboard W</strong><small>Keyboard + Mouse · digital</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="binding-row"><em>3</em><span><strong>Right Trigger → Button</strong><small>Threshold 0.62 · rising edge · explicit conversion</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="actions"><button data-focus data-action="capture-binding" class="button primary">)"
-        << (state_.capture_mode ? "Listening…" : "＋ Listen for input")
+        << (state_.capture_mode ? "Listening…" : "+ Listen for input")
         << R"(</button><button data-focus data-action="choose-binding" class="button">Browse controls…</button></div><div class="conversion-panel"><h3>EXPLICIT BINDING EDITOR</h3><div class="form-row"><span>Device<small>Any, owned device, or exact instance</small></span><button data-focus data-action="choose-device" class="select-button">Xbox Wireless Controller⌄</button></div><div class="form-row"><span>Physical control<small>Axes, hats, buttons, keys, gestures</small></span><button data-focus data-action="choose-control" class="select-button">Right Trigger⌄</button></div><div class="form-row"><span>Conversion<small>Scalar input drives a digital action</small></span><button data-focus data-action="choose-conversion" class="select-button">Axis → Button⌄</button></div><div class="form-row"><span>Threshold / edge<small>Qualify activation without losing the source</small></span><button data-focus data-action="choose-threshold" class="select-button">0.62 · Rising⌄</button></div></div></aside></div>)";
   } else if (state_.controls_tab == "Devices") {
     struct Device {
@@ -1362,7 +1579,7 @@ std::string GubsyApp::BuildProgress() const {
       {"Old Expedition", "Old Expedition", "Moss · Version 0.7 data", "8h 19m",
        "INCOMPATIBLE"}};
   std::ostringstream out;
-  out << R"(<div class="toolbar"><span class="toolbar-title"><small>GAME-PROVIDED PROGRESSION</small>3 campaigns · automatic checkpoints</span><button data-focus data-action="new-campaign" class="button primary">＋ Choose a new quest</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body"><small>CAMPAIGNS</small>)";
+  out << R"(<div class="toolbar"><span class="toolbar-title"><small>GAME-PROVIDED PROGRESSION</small>3 campaigns · automatic checkpoints</span><button data-focus data-action="new-campaign" class="button primary">+ Choose a new quest</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body"><small>CAMPAIGNS</small>)";
   for (const Campaign &campaign : campaigns)
     out << R"(<button data-focus data-action="campaign-)" << campaign.id
         << R"(" class=")"

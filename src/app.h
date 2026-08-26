@@ -4,6 +4,7 @@
 #include <SDL3/SDL_events.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace Rml {
@@ -56,6 +57,19 @@ private:
     std::string control_filter;
     std::string mod_filter;
     std::string modal;
+    std::unordered_map<std::string, std::string> setting_values{
+        {"fullscreen", "true"},      {"resolution", "1920 × 1080"},
+        {"render-scale", "100"},     {"frame-cap", "144 FPS"},
+        {"brightness", "64"},        {"vsync", "Adaptive"},
+        {"master-volume", "82"},     {"music-volume", "64"},
+        {"effects-volume", "90"},    {"dialogue-volume", "100"},
+        {"dynamic-range", "Night"},  {"output-device", "Default"},
+        {"text-scale", "125%"},      {"high-contrast", "true"},
+        {"reduce-motion", "false"},  {"color-filter", "Deuteranopia"},
+        {"hold-assists", "true"},    {"narration", "false"},
+        {"tutorials", "Smart"},      {"camera-shake", "35"},
+        {"auto-pause", "true"},      {"checkpoint-hints", "true"},
+        {"speedrun-timer", "false"}, {"telemetry", "false"}};
     bool party_pane = false;
     bool session_running = false;
     bool shortcuts = true;

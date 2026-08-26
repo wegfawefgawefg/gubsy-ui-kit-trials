@@ -50,7 +50,9 @@ window, so i3 floats it immediately and centers it on the primary display.
 The native implementation includes the full route matrix, fake local state,
 contained list/detail scrolling, geometric keyboard/controller focus, live
 gamepad discovery, explicit and listening-based bindings, provider states,
-toasts, and guarded modals. Catalog artwork is reused from the Vue target.
+toasts, and guarded modals. Settings use real RmlUi checkboxes, range sliders,
+and select boxes; controller left/right adjusts focused ranges and selections.
+Catalog artwork is reused from the Vue target.
 
 No-focus automation is built in:
 
