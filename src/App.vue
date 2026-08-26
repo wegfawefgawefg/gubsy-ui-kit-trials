@@ -20,7 +20,11 @@ state.saves.forEach((save) => {
 if (!state.mods.some((mod) => mod.name === 'Base Content')) state.mods = clone(initialState.mods)
 state.mods.forEach((mod) => {
   const sample = initialState.mods.find((item) => item.name === mod.name)
-  if (sample) { mod.sheet ||= sample.sheet; mod.frame ??= sample.frame }
+  if (sample) {
+    mod.sheet ||= sample.sheet; mod.frame ??= sample.frame
+    mod.latestVersion ||= sample.latestVersion
+    if (sample.latestVersion && !(mod.versions || []).includes(sample.latestVersion)) mod.versions = [sample.latestVersion, ...(mod.versions || [mod.version])]
+  }
   if (mod.sessionEnabled === undefined) mod.sessionEnabled = Boolean(mod.enabled)
   mod.dependencies ||= []
   mod.optionalDependencies ||= []
@@ -284,6 +288,7 @@ function installCatalogMod(catalogMod, addToSession = false, quiet = false, seen
 }
 function toggleSessionMod(mod) {
   if (mod.required) return notify('Base Content is required by the game')
+  if (mod.status === 'Needs update') return updateMod(mod, true)
   if (mod.status !== 'Compatible') return notify('Update this mod before enabling it')
   if (!mod.sessionEnabled) {
     for (const name of mod.dependencies || []) { const dependency = findMod(name); if (!dependency) return notify(`Missing required dependency: ${name}`); dependency.sessionEnabled = true }
@@ -293,6 +298,19 @@ function toggleSessionMod(mod) {
   const affected = dependentClosure(mod.name).filter((name) => findMod(name)?.sessionEnabled)
   if (affected.length) return showModal('disable-chain', 'Disable dependent mods?', { payload: { root: mod.name, names: affected }, message: `${affected.join(', ')} require ${mod.name}. They must also be disabled.` })
   mod.sessionEnabled = false
+}
+function updateMod(mod, enableAfter = false) {
+  if (!mod.latestVersion) return notify(`No compatible update is available for ${mod.name}`)
+  for (const name of mod.dependencies || []) {
+    const dependency = findMod(name)
+    if (!dependency) return notify(`Cannot update: missing required dependency ${name}`)
+    if (enableAfter) dependency.sessionEnabled = true
+  }
+  mod.version = mod.latestVersion
+  if (!mod.versions.includes(mod.latestVersion)) mod.versions.unshift(mod.latestVersion)
+  mod.status = 'Compatible'
+  if (enableAfter) mod.sessionEnabled = true
+  notify(`${mod.name} updated to ${mod.version}${enableAfter ? ' and enabled' : ''}`)
 }
 function requestUninstall(mod) {
   if (mod.required) return notify('Base Content is part of the game and cannot be uninstalled')
@@ -611,7 +629,7 @@ onUnmounted(() => {
                   <div class="catalog-count">{{ state.mods.filter(mod => mod.sessionEnabled).length }} ACTIVE / {{ state.mods.length }} INSTALLED</div>
                   <button v-for="mod in state.mods" :key="mod.id" data-focus class="session-set-row" :class="{ selected: currentSessionMod?.id === mod.id }" @click="sessionModSelection = mod.id">
                     <span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>v{{ mod.version }} · {{ mod.dependencies?.length || 0 }} required dependencies</small></span>
-                    <span class="session-toggle" :class="{ on: mod.sessionEnabled, locked: mod.required }" @click.stop="toggleSessionMod(mod)">{{ mod.required ? 'LOCKED' : mod.sessionEnabled ? 'ACTIVE' : 'OFF' }}</span>
+                    <span class="session-toggle" :class="{ on: mod.sessionEnabled, locked: mod.required, update: mod.status === 'Needs update' }" @click.stop="toggleSessionMod(mod)">{{ mod.required ? 'LOCKED' : mod.status === 'Needs update' ? `UPDATE → ${mod.latestVersion}` : mod.sessionEnabled ? 'ACTIVE' : 'OFF' }}</span>
                   </button>
                 </div>
                 <div v-else class="mod-list panel">
@@ -620,6 +638,7 @@ onUnmounted(() => {
                 </div>
                 <aside v-if="sessionModsTab === 'Current set' && currentSessionMod" class="detail-panel panel session-mod-detail">
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionMod)"></span><p class="eyebrow">SESSION CONTENT</p><h2>{{ currentSessionMod.name }}</h2><p>{{ currentSessionMod.description }}</p>
+                  <div v-if="currentSessionMod.status === 'Needs update'" class="compatibility-banner bad"><span>↑</span><div><strong>Update required before use</strong><small>Installed v{{ currentSessionMod.version }} → compatible v{{ currentSessionMod.latestVersion }}</small></div><button data-focus class="button primary" @click="updateMod(currentSessionMod, true)">Update & enable</button></div>
                   <div class="relationship-block"><strong>Required dependencies</strong><div v-if="!dependencyRows(currentSessionMod).filter(row => row.kind === 'Required').length" class="relationship-empty">None — this is a root package.</div><div v-for="row in dependencyRows(currentSessionMod).filter(row => row.kind === 'Required')" :key="row.name" class="relationship-row"><span>↳ {{ row.name }}</span><b :class="{ warning: !row.installed }">{{ row.installed ? 'INSTALLED' : 'MISSING' }}</b></div></div>
                   <div class="relationship-block"><strong>Required by installed mods</strong><div v-if="!dependentMods(currentSessionMod.name).length" class="relationship-empty">No installed mod depends on this.</div><div v-for="mod in dependentMods(currentSessionMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>{{ mod.sessionEnabled ? 'ACTIVE' : 'INSTALLED' }}</b></div></div>
                   <div class="manifest-membership"><strong>{{ sessionMode === 'Continue expedition' ? 'Checkpoint manifest' : sessionMode === 'New expedition' ? 'New expedition manifest' : 'Match requirement' }}</strong><template v-if="sessionMode === 'Continue expedition'"><span v-if="savedModStatus.manifest.some(entry => entry.name === currentSessionMod.name)">Requires v{{ savedModStatus.manifest.find(entry => entry.name === currentSessionMod.name)?.version }}</span><span v-else>Not used by this checkpoint</span></template><span v-else-if="currentSessionMod.sessionEnabled">{{ sessionMode === 'New expedition' ? 'Will record' : 'Required at' }} v{{ currentSessionMod.version }}</span><span v-else>Not included</span></div>
@@ -727,7 +746,7 @@ onUnmounted(() => {
             <div class="subnav"><button v-for="tab in ['Installed','Browse catalog']" :key="tab" data-focus :class="{ active: modsTab === tab }" @click="modsTab = tab">{{ tab }}</button><span class="bumper-hint"><kbd>Q</kbd><kbd>E</kbd> change section</span></div>
             <template v-if="modsTab === 'Installed'">
               <div class="toolbar"><div><p class="eyebrow">ON THIS DEVICE</p><h3>{{ state.mods.length }} installed</h3></div><button data-focus class="button" @click="notify('Installed mod folders rescanned')">↻ Refresh</button></div>
-              <div class="mods-layout"><div class="mod-list panel"><button v-for="mod in state.mods" :key="mod.id" data-focus class="mod-row" :class="{ selected: selectedMod === mod.id }" @click="selectedMod = mod.id"><span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>by {{ mod.author }} · v{{ mod.version }}</small></span><b :class="{ warning: mod.status !== 'Compatible' }">{{ mod.status }}</b><span class="enabled-dot" :class="{ on: mod.sessionEnabled }"></span></button></div><div class="detail-panel panel" v-if="currentMod"><span class="mod-detail-art" :style="modThumbStyle(currentMod)"></span><p class="eyebrow">INSTALLED MOD</p><h2>{{ currentMod.name }}</h2><p>{{ currentMod.description }}</p><dl><dt>Author</dt><dd>{{ currentMod.author }}</dd><dt>Installed version</dt><dd><select data-focus v-model="currentMod.version"><option v-for="version in currentMod.versions" :key="version">{{ version }}</option></select></dd><dt>Used by lobby</dt><dd>{{ currentMod.sessionEnabled ? 'Yes' : 'No' }}</dd></dl><div class="relationship-block"><strong>Dependencies</strong><div v-if="!dependencyRows(currentMod).length" class="relationship-empty">None</div><div v-for="row in dependencyRows(currentMod)" :key="row.name" class="relationship-row"><span>{{ row.kind === 'Required' ? '↳' : '◇' }} {{ row.name }}</span><b>{{ row.kind }} · {{ row.installed ? 'installed' : 'missing' }}</b></div></div><div class="relationship-block"><strong>Required by</strong><div v-if="!dependentMods(currentMod.name).length" class="relationship-empty">No installed dependents</div><div v-for="mod in dependentMods(currentMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>v{{ mod.version }}</b></div></div><p class="muted">This area manages files and versions on the device. Lobby activation lives in Play.</p><div class="action-row"><button data-focus class="button danger" :disabled="currentMod.required" @click="requestUninstall(currentMod)">{{ currentMod.required ? 'Required by game' : 'Uninstall' }}</button></div><p v-if="currentMod.status !== 'Compatible'" class="warning">This installed version needs an update before it can be selected for a session.</p></div></div>
+              <div class="mods-layout"><div class="mod-list panel"><button v-for="mod in state.mods" :key="mod.id" data-focus class="mod-row" :class="{ selected: selectedMod === mod.id }" @click="selectedMod = mod.id"><span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>by {{ mod.author }} · v{{ mod.version }}</small></span><b :class="{ warning: mod.status !== 'Compatible' }">{{ mod.status }}</b><span class="enabled-dot" :class="{ on: mod.sessionEnabled }"></span></button></div><div class="detail-panel panel" v-if="currentMod"><span class="mod-detail-art" :style="modThumbStyle(currentMod)"></span><p class="eyebrow">INSTALLED MOD</p><h2>{{ currentMod.name }}</h2><p>{{ currentMod.description }}</p><dl><dt>Author</dt><dd>{{ currentMod.author }}</dd><dt>Installed version</dt><dd><select data-focus v-model="currentMod.version"><option v-for="version in currentMod.versions" :key="version">{{ version }}</option></select></dd><dt>Used by lobby</dt><dd>{{ currentMod.sessionEnabled ? 'Yes' : 'No' }}</dd></dl><div class="relationship-block"><strong>Dependencies</strong><div v-if="!dependencyRows(currentMod).length" class="relationship-empty">None</div><div v-for="row in dependencyRows(currentMod)" :key="row.name" class="relationship-row"><span>{{ row.kind === 'Required' ? '↳' : '◇' }} {{ row.name }}</span><b>{{ row.kind }} · {{ row.installed ? 'installed' : 'missing' }}</b></div></div><div class="relationship-block"><strong>Required by</strong><div v-if="!dependentMods(currentMod.name).length" class="relationship-empty">No installed dependents</div><div v-for="mod in dependentMods(currentMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>v{{ mod.version }}</b></div></div><p class="muted">This area manages files and versions on the device. Lobby activation lives in Play.</p><div class="action-row"><button v-if="currentMod.status === 'Needs update'" data-focus class="button primary" @click="updateMod(currentMod)">Update to {{ currentMod.latestVersion }}</button><button data-focus class="button danger" :disabled="currentMod.required" @click="requestUninstall(currentMod)">{{ currentMod.required ? 'Required by game' : 'Uninstall' }}</button></div><p v-if="currentMod.status !== 'Compatible'" class="warning">This installed version needs an update before it can be selected for a session. Update it here, or update-and-enable directly from Play → Session mods.</p></div></div>
             </template>
             <template v-else>
               <div class="toolbar catalog-toolbar"><label class="search"><span>⌕</span><input data-focus v-model="search" placeholder="Search the Gubsy mod catalog…"></label><button data-focus class="compatibility-filter" :class="{ active: compatibleModsOnly }" @click="toggleCompatibleMods"><span class="check-box" :class="{ checked: compatibleModsOnly }">{{ compatibleModsOnly ? '✓' : '' }}</span><span><strong>Compatible only</strong><small>Hide mods unusable on this build</small></span></button><button data-focus class="button" @click="notify('Catalog refreshed from local mod server')">↻ Refresh</button></div>

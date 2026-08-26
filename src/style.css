@@ -295,6 +295,7 @@ dt { color: var(--muted); } dd { margin: 0; text-align: right; }
 .enabled-dot.bad { background: var(--red); box-shadow: 0 0 8px rgba(255,124,121,.55); }
 .compatibility-banner { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 10px; margin: 14px 0; padding: 11px; background: rgba(169,240,139,.07); border: 1px solid rgba(169,240,139,.28); }
 .compatibility-banner > span { color: var(--mint); font-size: 1.25rem; text-align: center; }.compatibility-banner strong,.compatibility-banner small { display:block; }.compatibility-banner small { margin-top: 3px; color: var(--muted); font-size: .63rem; }.compatibility-banner.bad { background: rgba(255,124,121,.07); border-color: rgba(255,124,121,.3); }.compatibility-banner.bad > span,.compatibility-banner.bad strong { color: var(--red); }
+.compatibility-banner > .button { grid-column: 1 / -1; }
 .catalog-empty { padding: 40px 20px; color: var(--muted); text-align: center; }
 .mods-screen, .progress-screen { overflow: hidden; display: flex; flex-direction: column; }
 .mods-screen > .subnav, .mods-screen > .toolbar, .progress-screen > .toolbar { flex: none; }
@@ -320,6 +321,7 @@ dt { color: var(--muted); } dd { margin: 0; text-align: right; }
 .session-set-row strong, .session-set-row small { display: block; }.session-set-row small { margin-top: 4px; color: var(--muted); font-size: .6rem; }
 .session-toggle { min-width: 68px; padding: 8px 7px; border: 1px solid var(--line); color: var(--muted); font-size: .54rem; text-align: center; }
 .session-toggle.on { background: var(--mint); border-color: var(--mint); color: #061016; }.session-toggle.locked { background: rgba(169,240,139,.12); color: var(--mint); }
+.session-toggle.update { min-width: 104px; border-color: rgba(245,200,108,.5); color: var(--gold); }
 .relationship-block { margin: 14px 0; padding: 11px; background: rgba(2,9,13,.54); border: 1px solid var(--line); }
 .relationship-block > strong { display: block; margin-bottom: 7px; color: var(--muted); font-size: .59rem; letter-spacing: .07em; text-transform: uppercase; }
 .relationship-row { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); font-size: .65rem; }
