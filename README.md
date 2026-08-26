@@ -64,7 +64,19 @@ button to restore the original fake dataset.
 - Typed settings contributed by active mods appear in the game-provided session
   editor with visible source attribution. The 1280×720/tablet breakpoint keeps
   the list and detail inspector side-by-side with contained scrolling.
-- Responsive desktop, compact desktop/4:3, and narrow layouts.
+- Responsive full-game desktop (including 1920×1080), compact 1280×720,
+  tablet, phone-landscape, and phone-portrait compositions. Phone layouts use
+  safe-area-aware bottom navigation, 44px minimum visible controls, larger text,
+  Setup/Party switching, and one-pane master/detail navigation for quests, rules,
+  and session mods.
+
+## Responsive test matrix
+
+Layout breakpoints follow available CSS space rather than named hardware models.
+The current acceptance samples are 1920×1080 and 1280×720 at DPR 1, 844×390 and
+915×412 at DPR 3 in landscape, and 412×915 at DPR 3 in portrait. The page uses a
+device-width viewport with `viewport-fit=cover`; DOM layout remains in CSS pixels
+while the browser maps those pixels to the display density.
 
 This is intentionally a UX/state prototype. It does not import Arbor or Gubsy;
 its approved interaction and layout behavior will become the acceptance target

@@ -68,6 +68,10 @@ const sessionModSelection = ref(state.mods[0]?.id)
 const sessionCatalogSelection = ref(state.modCatalog?.[0]?.id)
 const sessionModSearch = ref('')
 const sessionRunning = ref(false)
+const mobilePlayPane = ref('setup')
+const mobileModDetail = ref(false)
+const mobileQuestDetail = ref(false)
+const mobileRuleDetail = ref(false)
 let toastTimer
 
 const quests = [
@@ -156,6 +160,8 @@ const sectionTitle = computed(() => navItems.find((item) => item.id === destinat
 
 watch(state, () => localStorage.setItem('gubsy-ui-demo-state', JSON.stringify(state)), { deep: true })
 watch(sessionMode, () => { selectedRuleKey.value = activeRuleDefinitions.value[0].key })
+watch(playView, () => { mobileModDetail.value = false; mobileQuestDetail.value = false; mobileRuleDetail.value = false })
+watch(sessionModsTab, () => { mobileModDetail.value = false })
 watch(selectedSave, (id) => {
   selectedQuestId.value = id === 2 ? 'green-below' : id === 3 ? 'sunken-road' : 'violet-reach'
   selectedCheckpoint.value = currentSave.value?.checkpoints?.[0]?.name
@@ -177,6 +183,7 @@ function resetSessionRules() {
 function chooseDestination(id) {
   destination.value = id
   if (id === 'play') playView.value = 'lobby'
+  mobilePlayPane.value = 'setup'
   search.value = ''
   nextTick(focusFirstContent)
 }
@@ -625,8 +632,9 @@ onUnmounted(() => {
 
         <template v-else>
           <section v-if="destination === 'play'" class="screen play-screen">
+            <div v-if="playView === 'lobby'" class="mobile-play-tabs"><button data-focus :class="{ active: mobilePlayPane === 'setup' }" @click="mobilePlayPane = 'setup'">Setup</button><button data-focus :class="{ active: mobilePlayPane === 'party' }" @click="mobilePlayPane = 'party'">Party · {{ lobbyPlayers.length }}/{{ lobbyCapacity }}</button></div>
             <div v-if="playView === 'lobby'" class="valve-lobby">
-              <section class="lobby-config panel">
+              <section class="lobby-config panel" :class="{ 'mobile-pane-hidden': mobilePlayPane !== 'setup' }">
                 <div class="lobby-heading">
                   <span class="save-thumb lobby-art"></span>
                   <div><p class="eyebrow">{{ sessionMode === 'Arena' ? 'VERSUS MATCH' : sessionMode === 'New expedition' ? 'NEW QUEST' : 'CONTINUE QUEST' }}</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials' : selectedQuest.name }}</h2><p v-if="sessionMode === 'Continue expedition'">{{ currentSave?.name }} · {{ selectedCheckpoint }} · {{ currentSave?.owner }}</p><p v-else-if="sessionMode === 'New expedition'">{{ selectedQuest.region }} · {{ selectedQuest.length }} · {{ selectedQuest.difficulty }}</p><p v-else>Competitive arenas · {{ sessionRules.teams }} · first to {{ sessionRules.rounds }}</p></div>
@@ -648,7 +656,7 @@ onUnmounted(() => {
                 </div>
               </section>
 
-              <aside class="party-panel panel">
+              <aside class="party-panel panel" :class="{ 'mobile-pane-hidden': mobilePlayPane !== 'party' }">
                 <div class="panel-title"><div><p class="eyebrow">PLAYERS</p><h3>Your party</h3></div><span class="party-state">{{ onlineStatus }}</span></div>
                 <div class="party-slots">
                   <button v-for="(player,index) in lobbyPlayers" :key="player.id" data-focus class="party-slot" @click="selectedPlayer = state.players.findIndex(item => item.id === player.id); chooseDestination('players')"><span class="player-number">P{{ index + 1 }}</span><span><strong>{{ player.name }}</strong><small>{{ player.device }}</small></span><b>{{ player.ready ? 'READY' : 'JOIN' }}</b></button>
@@ -676,18 +684,19 @@ onUnmounted(() => {
               </div>
               <div v-if="sessionModsTab === 'Browse & add'" class="session-catalog-toolbar"><label class="search"><span>⌕</span><input data-focus v-model="sessionModSearch" placeholder="Find a mod to add to this lobby…"></label><span>Install and activation happen together here.</span></div>
               <div class="session-mod-layout">
-                <div v-if="sessionModsTab === 'Current set'" class="mod-list panel">
+                <div v-if="sessionModsTab === 'Current set'" class="mod-list panel" :class="{ 'mobile-pane-hidden': mobileModDetail }">
                   <div class="catalog-count">{{ state.mods.filter(mod => mod.sessionEnabled).length }} ACTIVE / {{ state.mods.length }} INSTALLED</div>
-                  <button v-for="mod in state.mods" :key="mod.id" data-focus class="session-set-row" :class="{ selected: currentSessionMod?.id === mod.id }" @click="sessionModSelection = mod.id">
+                  <button v-for="mod in state.mods" :key="mod.id" data-focus class="session-set-row" :class="{ selected: currentSessionMod?.id === mod.id }" @click="sessionModSelection = mod.id; mobileModDetail = true">
                     <span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>v{{ mod.version }} · {{ sessionRunning ? runtimePolicyLabel(mod) : `${mod.dependencies?.length || 0} required dependencies` }}</small><em v-if="mod.pendingRuntime">QUEUED: {{ mod.pendingRuntime }}</em></span>
                     <span class="session-toggle" :class="{ on: mod.sessionEnabled, locked: mod.required, update: mod.status === 'Needs update' }" @click.stop="toggleSessionMod(mod)">{{ mod.required ? 'LOCKED' : mod.status === 'Needs update' ? `UPDATE → ${mod.latestVersion}` : mod.sessionEnabled ? 'ACTIVE' : 'OFF' }}</span>
                   </button>
                 </div>
-                <div v-else class="mod-list panel">
+                <div v-else class="mod-list panel" :class="{ 'mobile-pane-hidden': mobileModDetail }">
                   <div class="catalog-count">{{ filteredSessionCatalog.length }} MODS · SELECT TO INSPECT</div>
-                  <button v-for="mod in filteredSessionCatalog" :key="mod.id" data-focus class="mod-row catalog-row" :class="{ selected: currentSessionCatalogMod?.id === mod.id, incompatible: mod.installable === false }" @click="sessionCatalogSelection = mod.id"><span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>{{ mod.category }} · {{ mod.downloads }} downloads</small><em v-if="mod.dependencies?.length">Requires {{ mod.dependencies.join(', ') }}</em></span><b>{{ mod.installable === false ? 'UNAVAILABLE' : findMod(mod.name)?.sessionEnabled ? 'ACTIVE' : findMod(mod.name) ? 'INSTALLED' : 'ADD' }}</b></button>
+                  <button v-for="mod in filteredSessionCatalog" :key="mod.id" data-focus class="mod-row catalog-row" :class="{ selected: currentSessionCatalogMod?.id === mod.id, incompatible: mod.installable === false }" @click="sessionCatalogSelection = mod.id; mobileModDetail = true"><span class="mod-thumb" :style="modThumbStyle(mod)"></span><span><strong>{{ mod.name }}</strong><small>{{ mod.category }} · {{ mod.downloads }} downloads</small><em v-if="mod.dependencies?.length">Requires {{ mod.dependencies.join(', ') }}</em></span><b>{{ mod.installable === false ? 'UNAVAILABLE' : findMod(mod.name)?.sessionEnabled ? 'ACTIVE' : findMod(mod.name) ? 'INSTALLED' : 'ADD' }}</b></button>
                 </div>
-                <aside v-if="sessionModsTab === 'Current set' && currentSessionMod" class="detail-panel panel session-mod-detail">
+                <aside v-if="sessionModsTab === 'Current set' && currentSessionMod" class="detail-panel panel session-mod-detail" :class="{ 'mobile-pane-hidden': !mobileModDetail }">
+                  <button data-focus class="mobile-pane-back" @click="mobileModDetail = false">‹ All session mods</button>
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionMod)"></span><p class="eyebrow">SESSION CONTENT</p><h2>{{ currentSessionMod.name }}</h2><p>{{ currentSessionMod.description }}</p>
                   <div v-if="currentSessionMod.status === 'Needs update'" class="compatibility-banner bad"><span>↑</span><div><strong>Update required before use</strong><small>Installed v{{ currentSessionMod.version }} → compatible v{{ currentSessionMod.latestVersion }}</small></div><button data-focus class="button primary" @click="updateMod(currentSessionMod, true)">Update & enable</button></div>
                   <div v-if="sessionRunning" class="runtime-policy" :class="runtimePolicy(currentSessionMod)"><p class="eyebrow">WHILE PLAYING</p><strong>{{ runtimePolicyLabel(currentSessionMod) }}</strong><small v-if="runtimePolicy(currentSessionMod) === 'hot-safe'">The mod declares reversible runtime hooks and can migrate or preserve its state immediately.</small><small v-else-if="runtimePolicy(currentSessionMod) === 'next-stage'">Queueing avoids missing content generation that already occurred in the current stage.</small><small v-else>Existing world generation cannot be reconstructed safely. The current world may retain orphaned content.</small></div>
@@ -695,7 +704,8 @@ onUnmounted(() => {
                   <div class="relationship-block"><strong>Required by installed mods</strong><div v-if="!dependentMods(currentSessionMod.name).length" class="relationship-empty">No installed mod depends on this.</div><div v-for="mod in dependentMods(currentSessionMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>{{ mod.sessionEnabled ? 'ACTIVE' : 'INSTALLED' }}</b></div></div>
                   <div class="manifest-membership"><strong>{{ sessionMode === 'Continue expedition' ? 'Checkpoint manifest' : sessionMode === 'New expedition' ? 'New expedition manifest' : 'Match requirement' }}</strong><template v-if="sessionMode === 'Continue expedition'"><span v-if="savedModStatus.manifest.some(entry => entry.name === currentSessionMod.name)">Requires v{{ savedModStatus.manifest.find(entry => entry.name === currentSessionMod.name)?.version }}</span><span v-else>Not used by this checkpoint</span></template><span v-else-if="currentSessionMod.sessionEnabled">{{ sessionMode === 'New expedition' ? 'Will record' : 'Required at' }} v{{ currentSessionMod.version }}</span><span v-else>Not included</span></div>
                 </aside>
-                <aside v-else-if="currentSessionCatalogMod" class="detail-panel panel session-mod-detail">
+                <aside v-else-if="currentSessionCatalogMod" class="detail-panel panel session-mod-detail" :class="{ 'mobile-pane-hidden': !mobileModDetail }">
+                  <button data-focus class="mobile-pane-back" @click="mobileModDetail = false">‹ Browse results</button>
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionCatalogMod)"></span><p class="eyebrow">ADD TO THIS LOBBY</p><h2>{{ currentSessionCatalogMod.name }}</h2><p>{{ currentSessionCatalogMod.description }}</p>
                   <div class="compatibility-banner" :class="{ bad: currentSessionCatalogMod.installable === false }"><span>{{ currentSessionCatalogMod.installable === false ? '×' : '✓' }}</span><div><strong>{{ currentSessionCatalogMod.installable === false ? 'Unavailable' : 'Compatible' }}</strong><small>{{ modCompatibility(currentSessionCatalogMod) }}</small></div></div>
                   <div class="relationship-block"><strong>Dependency plan</strong><div v-if="!dependencyRows(currentSessionCatalogMod).length" class="relationship-empty">No additional packages required.</div><div v-for="row in dependencyRows(currentSessionCatalogMod)" :key="`${row.kind}-${row.name}`" class="relationship-row"><span>{{ row.kind === 'Required' ? '↳' : '◇' }} {{ row.name }}</span><b>{{ row.kind }} · {{ row.installed ? 'installed' : 'auto-install' }}</b></div></div>
@@ -707,19 +717,20 @@ onUnmounted(() => {
             <div v-else-if="playView === 'quest'" class="play-subview">
               <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS QUEST PROVIDER</p><h2>{{ sessionMode === 'New expedition' ? 'Choose a quest' : 'Choose a resume point' }}</h2><p>{{ sessionMode === 'New expedition' ? 'A new expedition begins at stage one; no arbitrary name is required.' : 'Continue data selects a quest, its owning profile, and a checkpoint inside that quest.' }}</p></div></header>
               <div class="quest-workspace">
-                <div class="quest-browser panel">
+                <div class="quest-browser panel" :class="{ 'mobile-pane-hidden': mobileQuestDetail }">
                   <template v-if="sessionMode === 'New expedition'">
                     <p class="eyebrow">AVAILABLE QUESTS</p>
-                    <button v-for="quest in quests" :key="quest.id" data-focus class="quest-row" :class="{ selected: selectedQuest.id === quest.id }" @click="selectedQuestId = quest.id"><span>{{ quest.stages.length }}</span><div><strong>{{ quest.name }}</strong><small>{{ quest.region }} · {{ quest.difficulty }}</small></div><b>QUEST</b></button>
+                    <button v-for="quest in quests" :key="quest.id" data-focus class="quest-row" :class="{ selected: selectedQuest.id === quest.id }" @click="selectedQuestId = quest.id; mobileQuestDetail = true"><span>{{ quest.stages.length }}</span><div><strong>{{ quest.name }}</strong><small>{{ quest.region }} · {{ quest.difficulty }}</small></div><b>QUEST</b></button>
                   </template>
                   <template v-else>
                     <p class="eyebrow">EXPEDITIONS</p>
                     <button v-for="save in state.saves.filter(item => item.status === 'ready')" :key="save.id" data-focus class="quest-row compact" :class="{ selected: selectedSave === save.id }" @click="selectedSave = save.id"><span>◈</span><div><strong>{{ save.name }}</strong><small>{{ save.owner }} · {{ save.time }}</small></div></button>
                     <p class="eyebrow checkpoint-label">CHECKPOINTS IN {{ currentSave.name.toUpperCase() }}</p>
-                    <button v-for="checkpoint in currentSave.checkpoints" :key="checkpoint.name" data-focus class="checkpoint-choice" :class="{ selected: selectedCheckpoint === checkpoint.name }" @click="selectedCheckpoint = checkpoint.name"><span></span><div><strong>{{ checkpoint.name }}</strong><small>{{ checkpoint.stamp }}</small></div><b v-if="checkpoint.current">LATEST</b></button>
+                    <button v-for="checkpoint in currentSave.checkpoints" :key="checkpoint.name" data-focus class="checkpoint-choice" :class="{ selected: selectedCheckpoint === checkpoint.name }" @click="selectedCheckpoint = checkpoint.name; mobileQuestDetail = true"><span></span><div><strong>{{ checkpoint.name }}</strong><small>{{ checkpoint.stamp }}</small></div><b v-if="checkpoint.current">LATEST</b></button>
                   </template>
                 </div>
-                <article class="quest-detail panel">
+                <article class="quest-detail panel" :class="{ 'mobile-pane-hidden': !mobileQuestDetail }">
+                  <button data-focus class="mobile-pane-back" @click="mobileQuestDetail = false">‹ Quest choices</button>
                   <div class="quest-hero"><div><p class="eyebrow">{{ selectedQuest.region }}</p><h2>{{ selectedQuest.name }}</h2><p>{{ selectedQuest.description }}</p><div class="quest-meta"><span>{{ selectedQuest.length }}</span><span>{{ selectedQuest.difficulty }}</span><span>{{ sessionMode === 'Continue expedition' ? currentSave.time : 'Fresh route' }}</span></div></div></div>
                   <div class="quest-route"><p class="eyebrow">QUEST ROUTE</p><div class="route-line"><div v-for="(stage,index) in selectedQuest.stages" :key="stage" class="route-stage" :class="{ reached: sessionMode === 'Continue expedition' && index < Math.min(currentSave.checkpoints.length + 1, selectedQuest.stages.length), selected: stage.toLowerCase().includes((selectedCheckpoint || '').split(' ')[0].toLowerCase()) }"><span>{{ index + 1 }}</span><strong>{{ stage }}</strong></div></div></div>
                   <div class="quest-context"><strong>{{ sessionMode === 'New expedition' ? 'New expedition data' : 'Checkpoint payload' }}</strong><p v-if="sessionMode === 'New expedition'">Starts {{ selectedQuest.name }} at {{ selectedQuest.stages[0] }} with {{ state.activeProfile }}, the current lobby rules, players, and active mod manifest.</p><p v-else>Resumes {{ currentSave.name }} at {{ selectedCheckpoint }} as {{ currentSave.owner }}. Inventory, quest flags, world seed, and exact mods come from this checkpoint.</p></div>
@@ -730,10 +741,11 @@ onUnmounted(() => {
             <div v-else-if="playView === 'settings'" class="play-subview rules-workspace">
               <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS SESSION RULES</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials match settings' : 'Expedition settings' }}</h2><p>{{ activeRuleDefinitions.length }} settings · {{ modRuleDefinitions.length }} contributed by active mods.</p></div><button data-focus class="button" @click="resetSessionRules">Reset mode defaults</button></header>
               <div class="rules-layout">
-                <div class="rules-list panel">
-                  <div v-for="rule in activeRuleDefinitions" :key="rule.key" data-focus tabindex="0" class="rule-row" :class="{ selected: currentRuleDefinition.key === rule.key, contributed: rule.source }" @click="selectedRuleKey = rule.key"><div><strong>{{ rule.label }}</strong><small>{{ rule.note }}</small><em v-if="rule.source">MOD · {{ rule.source }}</em></div><button v-if="rule.type === 'toggle'" data-focus class="toggle" :class="{ on: sessionRules[rule.key] }" @click.stop="sessionRules[rule.key] = !sessionRules[rule.key]"><span></span>{{ sessionRules[rule.key] ? 'ON' : 'OFF' }}</button><select v-else-if="rule.type === 'select'" data-focus v-model="sessionRules[rule.key]" @click.stop><option v-for="option in rule.options" :key="option">{{ option }}</option></select><label v-else class="range-control" @click.stop><input data-focus type="range" :min="rule.min" :max="rule.max" :step="rule.step || 1" v-model.number="sessionRules[rule.key]"><output>{{ sessionRules[rule.key] }}{{ rule.unit }}</output></label></div>
+                <div class="rules-list panel" :class="{ 'mobile-pane-hidden': mobileRuleDetail }">
+                  <div v-for="rule in activeRuleDefinitions" :key="rule.key" data-focus tabindex="0" class="rule-row" :class="{ selected: currentRuleDefinition.key === rule.key, contributed: rule.source }" @click="selectedRuleKey = rule.key; mobileRuleDetail = true"><div><strong>{{ rule.label }}</strong><small>{{ rule.note }}</small><em v-if="rule.source">MOD · {{ rule.source }}</em></div><button v-if="rule.type === 'toggle'" data-focus class="toggle" :class="{ on: sessionRules[rule.key] }" @click.stop="sessionRules[rule.key] = !sessionRules[rule.key]"><span></span>{{ sessionRules[rule.key] ? 'ON' : 'OFF' }}</button><select v-else-if="rule.type === 'select'" data-focus v-model="sessionRules[rule.key]" @click.stop><option v-for="option in rule.options" :key="option">{{ option }}</option></select><label v-else class="range-control" @click.stop><input data-focus type="range" :min="rule.min" :max="rule.max" :step="rule.step || 1" v-model.number="sessionRules[rule.key]"><output>{{ sessionRules[rule.key] }}{{ rule.unit }}</output></label></div>
                 </div>
-                <aside class="rule-detail panel">
+                <aside class="rule-detail panel" :class="{ 'mobile-pane-hidden': !mobileRuleDetail }">
+                  <button data-focus class="mobile-pane-back" @click="mobileRuleDetail = false">‹ All rules</button>
                   <p class="eyebrow">SELECTED RULE</p><h2>{{ currentRuleDefinition.label }}</h2><span class="rule-source" :class="{ mod: currentRuleDefinition.source }">{{ currentRuleDefinition.source ? `Provided by mod · ${currentRuleDefinition.source}` : 'Provided by Splonks' }}</span><p>{{ currentRuleDefinition.detail }}</p><div class="rule-value"><span>CURRENT VALUE</span><strong>{{ typeof sessionRules[currentRuleDefinition.key] === 'boolean' ? (sessionRules[currentRuleDefinition.key] ? 'Enabled' : 'Disabled') : `${sessionRules[currentRuleDefinition.key]}${currentRuleDefinition.unit || ''}` }}</strong></div>
                   <div class="rule-impact"><p class="eyebrow">SESSION EFFECT</p><div><span>Activity</span><strong>{{ sessionMode }}</strong></div><div><span>Applies to</span><strong>{{ sessionMode === 'Arena' ? 'Every round' : sessionMode === 'Continue expedition' ? 'Future stages' : 'Entire new quest' }}</strong></div><div><span>Authority</span><strong>{{ sessionAccess === 'Solo' ? 'Local player' : 'Lobby host' }}</strong></div><div><span>Synced</span><strong>{{ sessionAccess === 'Solo' ? 'Not required' : 'Before launch' }}</strong></div></div>
                   <p class="capture-note">The game supplies these rule definitions and descriptions. Gubsy supplies the stable editor widgets, focus behavior, serialization, and host synchronization.</p>
