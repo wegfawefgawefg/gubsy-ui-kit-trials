@@ -123,6 +123,12 @@ const savedModStatus = computed(() => {
   const extras = state.mods.filter((mod) => mod.sessionEnabled && !mod.required && !manifest.some((entry) => entry.name === mod.name && entry.version === mod.version))
   return { manifest, missing, inactive, extras, exact: !missing.length && !inactive.length && !extras.length }
 })
+const activeSessionMods = computed(() => state.mods.filter((mod) => mod.sessionEnabled))
+const sessionContentSummary = computed(() => {
+  if (sessionMode.value === 'Continue expedition') return `${activeSessionMods.value.length} active · ${savedModStatus.value.exact ? 'matches checkpoint' : 'differs from checkpoint'}`
+  if (sessionMode.value === 'New expedition') return `${activeSessionMods.value.length} active · recorded when expedition begins`
+  return `${activeSessionMods.value.length} active · required for this match`
+})
 const modalProfile = computed(() => modal.value?.type === 'profile-history' ? state.profiles.find((item) => item.id === modal.value.payload) : null)
 const filteredBindings = computed(() => Object.entries(state.bindings).filter(([name]) => name.toLowerCase().includes(search.value.toLowerCase())))
 const filteredCatalog = computed(() => state.modCatalog.filter((item) => {
@@ -564,7 +570,7 @@ onUnmounted(() => {
                   <label class="lobby-option"><span><strong>Play with</strong><small>Who may occupy the remaining slots</small></span><select data-focus v-model="sessionAccess"><option>Solo</option><option>Local players only</option><option>Friends can join</option><option>Invite only</option><option>Public</option></select></label>
                   <label class="lobby-option" :class="{ disabled: ['Solo','Local players only'].includes(sessionAccess) }"><span><strong>Host using</strong><small>Automatic chooses the best available route</small></span><select data-focus v-model="sessionHost" :disabled="['Solo','Local players only'].includes(sessionAccess)"><option>Automatic</option><option>Direct connection</option><option>Gubsy relay</option><option>Dedicated server</option><option>Steam lobby</option></select></label>
                   <button data-focus class="lobby-option command" @click="playView = 'settings'"><span><strong>{{ sessionMode === 'Arena' ? 'Match rules' : 'Expedition rules' }}</strong><small v-if="sessionMode === 'Arena'">{{ sessionRules.teams }} · {{ sessionRules.damage }}% damage · {{ sessionRules.speed }}% speed</small><small v-else>{{ sessionRules.difficulty }} · {{ sessionRules.lives }} lives · ghost at {{ sessionRules.ghostTimer }}s</small></span><b>EDIT ALL ›</b></button>
-                  <button data-focus class="lobby-option command" @click="playView = 'mods'; sessionModsTab = 'Current set'"><span><strong>Session mods</strong><small>{{ state.mods.filter(mod => mod.sessionEnabled).length }} active · {{ savedModStatus.exact ? 'matches progression' : 'differs from progression' }}</small></span><b>MANAGE ›</b></button>
+                  <button data-focus class="lobby-option command" @click="playView = 'mods'; sessionModsTab = 'Current set'"><span><strong>Session mods</strong><small>{{ sessionContentSummary }}</small></span><b>MANAGE ›</b></button>
                 </div>
 
                 <div class="lobby-bottom">
@@ -590,12 +596,14 @@ onUnmounted(() => {
             <div v-else-if="playView === 'mods'" class="session-mod-workspace">
               <header class="session-mod-header panel">
                 <button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button>
-                <div><p class="eyebrow">CURRENT LOBBY / CONTENT</p><h2>Session mods</h2><p>{{ currentSave?.name }} expects {{ savedModStatus.manifest.length }} exact {{ savedModStatus.manifest.length === 1 ? 'mod' : 'mods' }}.</p></div>
+                <div><p class="eyebrow">CURRENT LOBBY / CONTENT</p><h2>Session mods</h2><p v-if="sessionMode === 'Continue expedition'">Checkpoint “{{ selectedCheckpoint }}” expects {{ savedModStatus.manifest.length }} exact {{ savedModStatus.manifest.length === 1 ? 'mod' : 'mods' }}.</p><p v-else-if="sessionMode === 'New expedition'">Choose the content for this new expedition. Its exact versions will be recorded when play begins.</p><p v-else>Choose the content required by this match. Joining players must resolve the same set.</p></div>
                 <div class="session-mod-tabs"><button v-for="tab in ['Current set','Browse & add']" :key="tab" data-focus :class="{ active: sessionModsTab === tab }" @click="sessionModsTab = tab">{{ tab }}</button></div>
               </header>
-              <div v-if="sessionModsTab === 'Current set'" class="manifest-banner" :class="{ exact: savedModStatus.exact }">
-                <div><strong>{{ savedModStatus.exact ? '✓ Lobby matches saved progression' : 'Saved mod set differs from this lobby' }}</strong><small v-if="!savedModStatus.exact">{{ savedModStatus.missing.length }} missing · {{ savedModStatus.inactive.length }} inactive · {{ savedModStatus.extras.length }} extra</small><small v-else>Every required mod and version is active; no extra content.</small></div>
-                <button v-if="!savedModStatus.exact" data-focus class="button primary" @click="syncModsToProgress">Install & sync exact set</button>
+              <div v-if="sessionModsTab === 'Current set'" class="manifest-banner" :class="{ exact: sessionMode !== 'Continue expedition' || savedModStatus.exact }">
+                <div v-if="sessionMode === 'Continue expedition'"><strong>{{ savedModStatus.exact ? '✓ Lobby matches checkpoint manifest' : 'Checkpoint mod set differs from this lobby' }}</strong><small v-if="!savedModStatus.exact">{{ savedModStatus.missing.length }} missing · {{ savedModStatus.inactive.length }} inactive · {{ savedModStatus.extras.length }} extra</small><small v-else>Every recorded package and version is active; no extra content.</small></div>
+                <div v-else-if="sessionMode === 'New expedition'"><strong>New expedition manifest</strong><small>{{ activeSessionMods.length }} active packages will be recorded with the new expedition when it starts.</small></div>
+                <div v-else><strong>Match content requirement</strong><small>{{ activeSessionMods.length }} active packages will be synchronized with every player before launch.</small></div>
+                <button v-if="sessionMode === 'Continue expedition' && !savedModStatus.exact" data-focus class="button primary" @click="syncModsToProgress">Install & sync checkpoint set</button>
               </div>
               <div v-if="sessionModsTab === 'Browse & add'" class="session-catalog-toolbar"><label class="search"><span>⌕</span><input data-focus v-model="sessionModSearch" placeholder="Find a mod to add to this lobby…"></label><span>Install and activation happen together here.</span></div>
               <div class="session-mod-layout">
@@ -614,7 +622,7 @@ onUnmounted(() => {
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionMod)"></span><p class="eyebrow">SESSION CONTENT</p><h2>{{ currentSessionMod.name }}</h2><p>{{ currentSessionMod.description }}</p>
                   <div class="relationship-block"><strong>Required dependencies</strong><div v-if="!dependencyRows(currentSessionMod).filter(row => row.kind === 'Required').length" class="relationship-empty">None — this is a root package.</div><div v-for="row in dependencyRows(currentSessionMod).filter(row => row.kind === 'Required')" :key="row.name" class="relationship-row"><span>↳ {{ row.name }}</span><b :class="{ warning: !row.installed }">{{ row.installed ? 'INSTALLED' : 'MISSING' }}</b></div></div>
                   <div class="relationship-block"><strong>Required by installed mods</strong><div v-if="!dependentMods(currentSessionMod.name).length" class="relationship-empty">No installed mod depends on this.</div><div v-for="mod in dependentMods(currentSessionMod.name)" :key="mod.id" class="relationship-row"><span>↑ {{ mod.name }}</span><b>{{ mod.sessionEnabled ? 'ACTIVE' : 'INSTALLED' }}</b></div></div>
-                  <div class="manifest-membership"><strong>Saved progression manifest</strong><span v-if="savedModStatus.manifest.some(entry => entry.name === currentSessionMod.name)">Requires v{{ savedModStatus.manifest.find(entry => entry.name === currentSessionMod.name)?.version }}</span><span v-else>Not used by {{ currentSave?.name }}</span></div>
+                  <div class="manifest-membership"><strong>{{ sessionMode === 'Continue expedition' ? 'Checkpoint manifest' : sessionMode === 'New expedition' ? 'New expedition manifest' : 'Match requirement' }}</strong><template v-if="sessionMode === 'Continue expedition'"><span v-if="savedModStatus.manifest.some(entry => entry.name === currentSessionMod.name)">Requires v{{ savedModStatus.manifest.find(entry => entry.name === currentSessionMod.name)?.version }}</span><span v-else>Not used by this checkpoint</span></template><span v-else-if="currentSessionMod.sessionEnabled">{{ sessionMode === 'New expedition' ? 'Will record' : 'Required at' }} v{{ currentSessionMod.version }}</span><span v-else>Not included</span></div>
                 </aside>
                 <aside v-else-if="currentSessionCatalogMod" class="detail-panel panel session-mod-detail">
                   <span class="mod-detail-art" :style="modThumbStyle(currentSessionCatalogMod)"></span><p class="eyebrow">ADD TO THIS LOBBY</p><h2>{{ currentSessionCatalogMod.name }}</h2><p>{{ currentSessionCatalogMod.description }}</p>
