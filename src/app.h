@@ -1,0 +1,102 @@
+#pragma once
+
+#include <RmlUi/Core/EventListener.h>
+#include <SDL3/SDL_events.h>
+
+#include <string>
+#include <vector>
+
+namespace Rml {
+class Context;
+class Element;
+class ElementDocument;
+} // namespace Rml
+
+class GubsyApp final : public Rml::EventListener {
+public:
+  explicit GubsyApp(Rml::Context *context);
+  ~GubsyApp() override;
+
+  bool Initialize(const std::string &document_path);
+  void Update();
+  void SetViewport(int width, int height);
+  void SelectToolScreen(int index);
+  void SetProviderState(int index);
+  bool HandleSdlEvent(const SDL_Event &event);
+  bool RunSelfTest();
+  void ProcessEvent(Rml::Event &event) override;
+
+  Rml::ElementDocument *document() const { return document_; }
+  const char *current_screen_name() const;
+
+private:
+  enum class Destination { Play, Players, Settings, Controls, Progress, Mods };
+  enum class PlayView { Lobby, Quest, Rules, SessionMods };
+
+  struct State {
+    Destination destination = Destination::Play;
+    PlayView play_view = PlayView::Lobby;
+    std::string player_tab = "Local players";
+    std::string settings_tab = "Display";
+    std::string controls_tab = "Bindings";
+    std::string mods_tab = "Installed";
+    std::string activity = "Continue expedition";
+    std::string access = "Friends can join";
+    std::string host = "Automatic";
+    std::string selected_quest = "The Violet Reach";
+    std::string selected_checkpoint = "Temple safe room";
+    std::string selected_rule = "Discovered shortcuts";
+    std::string selected_mod = "Old Lanterns";
+    std::string selected_profile = "Moss";
+    std::string selected_device = "Keyboard + Mouse";
+    std::string selected_action = "Menu Up";
+    std::string selected_campaign = "The Glass Caverns";
+    std::string selected_setting = "Fullscreen";
+    std::string provider_state = "Populated";
+    std::string control_filter;
+    std::string mod_filter;
+    std::string modal;
+    bool party_pane = false;
+    bool session_running = false;
+    bool shortcuts = true;
+    bool shared_treasury = true;
+    bool friendly_fire = false;
+    bool compatible_only = false;
+    bool session_mod_browse = false;
+    bool capture_mode = false;
+    bool player_ready = true;
+    int shared_lives = 4;
+    int health = 4;
+    int ghost_seconds = 180;
+    float raw_input_value = 0.742f;
+    std::string raw_input_name = "Axis 4 · Right Trigger";
+  } state_;
+
+  Rml::Context *context_ = nullptr;
+  Rml::ElementDocument *document_ = nullptr;
+  int viewport_width_ = 1280;
+  int viewport_height_ = 720;
+  bool dirty_ = true;
+  std::string toast_;
+  double toast_until_ = 0.0;
+
+  void MarkDirty();
+  void Render();
+  void RenderChrome();
+  void HandleAction(const std::string &action);
+  void NavigateFocus(int dx, int dy);
+  void ActivateFocus();
+  void Back();
+  void SetToast(std::string message);
+
+  std::string BuildCurrentScreen() const;
+  std::string BuildPlayLobby() const;
+  std::string BuildQuestPicker() const;
+  std::string BuildRules() const;
+  std::string BuildSessionMods() const;
+  std::string BuildPlayers() const;
+  std::string BuildSettings() const;
+  std::string BuildControls() const;
+  std::string BuildProgress() const;
+  std::string BuildMods() const;
+};

@@ -10,7 +10,8 @@
   (6.94 ms), with 60 Hz (16.67 ms) as the minimum game-loop requirement.
 - No recurring allocations or geometry rebuilds for an unchanged static screen.
 
-These are hypotheses to test, not numbers to claim from the starter surface.
+The protocol remains the source of truth; measured results from the completed
+native route matrix are recorded in [PERFORMANCE_RESULTS.md](PERFORMANCE_RESULTS.md).
 
 ## What memory number means
 
@@ -67,10 +68,10 @@ Measure cold document parsing separately from warm show/hide. The desired
 one-frame menu transition can be achieved through prepared hidden documents or
 caching only if their retained memory is also acceptable.
 
-## Instrumentation to finish during the port
+## Further instrumentation for a Gubsy integration
 
-- Ring-buffered timing samples; never read `/proc` or format telemetry every
-  benchmark frame as the starter panel currently does.
+- Persistent ring-buffer telemetry for an in-game overlay. The CLI benchmark
+  already accumulates samples without formatting each frame.
 - RmlUi render-interface counters for draw commands, vertices, indices, texture
   switches, clips, compiled geometry, and bytes uploaded.
 - Allocation counts/bytes by phase and live retained bytes per document.

@@ -14,7 +14,17 @@ Gubsy-wide integration is attempted:
 3. Can a realistic heavy screen stay within the CPU, GPU, memory, and one-frame
    show/hide budgets?
 4. Is the resulting native authoring burden acceptable compared with a later
-   immediate-mode implementation of the same target?
+immediate-mode implementation of the same target?
+
+## Implementation status
+
+The first complete parity pass is implemented. All seventeen committed states
+render at all four viewport families; the shell, route state, focus graph,
+keyboard/controller handling, provider states, modal/toast layers, internal
+scrolling, real catalog artwork, and SDL_GPU/ImGui composition are native.
+`scripts/validate.sh` exercises the route/input state machine and all 68
+route/viewport combinations without displaying a window. Remaining work is
+evaluation and integration design, not filling placeholder pages.
 
 ## Deliberate architecture
 

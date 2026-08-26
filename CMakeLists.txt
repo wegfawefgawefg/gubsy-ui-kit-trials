@@ -92,7 +92,10 @@ target_link_libraries(rmlui_sdlgpu_backend PUBLIC
   SDL3_image-static
 )
 
-add_executable(gubsy-rmlui-demo src/main.cpp)
+add_executable(gubsy-rmlui-demo
+  src/main.cpp
+  src/app.cpp
+)
 target_link_libraries(gubsy-rmlui-demo PRIVATE
   RmlUi::RmlUi
   rmlui_sdlgpu_backend
@@ -107,6 +110,16 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/assets)
 configure_file(
   ${rmlui_SOURCE_DIR}/Samples/assets/LatoLatin-Regular.ttf
   ${CMAKE_CURRENT_BINARY_DIR}/assets/LatoLatin-Regular.ttf
+  COPYONLY
+)
+configure_file(
+  ${rmlui_SOURCE_DIR}/Samples/assets/LatoLatin-Bold.ttf
+  ${CMAKE_CURRENT_BINARY_DIR}/assets/LatoLatin-Bold.ttf
+  COPYONLY
+)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/assets/DejaVuSans.ttf
+  ${CMAKE_CURRENT_BINARY_DIR}/assets/DejaVuSans.ttf
   COPYONLY
 )
 

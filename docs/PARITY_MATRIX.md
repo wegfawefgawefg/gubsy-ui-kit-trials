@@ -4,6 +4,12 @@ The browser prototype is the behavioral specification. Native implementation
 may differ mildly in text metrics and primitives, but not in information
 architecture, state transitions, visible ownership, or responsive intent.
 
+All rows below are implemented in the native pass. `scripts/capture-native.sh`
+produces a directly comparable 68-frame matrix; `scripts/validate.sh` also runs
+the in-process route/input test and twelve additional responsive provider-state
+checks. Intentional presentational differences are limited to native font
+metrics, simple glyph prompts, and broad theme details.
+
 | Area | Required native states and behavior | Reference capture |
 |---|---|---|
 | Shell | Status/profile, fixed rail, bottom phone nav, prompt bar, notifications, modal layer, populated/empty/loading/error provider states | all captures |
@@ -26,7 +32,7 @@ architecture, state transitions, visible ownership, or responsive intent.
 |---|---:|---|
 | Full game desktop | 1920×1080 | Spacious fixed shell with master/detail visible together |
 | Compact game/tablet | 1280×720 | Dense but readable; contained lists scroll without moving the shell |
-| Phone portrait | 412×915 | Larger touch text/targets, bottom nav, one-pane master/detail transitions |
+| Phone portrait | 412×915 | Larger touch text/targets, bottom nav, vertically staged master/detail panes |
 | Phone landscape | 915×412 | Wide short layout designed independently; not a squashed portrait screen |
 
 Each implemented screen must be inspected in every family. DPI scaling is a

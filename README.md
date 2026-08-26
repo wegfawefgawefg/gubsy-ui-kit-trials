@@ -20,6 +20,8 @@ responsive layout while meeting game-loop performance targets.
 All libraries are FOSS. RmlUi and Dear ImGui are pinned to exact commits. The
 host SDL3 is intentionally used so this experiment exercises the same SDL layer
 as Gubsy/Splonks; SDL3 3.2 or newer is required through `pkg-config`.
+Lato is the primary UI face and DejaVu Sans is bundled as the fallback for
+controller/navigation glyphs; their license files live beside the font assets.
 
 ## Build and run
 
@@ -34,15 +36,33 @@ Useful arguments:
 ./scripts/run.sh --resolution 1920x1080
 ./scripts/run.sh --resolution 1280x720
 ./scripts/run.sh --hidden --frames 10
+./scripts/run.sh --screen 16
+./scripts/run.sh --resolution 1280x720 --screen 16 --capture /tmp/catalog.png
+./scripts/run.sh --benchmark 1200 --resolution 1280x720 --screen 16
 ```
 
 Press `F1` to toggle the ImGui experiment panel and `Escape` to exit. The panel
-switches target screens, applies the acceptance viewport presets, changes the
-RmlUi density-independent-pixel ratio, and displays initial CPU/RSS telemetry.
+switches all seventeen committed target views, applies the acceptance viewport
+presets and provider states, changes the RmlUi density-independent-pixel ratio,
+and displays CPU/GPU/RSS telemetry. The SDL window is created as a utility
+window, so i3 floats it immediately and centers it on the primary display.
 
-The checked-in RmlUi document is only a native host/proportions smoke surface.
-It is not presented as the completed Vue replica; that is the work described in
-[the port plan](docs/PORT_PLAN.md).
+The native implementation includes the full route matrix, fake local state,
+contained list/detail scrolling, geometric keyboard/controller focus, live
+gamepad discovery, explicit and listening-based bindings, provider states,
+toasts, and guarded modals. Catalog artwork is reused from the Vue target.
+
+No-focus automation is built in:
+
+```bash
+./scripts/validate.sh
+./scripts/capture-native.sh
+```
+
+`capture-native.sh` renders all 68 route/viewport frames into hidden SDL_GPU
+textures and downloads PNGs directly. `validate.sh` also checks twelve
+responsive empty/loading/error compositions. Neither moves the desktop pointer,
+injects OS input, changes i3 workspaces, or displays a test window.
 
 ## Vue reference capture
 
@@ -63,3 +83,4 @@ Override `GUBSY_VUE_URL` or `CHROME_PATH` when needed. See
 - [Vue-to-native parity matrix](docs/PARITY_MATRIX.md)
 - [Performance and memory protocol](docs/PERFORMANCE_PLAN.md)
 - [Captured responsive references](docs/vue-reference/README.md)
+- [Measured native results](docs/PERFORMANCE_RESULTS.md)

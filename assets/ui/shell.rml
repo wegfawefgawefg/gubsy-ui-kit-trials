@@ -14,40 +14,23 @@
     <div class="body-row">
       <nav>
         <div class="profile"><b>VE</b><span><small>ACTIVE PROFILE</small>Vega</span></div>
-        <button class="selected"><em>▶</em><span>Play<small>Continue or start</small></span></button>
-        <button><em>◆</em><span>Players<small>Profiles &amp; devices</small></span></button>
-        <button><em>⚙</em><span>Settings<small>Game preferences</small></span></button>
-        <button><em>⌁</em><span>Controls<small>Bindings &amp; input</small></span></button>
-        <button><em>▣</em><span>Progress<small>Campaigns &amp; checkpoints</small></span></button>
-        <button><em>⬡</em><span>Mods<small>Installed content</small></span></button>
+        <button id="nav-play" data-focus data-action="nav-play"><em>▶</em><span>Play<small>Continue or start</small></span><b>›</b></button>
+        <button id="nav-players" data-focus data-action="nav-players"><em>◆</em><span>Players<small>Profiles &amp; devices</small></span><b>›</b></button>
+        <button id="nav-settings" data-focus data-action="nav-settings"><em>⚙</em><span>Settings<small>Game preferences</small></span><b>›</b></button>
+        <button id="nav-controls" data-focus data-action="nav-controls"><em>⌁</em><span>Controls<small>Bindings &amp; input</small></span><b>›</b></button>
+        <button id="nav-progress" data-focus data-action="nav-progress"><em>▣</em><span>Progress<small>Campaigns &amp; checkpoints</small></span><b>›</b></button>
+        <button id="nav-mods" data-focus data-action="nav-mods"><em>⬡</em><span>Mods<small>Installed content</small></span><b>›</b></button>
         <div class="nav-spacer"></div>
-        <button class="quit"><em>×</em><span>Quit<small>Return to desktop</small></span></button>
+        <button class="quit" data-focus data-action="quit"><em>×</em><span>Quit<small>Return to desktop</small></span><b>›</b></button>
       </nav>
       <main>
-        <p class="eyebrow">SPLONKS / NATIVE PORT</p>
-        <h1 id="target-name">Play lobby</h1>
-        <div class="workspace">
-          <section class="setup">
-            <div class="quest-row"><div class="quest-art"></div><div><small>CONTINUE QUEST</small><h2>The Violet Reach</h2><p>The Glass Caverns · Latest checkpoint · Vega</p></div><b>Checkpoint</b></div>
-            <div class="setting"><span><strong>Activity</strong><small>Splonks supplies a different session model for each activity</small></span><b>Continue expedition⌄</b></div>
-            <div class="setting"><span><strong>Resume point</strong><small>Latest checkpoint · The Violet Reach</small></span><em>CHOOSE CHECKPOINT ›</em></div>
-            <div class="setting"><span><strong>Play with</strong><small>Who may occupy the remaining slots</small></span><b>Friends can join⌄</b></div>
-            <div class="setting"><span><strong>Host using</strong><small>Automatic chooses the best available route</small></span><b>Automatic⌄</b></div>
-            <div class="setting"><span><strong>Expedition rules</strong><small>Standard · 4 lives · ghost at 180s</small></span><em>EDIT ALL ›</em></div>
-            <div class="setting"><span><strong>Session mods</strong><small>7 active · differs from checkpoint</small></span><em>MANAGE ›</em></div>
-            <div class="actions"><button>Pause preview</button><button class="primary">▶ Resume latest checkpoint</button></div>
-          </section>
-          <aside>
-            <small>PLAYERS</small><h2>Your party</h2>
-            <div class="player"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>READY</b></div>
-            <div class="open-slot">＋ <span>Open slot<small>Invite a friend or add locally</small></span></div>
-            <div class="open-slot">＋ <span>Open slot<small>Invite a friend or add locally</small></span></div>
-            <div class="open-slot">＋ <span>Open slot<small>Invite a friend or add locally</small></span></div>
-          </aside>
-        </div>
+        <div class="content-heading"><div><p class="eyebrow">SPLONKS / NATIVE</p><h1 id="screen-title">Play lobby</h1></div><span>⌁ CONTROLLER NAVIGATION</span></div>
+        <div id="screen-content"></div>
       </main>
     </div>
-    <footer>↑ ↓ ← → &nbsp; Navigate &nbsp;&nbsp; Enter &nbsp; Select &nbsp;&nbsp; Esc &nbsp; Back <span><i></i> RmlUi focus graph pending</span></footer>
+    <footer>↑ ↓ ← → &nbsp; Navigate &nbsp;&nbsp; Enter / A &nbsp; Select &nbsp;&nbsp; Esc / B &nbsp; Back &nbsp;&nbsp; LB / RB &nbsp; Local section <span><i></i> Native focus graph active</span></footer>
+    <div id="toast"></div>
+    <div id="modal-root"></div>
   </div>
 </body>
 </rml>
