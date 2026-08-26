@@ -32,7 +32,9 @@ button to restore the original fake dataset.
 
 ## Covered workflows
 
-- Main shell, continue/new game, local co-op, online entry, quit confirmation.
+- A Valve-style persistent Play lobby combining continue/new-game activity,
+  solo/local/friends/public access, automatic/direct/relay/dedicated/Steam host
+  choice, roster, invites, game settings, session mods, joining, and launch.
 - Local players, profiles (create/select/rename/reset/delete), device assignment,
   roster readiness and refresh.
 - Display, audio, accessibility, and gameplay settings with all basic widget
@@ -41,10 +43,21 @@ button to restore the original fake dataset.
   multiple bindings, add/replace/remove capture flow, and per-device tuning.
 - Offline lobby, session settings, local/direct/room hosting, address/code join,
   server browser, connecting/waiting/host states, and full-room handling.
-- Save catalog, new/load/rename/copy/delete, incompatible data, and confirmations.
-- Installed mod list, compatibility, enable/disable, refresh, and browse hook.
+- Profile identity/history separated from game-provided progression and nested
+  automatic checkpoints. The Play picker stays inside the lobby while the
+  Progress destination handles supported management operations.
+- Device-level installed-mod/version management and a searchable 20-entry
+  illustrated catalog. Required and optional dependencies are visible, required
+  packages install recursively, and dependent removal requires confirmation.
+- A full Play-lobby mod workspace where catalog content can be installed and
+  activated in one action. Progression records exact package/version manifests
+  and can restore its set without overwriting that record.
 - Responsive desktop, compact desktop/4:3, and narrow layouts.
 
 This is intentionally a UX/state prototype. It does not import Arbor or Gubsy;
 its approved interaction and layout behavior will become the acceptance target
 for the later native shell.
+
+The mod catalog artwork is stored as four five-thumbnail sprite sheets generated
+for this prototype with OpenAI's built-in image generation tool. It contains no
+third-party game or mod artwork.
