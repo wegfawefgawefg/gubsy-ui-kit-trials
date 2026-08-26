@@ -216,19 +216,32 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .setting-row { min-height: 72dp; }
 .setting-control { width: 245dp; flex: none; display: flex; align-items: center; justify-content: flex-end; margin-left: 12dp; }
 .setting-control > b { width: 52dp; flex: none; margin-left: 10dp; color: #9df181; font-size: 11dp; font-weight: normal; text-align: right; }
-.setting-toggle { width: 48dp; height: 28dp; flex: none; border: 1dp #527e59; background-color: #102126; }
-.setting-toggle:checked { border-color: #9df181; background-color: #4d8a52; }
-.setting-range { width: 170dp; height: 30dp; flex: none; }
-.setting-range slidertrack { height: 8dp; margin-top: 11dp; background-color: #17282c; }
-.setting-range sliderprogress { height: 8dp; margin-top: 11dp; background-color: #9df181; }
-.setting-range sliderbar { width: 18dp; height: 18dp; margin: 6dp -9dp 0; border: 2dp #edf5f5; border-radius: 10dp; background-color: #527e59; }
-.setting-range sliderarrowdec, .setting-range sliderarrowinc { width: 0; height: 0; }
-.setting-select { width: 220dp; height: 38dp; flex: none; color: #dce7e7; border: 1dp #3e5558; background-color: #081518; }
-.setting-select selectvalue { height: 38dp; padding: 11dp 34dp 0 12dp; }
-.setting-select selectarrow { width: 28dp; height: 38dp; border-left: 1dp #3e5558; background-color: #102126; }
-.setting-select selectbox { width: 220dp; max-height: 220dp; margin-top: 2dp; padding: 4dp; z-index: 20; overflow-y: auto; border: 1dp #527e59; background-color: #081518; }
-.setting-select selectbox option { padding: 10dp; color: #dce7e7; background-color: #081518; }
-.setting-select selectbox option:hover, .setting-select selectbox option:checked { color: #07110a; background-color: #9df181; }
+.native-toggle, .setting-toggle { width: 48dp; height: 28dp; flex: none; border: 1dp #527e59; background-color: #102126; }
+.native-toggle:checked, .setting-toggle:checked { border-color: #9df181; background-color: #4d8a52; }
+.native-toggle:focus, .setting-toggle:focus { border: 2dp #d8ff9a; }
+.native-range, .setting-range { width: 170dp; height: 30dp; flex: none; }
+.native-range slidertrack, .setting-range slidertrack { height: 22dp; margin-top: 4dp; border: 1dp #294045; background-color: #13252a; }
+.native-range sliderprogress, .setting-range sliderprogress { height: 8dp; margin-top: 11dp; background-color: #9df181; }
+.native-range sliderbar, .setting-range sliderbar { width: 20dp; height: 20dp; margin: 5dp -10dp 0; border: 2dp #edf5f5; border-radius: 11dp; background-color: #527e59; }
+.native-range:focus slidertrack, .setting-range:focus slidertrack { border-color: #9df181; }
+.native-range sliderarrowdec, .native-range sliderarrowinc, .setting-range sliderarrowdec, .setting-range sliderarrowinc { width: 0; height: 30dp; }
+.native-select, .setting-select { width: 220dp; height: 38dp; flex: none; color: #dce7e7; border: 1dp #3e5558; background-color: #081518; }
+.native-select:focus, .setting-select:focus { border-color: #9df181; }
+.native-select selectvalue, .setting-select selectvalue { width: auto; height: 38dp; margin-right: 28dp; padding: 11dp 10dp 0 12dp; }
+.native-select selectarrow, .setting-select selectarrow { width: 0; height: 0; margin-top: 15dp; margin-left: -20dp; margin-right: 10dp; border-left: 5dp transparent; border-right: 5dp transparent; border-top: 7dp #9df181; }
+.native-select selectbox, .setting-select selectbox { width: 220dp; max-height: 220dp; margin-top: 2dp; padding: 4dp; z-index: 30; overflow-y: auto; border: 1dp #527e59; background-color: #081518; }
+.native-select selectbox option, .setting-select selectbox option { width: auto; padding: 10dp; color: #dce7e7; background-color: #081518; }
+.native-select selectbox option:hover, .native-select selectbox option:checked, .setting-select selectbox option:hover, .setting-select selectbox option:checked { color: #07110a; background-color: #9df181; }
+.rule-control { width: 285dp; flex: none; display: flex; align-items: center; justify-content: flex-end; margin-left: 12dp; }
+.rule-control > b, .toggle-with-label > b { width: 64dp; margin-left: 8dp; color: #9df181; font-size: 10dp; font-weight: normal; text-align: right; }
+.rule-select { width: 220dp; }
+.rule-range { width: 170dp; }
+.tuning-range { width: 35%; margin: 0 12dp; }
+.toggle-with-label { display: flex; align-items: center; }
+.check-control { min-width: 205dp; display: flex; align-items: center; padding: 5dp 10dp; border: 1dp #2b4145; }
+.check-control > input { margin-right: 9dp; }
+.check-control > span { min-width: 0; flex: 1; }
+.mod-actions { margin-top: 12dp; margin-bottom: 14dp; }
 .setting-current { margin-top: 16dp; }
 .detail-actions { width: 100%; flex: none; display: flex; gap: 8dp; padding-top: 2dp; }
 .detail-actions .button { min-width: 0; flex: 1; }
@@ -299,6 +312,14 @@ footer span { float: right; }
   .quest-row .button { width: 100%; margin-top: 8dp; }
   .option-row { min-height: 64dp; }
   .select-button { min-width: 165dp; }
+  .native-select, .setting-select { width: 165dp; }
+  .native-select selectbox, .setting-select selectbox { width: 165dp; }
+  .rule-control { width: 190dp; margin-left: 6dp; }
+  .rule-select { width: 145dp; }
+  .rule-select selectbox { width: 165dp; }
+  .rule-range { width: 118dp; }
+  .tuning-range { width: 40%; margin: 0 6dp; }
+  .check-control { min-width: 150dp; }
   .actions .button { min-width: 0; flex: 1; padding: 10dp 6dp; }
   .local-tabs { height: 42dp; margin-bottom: 6dp; overflow: hidden; }
   .local-tabs button { min-width: 0; flex: 1; padding: 9dp 5dp; font-size: 12dp; }
@@ -330,10 +351,16 @@ footer span { float: right; }
   nav button span { flex: none; font-size: 10dp; }
   nav button small, nav button b { display: none; }
   main { padding: 6dp 10dp; }
+  .native-select, .setting-select { width: 180dp; }
+  .native-select selectbox, .setting-select selectbox { width: 180dp; }
+  .rule-control { width: 220dp; }
+  .rule-select { width: 170dp; }
+  .rule-range { width: 135dp; }
   .content-heading { display: none; }
   .mobile-local-tabs { height: 38dp; flex: none; display: flex; gap: 4dp; margin-bottom: 4dp; }
   .mobile-local-tabs button { min-width: 0; flex: 1; padding: 5dp; }
   .setup-pane, .party-pane { padding: 7dp; }
+  .setup-pane, .party-pane { min-height: 0; overflow-y: auto; }
   .quest-row { min-height: 48dp; }
   .quest-art { width: 40dp; height: 40dp; }
   .option-row { min-height: 43dp; padding: 3dp 0; }

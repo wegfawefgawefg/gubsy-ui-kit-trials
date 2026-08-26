@@ -80,6 +80,28 @@ std::string format_setting_value(const std::string &id,
   return value;
 }
 
+void append_select(std::ostringstream &out, const std::string &action,
+                   const std::string &value,
+                   std::initializer_list<const char *> options,
+                   const char *class_name = "native-select") {
+  out << R"(<select data-focus data-action=")" << action << R"(" class=")"
+      << class_name << R"(">)";
+  for (const char *option : options) {
+    out << R"(<option value=")" << escape_attribute(option) << R"(")";
+    if (value == option)
+      out << R"( selected="selected")";
+    out << R"(>)" << option << R"(</option>)";
+  }
+  out << R"(</select>)";
+}
+
+std::string
+map_value(const std::unordered_map<std::string, std::string> &values,
+          const std::string &id) {
+  const auto it = values.find(id);
+  return it == values.end() ? std::string{} : it->second;
+}
+
 std::string mod_image(size_t index) {
   return "sheet-" + std::to_string(index / 5 + 1) + "-" +
          std::to_string(index % 5) + ".png";
@@ -279,12 +301,31 @@ bool GubsyApp::RunSelfTest() {
   if (!click("device-xbox") ||
       state_.selected_device != "Xbox Wireless Controller")
     return false;
-  if (!click("nav-play") || !click("activity") ||
-      state_.activity != "New expedition")
+  if (!click("nav-play"))
+    return false;
+  auto *activity = dynamic_cast<Rml::ElementFormControl *>(
+      document_->QuerySelector("[data-action='play-value-activity']"));
+  if (!activity)
+    return false;
+  activity->SetValue("New expedition");
+  activity->DispatchEvent(Rml::EventId::Change, {});
+  Update();
+  context_->Update();
+  if (state_.activity != "New expedition" ||
+      document_->GetInnerRML().find("Starting quest") == std::string::npos)
     return false;
   if (!click("play-rules") || state_.play_view != PlayView::Rules)
     return false;
-  if (!click("toggle-shortcuts") || state_.shortcuts)
+  auto *rule_scroll = document_->QuerySelector(".rules .scroll-body");
+  auto *shortcuts = dynamic_cast<Rml::ElementFormControlInput *>(
+      document_->QuerySelector("[data-action='rule-value-shortcuts']"));
+  if (!rule_scroll || !shortcuts)
+    return false;
+  rule_scroll->SetScrollTop(80.0f);
+  const float scroll_before_toggle = rule_scroll->GetScrollTop();
+  shortcuts->RemoveAttribute("checked");
+  if (state_.shortcuts ||
+      std::abs(rule_scroll->GetScrollTop() - scroll_before_toggle) > 0.5f)
     return false;
   SetProviderState(3);
   Update();
@@ -296,10 +337,29 @@ bool GubsyApp::RunSelfTest() {
   context_->Update();
   if (!click("uninstall-plan") || state_.modal.empty())
     return false;
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "cancel-modal")
+    return false;
+  NavigateFocus(1, 0);
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "confirm-modal")
+    return false;
   if (!click("cancel-modal") || !state_.modal.empty())
     return false;
 
   SelectToolScreen(11);
+  Update();
+  context_->Update();
+  SDL_Event shoulder{};
+  shoulder.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  shoulder.gbutton.button = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
+  if (!HandleSdlEvent(shoulder) || state_.controls_tab != "Devices")
+    return false;
+  shoulder.gbutton.button = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
+  if (!HandleSdlEvent(shoulder) || state_.controls_tab != "Bindings")
+    return false;
   Update();
   context_->Update();
   if (!click("capture-binding") || !state_.capture_mode)
@@ -357,8 +417,12 @@ bool GubsyApp::RunSelfTest() {
     return false;
   auto *fullscreen = dynamic_cast<Rml::ElementFormControl *>(
       document_->QuerySelector("[data-action='setting-value-fullscreen']"));
-  if (!fullscreen)
+  Rml::Element *settings_scroll =
+      document_->QuerySelector(".settings-workspace .scroll-body");
+  if (!fullscreen || !settings_scroll)
     return false;
+  settings_scroll->SetScrollTop(60.0f);
+  const float settings_scroll_before = settings_scroll->GetScrollTop();
   const Rml::Vector2f checkbox_position =
       fullscreen->GetAbsoluteOffset(Rml::BoxArea::Border) +
       fullscreen->GetBox().GetSize(Rml::BoxArea::Border) * 0.5f;
@@ -366,7 +430,8 @@ bool GubsyApp::RunSelfTest() {
                              static_cast<int>(checkbox_position.y), 0);
   context_->ProcessMouseButtonDown(0, 0);
   context_->ProcessMouseButtonUp(0, 0);
-  if (state_.setting_values["fullscreen"] != "false")
+  if (state_.setting_values["fullscreen"] != "false" ||
+      std::abs(settings_scroll->GetScrollTop() - settings_scroll_before) > 0.5f)
     return false;
   brightness->Focus(true);
   SDL_Event adjust_range{};
@@ -380,6 +445,40 @@ bool GubsyApp::RunSelfTest() {
       state_.setting_values["resolution"] != "1920 × 1080")
     return false;
 
+  SelectToolScreen(13);
+  Update();
+  context_->Update();
+  auto *look =
+      dynamic_cast<Rml::ElementFormControlInput *>(document_->QuerySelector(
+          "[data-action='tuning-value-look-sensitivity']"));
+  auto *curve = dynamic_cast<Rml::ElementFormControlSelect *>(
+      document_->QuerySelector("[data-action='tuning-value-response-curve']"));
+  auto *invert = dynamic_cast<Rml::ElementFormControlInput *>(
+      document_->QuerySelector("[data-action='tuning-value-invert-y']"));
+  if (!look || !curve || !invert)
+    return false;
+  look->Focus(true);
+  if (!HandleSdlEvent(adjust_range) ||
+      state_.tuning_values["look-sensitivity"] != "46")
+    return false;
+  curve->Focus(true);
+  SDL_Event activate{};
+  activate.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  activate.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
+  if (!HandleSdlEvent(activate) || !curve->IsSelectBoxVisible())
+    return false;
+  SDL_Event choose_next{};
+  choose_next.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  choose_next.gbutton.button = SDL_GAMEPAD_BUTTON_DPAD_DOWN;
+  HandleSdlEvent(choose_next);
+  HandleSdlEvent(activate);
+  if (curve->IsSelectBoxVisible() ||
+      state_.tuning_values["response-curve"] == "Smooth")
+    return false;
+  invert->Focus(true);
+  if (!HandleSdlEvent(activate) || state_.tuning_values["invert-y"] != "true")
+    return false;
+
   SelectToolScreen(0);
   Update();
   context_->Update();
@@ -387,9 +486,15 @@ bool GubsyApp::RunSelfTest() {
   if (!nav_play)
     return false;
   nav_play->Focus(true);
-  NavigateFocus(1, 0);
+  SDL_Event stick_navigation{};
+  stick_navigation.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+  stick_navigation.gaxis.axis = SDL_GAMEPAD_AXIS_LEFTX;
+  stick_navigation.gaxis.value = 24000;
+  HandleSdlEvent(stick_navigation);
   if (context_->GetFocusElement() == nav_play)
     return false;
+  stick_navigation.gaxis.value = 0;
+  HandleSdlEvent(stick_navigation);
   state_.mod_filter.clear();
   state_.selected_mod = "Mycelium Below";
   toast_.clear();
@@ -397,11 +502,11 @@ bool GubsyApp::RunSelfTest() {
     toast->SetInnerRML("");
     toast->SetClass("visible", false);
   }
-  SelectToolScreen(7);
+  SelectToolScreen(13);
   Update();
   context_->Update();
   auto *open_select = dynamic_cast<Rml::ElementFormControlSelect *>(
-      document_->QuerySelector("[data-action='setting-value-resolution']"));
+      document_->QuerySelector("[data-action='tuning-value-response-curve']"));
   if (!open_select)
     return false;
   open_select->Focus(true);
@@ -426,7 +531,95 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
         state_.control_filter = control->GetValue();
       else if (action == "search-catalog")
         state_.mod_filter = control->GetValue();
-      else if (action.rfind("setting-value-", 0) == 0) {
+      else if (action.rfind("play-value-", 0) == 0) {
+        const std::string id = action.substr(11);
+        if (id == "activity")
+          state_.activity = control->GetValue();
+        else if (id == "access")
+          state_.access = control->GetValue();
+        else if (id == "host")
+          state_.host = control->GetValue();
+        MarkDirty();
+        return;
+      } else if (action.rfind("rule-value-", 0) == 0) {
+        const std::string id = action.substr(11);
+        std::string value = control->GetValue();
+        if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
+          value = event.GetParameter<bool>("checked", false) ? "true" : "false";
+        else if (element->GetAttribute<Rml::String>("type", "") == "range")
+          value =
+              std::to_string(static_cast<int>(std::lround(std::stof(value))));
+        static const std::unordered_map<std::string, std::string> names{
+            {"difficulty", "Expedition difficulty"},
+            {"variation", "Stage variation"},
+            {"shared-lives", "Shared lives"},
+            {"starting-health", "Starting health"},
+            {"ghost-arrival", "Ghost arrival"},
+            {"shop-frequency", "Shop frequency"},
+            {"shortcuts", "Discovered shortcuts"},
+            {"treasury", "Shared treasury"},
+            {"friendly-fire", "Friendly fire"},
+            {"lantern-fuel", "Lantern fuel"}};
+        if (id == "shortcuts")
+          state_.shortcuts = value == "true";
+        else if (id == "treasury")
+          state_.shared_treasury = value == "true";
+        else if (id == "friendly-fire")
+          state_.friendly_fire = value == "true";
+        else
+          state_.rule_values[id] = value;
+        state_.selected_rule = names.at(id);
+        std::string formatted = value;
+        if (value == "true" || value == "false")
+          formatted = value == "true" ? "ON" : "OFF";
+        else if (id == "starting-health")
+          formatted += " hearts";
+        else if (id == "ghost-arrival")
+          formatted += " sec";
+        if (Rml::Element *label =
+                document_->GetElementById("rule-output-" + id))
+          label->SetInnerRML(formatted);
+        if (Rml::Element *title =
+                document_->GetElementById("rule-detail-title"))
+          title->SetInnerRML(state_.selected_rule);
+        if (Rml::Element *current =
+                document_->GetElementById("rule-detail-current"))
+          current->SetInnerRML(formatted);
+        return;
+      } else if (action.rfind("tuning-value-", 0) == 0) {
+        const std::string id = action.substr(13);
+        std::string value = control->GetValue();
+        if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
+          value = event.GetParameter<bool>("checked", false) ? "true" : "false";
+        else if (element->GetAttribute<Rml::String>("type", "") == "range")
+          value =
+              std::to_string(static_cast<int>(std::lround(std::stof(value))));
+        state_.tuning_values[id] = value;
+        const std::string formatted = value == "true"    ? "ON"
+                                      : value == "false" ? "OFF"
+                                                         : value + "%";
+        if (Rml::Element *label =
+                document_->GetElementById("tuning-output-" + id))
+          label->SetInnerRML(formatted);
+        if (Rml::Element *summary =
+                document_->GetElementById("tuning-summary-" + id))
+          summary->SetInnerRML(id == "response-curve" ? value : formatted);
+        return;
+      } else if (action.rfind("choice-value-", 0) == 0) {
+        state_.choice_values[action.substr(13)] = control->GetValue();
+        return;
+      } else if (action == "compatible-value") {
+        state_.compatible_only = event.GetParameter<bool>("checked", false);
+        Rml::ElementList incompatible;
+        document_->QuerySelectorAll(incompatible, ".catalog-row.incompatible");
+        for (Rml::Element *row : incompatible) {
+          if (state_.compatible_only)
+            row->SetProperty("display", "none");
+          else
+            row->RemoveProperty("display");
+        }
+        return;
+      } else if (action.rfind("setting-value-", 0) == 0) {
         const std::string id = action.substr(14);
         std::string value = control->GetValue();
         if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
@@ -493,6 +686,25 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
     if (state_.destination == Destination::Controls &&
         state_.controls_tab == "Devices")
       MarkDirty();
+    constexpr int axis_threshold = 18000;
+    if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX) {
+      const int direction = event.gaxis.value > axis_threshold    ? 1
+                            : event.gaxis.value < -axis_threshold ? -1
+                                                                  : 0;
+      if (direction != 0 && direction != controller_x_latch_)
+        NavigateFocus(direction, 0);
+      controller_x_latch_ = direction;
+      return direction != 0;
+    }
+    if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY) {
+      const int direction = event.gaxis.value > axis_threshold    ? 1
+                            : event.gaxis.value < -axis_threshold ? -1
+                                                                  : 0;
+      if (direction != 0 && direction != controller_y_latch_)
+        NavigateFocus(0, direction);
+      controller_y_latch_ = direction;
+      return direction != 0;
+    }
   }
   if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
     if (dynamic_cast<Rml::ElementFormControl *>(context_->GetFocusElement()) &&
@@ -523,6 +735,28 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
     }
   }
   if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+    if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(
+            context_->GetFocusElement());
+        select && select->IsSelectBoxVisible()) {
+      Rml::Input::KeyIdentifier key = Rml::Input::KI_UNKNOWN;
+      if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP)
+        key = Rml::Input::KI_UP;
+      else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN)
+        key = Rml::Input::KI_DOWN;
+      else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_SOUTH)
+        key = Rml::Input::KI_RETURN;
+      else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST)
+        key = Rml::Input::KI_ESCAPE;
+      if (key != Rml::Input::KI_UNKNOWN) {
+        context_->ProcessKeyDown(key, 0);
+        context_->ProcessKeyUp(key, 0);
+        if (event.gbutton.button == SDL_GAMEPAD_BUTTON_SOUTH)
+          select->HideSelectBox();
+        else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST)
+          select->CancelSelectBox();
+        return true;
+      }
+    }
     if ((event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
          event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) &&
         context_->GetFocusElement()) {
@@ -588,7 +822,9 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
   if (!document_)
     return;
   Rml::ElementList candidates;
-  document_->QuerySelectorAll(candidates, "[data-focus]");
+  document_->QuerySelectorAll(candidates, state_.modal.empty()
+                                              ? "[data-focus]"
+                                              : "#modal-root [data-focus]");
   if (candidates.empty())
     return;
 
@@ -632,8 +868,25 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
 }
 
 void GubsyApp::ActivateFocus() {
-  if (Rml::Element *focus = context_->GetFocusElement())
-    focus->Click();
+  Rml::Element *focus = context_->GetFocusElement();
+  if (!focus)
+    return;
+  if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(focus)) {
+    if (select->IsSelectBoxVisible())
+      select->HideSelectBox();
+    else
+      select->ShowSelectBox();
+    return;
+  }
+  if (auto *input = dynamic_cast<Rml::ElementFormControlInput *>(focus);
+      input && input->GetAttribute<Rml::String>("type", "") == "checkbox") {
+    if (input->HasAttribute("checked"))
+      input->RemoveAttribute("checked");
+    else
+      input->SetAttribute("checked", "checked");
+    return;
+  }
+  focus->Click();
 }
 
 void GubsyApp::Back() {
@@ -798,6 +1051,14 @@ void GubsyApp::HandleAction(const std::string &action) {
     SetToast(state_.capture_mode
                  ? "Listening: actuate any control, or choose explicitly"
                  : "Input capture cancelled");
+  } else if (action == "choose-binding") {
+    if (Rml::Element *device = document_->QuerySelector(
+            "[data-action='choice-value-binding-device']")) {
+      device->Focus(true);
+      device->ScrollIntoView(false);
+    }
+    SetToast("Explicit binding editor focused");
+    return;
   } else if (action == "uninstall-plan" || action == "delete-campaign" ||
              action == "delete-binds" || action == "quit") {
     state_.modal = action;
@@ -903,6 +1164,9 @@ void GubsyApp::Render() {
                : R"(</h2><p>This destructive demo action is guarded and remains local to the native prototype.</p>)") +
           R"(<div class="actions"><button data-focus data-action="cancel-modal" class="button">Cancel</button><button data-focus data-action="confirm-modal" class="button danger">Confirm</button></div></div>)");
       modal->SetClass("visible", true);
+      if (Rml::Element *cancel =
+              modal->QuerySelector("[data-action='cancel-modal']"))
+        cancel->Focus(true);
     }
   }
   dirty_ = false;
@@ -991,9 +1255,13 @@ std::string GubsyApp::BuildPlayLobby() const {
                      : (arena ? "Round set · " : "Quest route · "))
       << (continuing ? state_.selected_checkpoint
                      : (arena ? "Competitive rules" : "Stage one"))
-      << R"( · Vega</p></div><button data-focus data-action="play-quest" class="button compact">Checkpoint</button></div>)";
-  out << R"(<div class="option-row"><span><strong>Activity</strong><small>Splonks supplies a different session model for each activity</small></span><button data-focus data-action="activity" class="select-button">)"
-      << state_.activity << R"(⌄</button></div>)";
+      << R"( · Vega</p></div><button data-focus data-action="play-quest" class="button compact">)"
+      << (continuing ? "Checkpoint" : (arena ? "Arena" : "Quest"))
+      << R"(</button></div>)";
+  out << R"(<div class="option-row"><span><strong>Activity</strong><small>Splonks supplies a different session model for each activity</small></span>)";
+  append_select(out, "play-value-activity", state_.activity,
+                {"Continue expedition", "New expedition", "Arena run"});
+  out << R"(</div>)";
   out << R"(<button data-focus data-action="play-quest" class="option-row command"><span><strong>)"
       << (continuing ? "Resume point"
                      : (arena ? "Arena rotation" : "Starting quest"))
@@ -1004,12 +1272,16 @@ std::string GubsyApp::BuildPlayLobby() const {
       << R"(</small></span><b>)"
       << (continuing ? "CHOOSE CHECKPOINT ›" : "CHANGE ›")
       << R"(</b></button>)";
-  out << R"(<div class="option-row"><span><strong>Play with</strong><small>Who may occupy the remaining slots</small></span><button data-focus data-action="access" class="select-button">)"
-      << state_.access << R"(⌄</button></div>)";
-  out << R"(<div class="option-row"><span><strong>Host using</strong><small>Automatic chooses the best available route</small></span><button data-focus data-action="host" class="select-button">)"
-      << state_.host << R"(⌄</button></div>)";
+  out << R"(<div class="option-row"><span><strong>Play with</strong><small>Who may occupy the remaining slots</small></span>)";
+  append_select(out, "play-value-access", state_.access,
+                {"Solo", "Friends can join", "Invite only", "Public"});
+  out << R"(</div><div class="option-row"><span><strong>Host using</strong><small>Automatic chooses the best available route</small></span>)";
+  append_select(out, "play-value-host", state_.host,
+                {"Automatic", "Host locally", "Dedicated relay"});
+  out << R"(</div>)";
   out << R"(<button data-focus data-action="play-rules" class="option-row command"><span><strong>Expedition rules</strong><small>Standard · )"
-      << state_.shared_lives << " lives · ghost at " << state_.ghost_seconds
+      << map_value(state_.rule_values, "shared-lives") << " lives · ghost at "
+      << map_value(state_.rule_values, "ghost-arrival")
       << R"(s</small></span><b>EDIT ALL ›</b></button>)";
   out << R"(<button data-focus data-action="play-mods" class="option-row command"><span><strong>Session mods</strong><small>7 active · differs from checkpoint</small></span><b>MANAGE ›</b></button>)";
   out << R"(<div class="actions"><button data-focus data-action="pause-preview" class="button">Pause preview</button><button data-focus data-action="start-session" class="button primary">)"
@@ -1024,6 +1296,8 @@ std::string GubsyApp::BuildPlayLobby() const {
 }
 
 std::string GubsyApp::BuildQuestPicker() const {
+  const bool continuing = state_.activity == "Continue expedition";
+  const bool arena = state_.activity == "Arena run";
   struct Quest {
     const char *action;
     const char *name;
@@ -1037,7 +1311,19 @@ std::string GubsyApp::BuildQuestPicker() const {
        "4"},
       {"quest-glass", "The Glass Pilgrim", "Crystal descent · Severe", "7"}};
   std::ostringstream out;
-  out << R"(<div class="subview-header panel"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>SPLONKS QUEST PROVIDER</small><h2>Choose a resume point</h2><p>Continue data selects a quest, its owning profile, and a checkpoint inside that quest.</p></div></div><div class="master-detail"><section class="panel master-list"><small>EXPEDITIONS AND QUESTS</small>)";
+  out << R"(<div class="subview-header panel"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>SPLONKS QUEST PROVIDER</small><h2>)"
+      << (continuing ? "Choose a resume point"
+                     : (arena ? "Choose an arena rotation" : "Choose a quest"))
+      << R"(</h2><p>)"
+      << (continuing ? "Continue data selects a quest, its owning profile, and "
+                       "a checkpoint inside that quest."
+                     : (arena ? "Arena activities choose competitive maps and "
+                                "round structure without campaign checkpoints."
+                              : "A new expedition begins at stage one of the "
+                                "selected quest with a fresh run manifest."))
+      << R"(</p></div></div><div class="master-detail"><section class="panel master-list"><small>)"
+      << (arena ? "ARENA ROTATIONS" : "EXPEDITIONS AND QUESTS")
+      << R"(</small>)";
   for (const Quest &quest : quests) {
     out << R"(<button data-focus data-action=")" << quest.action
         << R"(" class=")"
@@ -1055,53 +1341,107 @@ std::string GubsyApp::BuildQuestPicker() const {
   for (int i = 0; i < 6; ++i)
     out << R"(<div class=")" << (i < 4 ? "reached" : "") << R"("><b>)" << i + 1
         << R"(</b><span>)" << stages[i] << R"(</span></div>)";
-  out << R"(</div><div class="context-box"><strong>Checkpoint payload</strong><p>Inventory, quest flags, world seed, owning profile, and exact mod versions come from this checkpoint.</p></div><button data-focus data-action="play-lobby" class="button primary">Use this checkpoint</button></article></div>)";
+  out << R"(</div><div class="context-box"><strong>)"
+      << (continuing ? "Checkpoint payload"
+                     : (arena ? "Arena manifest" : "New expedition manifest"))
+      << R"(</strong><p>)"
+      << (continuing
+              ? "Inventory, quest flags, world seed, owning profile, and exact "
+                "mod versions come from this checkpoint."
+              : (arena ? "Map rotation, round rules, players, and session mods "
+                         "are fixed when the arena lobby launches."
+                       : "Quest, seed policy, expedition rules, players, and "
+                         "session mods are recorded when the new run begins."))
+      << R"(</p></div><button data-focus data-action="play-lobby" class="button primary">)"
+      << (continuing ? "Use this checkpoint"
+                     : (arena ? "Use this rotation" : "Start with this quest"))
+      << R"(</button></article></div>)";
   return out.str();
 }
 
 std::string GubsyApp::BuildRules() const {
   struct Rule {
+    const char *id;
     const char *name;
     const char *note;
-    std::string value;
+    const char *kind;
     const char *source;
   };
-  const std::vector<Rule> rules{
-      {"Expedition difficulty", "Overall danger and resource pressure.",
-       "Standard⌄", ""},
-      {"Stage variation", "How authored rooms are remixed.", "Quest-authored⌄",
-       ""},
-      {"Shared lives", "Continues available to the party.", "4", ""},
-      {"Starting health", "Hearts granted at expedition start.", "4 hearts",
-       ""},
-      {"Ghost arrival", "Seconds before the stage begins hunting.", "180 sec",
-       ""},
-      {"Shop frequency", "Merchant room availability.", "Normal⌄", ""},
-      {"Discovered shortcuts", "Allow unlocked route entrances.",
-       on_off(state_.shortcuts).c_str(), ""},
-      {"Shared treasury", "Combine party currency.",
-       on_off(state_.shared_treasury).c_str(), ""},
-      {"Friendly fire", "Players can damage each other.",
-       on_off(state_.friendly_fire).c_str(), ""},
-      {"Lantern fuel", "Duration of carried expedition lanterns.", "Standard⌄",
-       "Old Lanterns"}};
+  constexpr Rule rules[]{
+      {"difficulty", "Expedition difficulty",
+       "Overall danger and resource pressure.", "select", ""},
+      {"variation", "Stage variation", "How authored rooms are remixed.",
+       "select", ""},
+      {"shared-lives", "Shared lives", "Continues available to the party.",
+       "range", ""},
+      {"starting-health", "Starting health",
+       "Hearts granted at expedition start.", "range", ""},
+      {"ghost-arrival", "Ghost arrival",
+       "Seconds before the stage begins hunting.", "range", ""},
+      {"shop-frequency", "Shop frequency", "Merchant room availability.",
+       "select", ""},
+      {"shortcuts", "Discovered shortcuts", "Allow unlocked route entrances.",
+       "toggle", ""},
+      {"treasury", "Shared treasury", "Combine party currency.", "toggle", ""},
+      {"friendly-fire", "Friendly fire", "Players can damage each other.",
+       "toggle", ""},
+      {"lantern-fuel", "Lantern fuel",
+       "Duration of carried expedition lanterns.", "select", "Old Lanterns"}};
   std::ostringstream out;
   out << R"(<div class="subview-header panel"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>SPLONKS SESSION RULES</small><h2>Expedition settings</h2><p>10 settings · 1 contributed by active mods.</p></div><button data-focus data-action="reset-rules" class="button">Reset mode defaults</button></div><div class="master-detail rules"><section class="panel master-list scroll-list"><div class="scroll-body">)";
   for (const Rule &rule : rules) {
-    std::string action = "select-rule-" + std::string(rule.name);
-    if (std::string(rule.name) == "Discovered shortcuts")
-      action = "toggle-shortcuts";
-    else if (std::string(rule.name) == "Shared treasury")
-      action = "toggle-treasury";
-    else if (std::string(rule.name) == "Friendly fire")
-      action = "toggle-friendly-fire";
-    out << R"(<button data-focus data-action=")" << action << R"(" class=")"
+    out << R"(<div class=")"
         << selected_class(state_.selected_rule == rule.name, "rule-row")
         << R"("><span><strong>)" << rule.name << R"(</strong><small>)"
         << rule.note << R"(</small>)";
     if (*rule.source)
       out << R"(<em>MOD · )" << rule.source << R"(</em>)";
-    out << R"(</span><b>)" << rule.value << R"(</b></button>)";
+    out << R"(</span><div class="rule-control">)";
+    const std::string id = rule.id;
+    if (id == "difficulty")
+      append_select(out, "rule-value-difficulty",
+                    map_value(state_.rule_values, id),
+                    {"Relaxed", "Standard", "Dangerous", "Nightmare"},
+                    "native-select rule-select");
+    else if (id == "variation")
+      append_select(out, "rule-value-variation",
+                    map_value(state_.rule_values, id),
+                    {"Quest-authored", "Remixed", "Fully random"},
+                    "native-select rule-select");
+    else if (id == "shop-frequency")
+      append_select(
+          out, "rule-value-shop-frequency", map_value(state_.rule_values, id),
+          {"Rare", "Normal", "Frequent"}, "native-select rule-select");
+    else if (id == "lantern-fuel")
+      append_select(
+          out, "rule-value-lantern-fuel", map_value(state_.rule_values, id),
+          {"Scarce", "Standard", "Generous"}, "native-select rule-select");
+    else if (std::string(rule.kind) == "range") {
+      const int minimum = id == "ghost-arrival" ? 30 : 1;
+      const int maximum = id == "ghost-arrival" ? 300 : 9;
+      const int step = id == "ghost-arrival" ? 10 : 1;
+      const std::string value = map_value(state_.rule_values, id);
+      out << R"(<input data-focus data-action="rule-value-)" << id
+          << R"(" class="native-range rule-range" type="range" min=")"
+          << minimum << R"(" max=")" << maximum << R"(" step=")" << step
+          << R"(" value=")" << value << R"("/><b id="rule-output-)" << id
+          << R"(">)" << value
+          << (id == "starting-health" ? " hearts"
+              : id == "ghost-arrival" ? " sec"
+                                      : "")
+          << R"(</b>)";
+    } else {
+      const bool checked = id == "shortcuts"  ? state_.shortcuts
+                           : id == "treasury" ? state_.shared_treasury
+                                              : state_.friendly_fire;
+      out << R"(<input data-focus data-action="rule-value-)" << id
+          << R"(" class="native-toggle" type="checkbox" value="true")";
+      if (checked)
+        out << R"( checked="checked")";
+      out << R"(/><b id="rule-output-)" << id << R"(">)" << on_off(checked)
+          << R"(</b>)";
+    }
+    out << R"(</div></div>)";
   }
   std::string selected_value = "Configured";
   std::string selected_description =
@@ -1123,22 +1463,24 @@ std::string GubsyApp::BuildRules() const {
         "Controls whether attacks and hazards authored as player damage may "
         "affect other members of the party.";
   } else if (state_.selected_rule == "Shared lives")
-    selected_value = std::to_string(state_.shared_lives);
+    selected_value = map_value(state_.rule_values, "shared-lives");
   else if (state_.selected_rule == "Starting health")
-    selected_value = std::to_string(state_.health) + " hearts";
+    selected_value =
+        map_value(state_.rule_values, "starting-health") + " hearts";
   else if (state_.selected_rule == "Ghost arrival")
-    selected_value = std::to_string(state_.ghost_seconds) + " sec";
+    selected_value = map_value(state_.rule_values, "ghost-arrival") + " sec";
   else if (state_.selected_rule == "Expedition difficulty")
-    selected_value = "Standard";
+    selected_value = map_value(state_.rule_values, "difficulty");
   else if (state_.selected_rule == "Stage variation")
-    selected_value = "Quest-authored";
+    selected_value = map_value(state_.rule_values, "variation");
   else if (state_.selected_rule == "Shop frequency")
-    selected_value = "Normal";
+    selected_value = map_value(state_.rule_values, "shop-frequency");
   else if (state_.selected_rule == "Lantern fuel")
-    selected_value = "Standard · Old Lanterns";
-  out << R"(</div></section><aside class="panel detail rule-detail"><button data-focus data-action="play-lobby" class="mobile-back">‹ All rules</button><small>SELECTED RULE</small><h2>)"
+    selected_value =
+        map_value(state_.rule_values, "lantern-fuel") + " · Old Lanterns";
+  out << R"(</div></section><aside class="panel detail rule-detail"><button data-focus data-action="play-lobby" class="mobile-back">‹ All rules</button><small>SELECTED RULE</small><h2 id="rule-detail-title">)"
       << state_.selected_rule << R"(</h2><p>)" << selected_description
-      << R"(</p><div class="value-box"><small>CURRENT VALUE</small><strong>)"
+      << R"(</p><div class="value-box"><small>CURRENT VALUE</small><strong id="rule-detail-current">)"
       << selected_value
       << R"(</strong></div><div class="impact"><h3>SESSION EFFECT</h3><div class="kv"><span>Activity</span><b>Continue expedition</b></div><div class="kv"><span>Applies to</span><b>Future stages</b></div><div class="kv"><span>Authority</span><b>Lobby host</b></div><div class="kv"><span>Synced</span><b>Before launch</b></div></div><p class="caption">The game supplies rule definitions. Gubsy supplies stable editor widgets, focus, serialization, and synchronization.</p></aside></div>)";
   return out.str();
@@ -1196,10 +1538,10 @@ std::string GubsyApp::BuildSessionMods() const {
          "Networking 1.2 installed"}};
     out << R"(<div class="catalog-tools"><input data-focus data-action="search-catalog" class="search-field" type="text" value=")"
         << escape_attribute(state_.mod_filter)
-        << R"(" placeholder="Search compatible session content…"/><button data-focus data-action="toggle-compatible" class=")"
-        << selected_class(state_.compatible_only, "check-button") << R"("><b>)"
-        << (state_.compatible_only ? "✓" : "")
-        << R"(</b><span>Compatible only<small>Resolve against this lobby</small></span></button></div><div class="master-detail"><section class="panel master-list scroll-list catalog-list"><div class="scroll-body"><small>AVAILABLE FOR THIS SESSION</small>)";
+        << R"(" placeholder="Search compatible session content…"/><label class="check-control"><input data-focus data-action="compatible-value" class="native-toggle" type="checkbox" value="true")";
+    if (state_.compatible_only)
+      out << R"( checked="checked")";
+    out << R"(/><span>Compatible only<small>Resolve against this lobby</small></span></label></div><div class="master-detail"><section class="panel master-list scroll-list catalog-list"><div class="scroll-body"><small>AVAILABLE FOR THIS SESSION</small>)";
     for (const Candidate &candidate : candidates) {
       if (!contains_ci(candidate.name, state_.mod_filter) &&
           !contains_ci(candidate.author, state_.mod_filter) &&
@@ -1260,7 +1602,19 @@ std::string GubsyApp::BuildPlayers() const {
   if (state_.player_tab == "Local players") {
     out << R"(<div class="master-detail"><section class="panel master-list"><div class="section-title"><span><small>LOCAL ROSTER</small><strong>2 / 4 players</strong></span><button data-focus data-action="add-player" class="button primary">+</button></div><button data-focus data-action="profile-moss" class="list-row selected"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>)"
         << (state_.player_ready ? "READY" : "NOT READY")
-        << R"(</b></button><button data-focus data-action="add-player" class="list-row"><em>P2</em><span><strong>Open slot</strong><small>Invite or join locally</small></span><b>OPEN</b></button></section><aside class="panel detail"><small>PLAYER 1 DETAILS</small><h2>Moss</h2><div class="form-row"><span>Player profile<small>Persistent identity and history</small></span><button data-focus data-action="profile-moss" class="select-button">Moss⌄</button></div><div class="form-row"><span>Bindings<small>Independent action map</small></span><button data-focus data-action="bindings" class="select-button">Default Binds⌄</button></div><div class="form-row"><span>Input tuning<small>Deadzone and response profile</small></span><button data-focus data-action="tuning" class="select-button">Standard⌄</button></div><h3>ASSIGNED DEVICES · MANY ALLOWED</h3><div class="device-chip"><span>Xbox Wireless Controller<small>Gamepad · connected</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="device-chip"><span>T-LCM Pedals<small>Pedal axis set · optional</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="actions"><button data-focus data-action="assign-device" class="button">+ Assign device</button><button data-focus data-action="toggle-ready" class="button primary">)"
+        << R"(</b></button><button data-focus data-action="add-player" class="list-row"><em>P2</em><span><strong>Open slot</strong><small>Invite or join locally</small></span><b>OPEN</b></button></section><aside class="panel detail"><small>PLAYER 1 DETAILS</small><h2>Moss</h2><div class="form-row"><span>Player profile<small>Persistent identity and history</small></span>)";
+    append_select(out, "choice-value-player-profile",
+                  map_value(state_.choice_values, "player-profile"),
+                  {"Moss", "Vega", "Guest"});
+    out << R"(</div><div class="form-row"><span>Bindings<small>Independent action map</small></span>)";
+    append_select(out, "choice-value-player-bindings",
+                  map_value(state_.choice_values, "player-bindings"),
+                  {"Default Binds", "Arcade Binds", "Vehicle Binds"});
+    out << R"(</div><div class="form-row"><span>Input tuning<small>Deadzone and response profile</small></span>)";
+    append_select(out, "choice-value-player-tuning",
+                  map_value(state_.choice_values, "player-tuning"),
+                  {"Standard", "Precise", "Accessible", "Custom"});
+    out << R"(</div><h3>ASSIGNED DEVICES · MANY ALLOWED</h3><div class="device-chip"><span>Xbox Wireless Controller<small>Gamepad · connected</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="device-chip"><span>T-LCM Pedals<small>Pedal axis set · optional</small></span><button data-focus data-action="unassign" class="button">Remove</button></div><div class="actions"><button data-focus data-action="assign-device" class="button">+ Assign device</button><button data-focus data-action="toggle-ready" class="button primary">)"
         << (state_.player_ready ? "Mark not ready" : "Mark ready")
         << R"(</button></div></aside></div>)";
   } else if (state_.player_tab == "Profiles") {
@@ -1504,7 +1858,11 @@ std::string GubsyApp::BuildControls() const {
         {"Brake", "Scalar action · Vehicle", "Left Trigger"}};
     out << R"(<div class="toolbar"><input data-focus data-action="filter-actions" class="search-field" type="text" value=")"
         << escape_attribute(state_.control_filter)
-        << R"(" placeholder="Filter actions…"/><button data-focus data-action="select-bind-profile" class="select-button">Default Binds⌄</button><button data-focus data-action="new-binds" class="button">+ New</button><button data-focus data-action="rename-binds" class="button">Rename</button><button data-focus data-action="reset-binds" class="button">Reset</button><button data-focus data-action="delete-binds" class="button danger">Delete</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
+        << R"(" placeholder="Filter actions…"/>)";
+    append_select(out, "choice-value-bind-profile",
+                  map_value(state_.choice_values, "bind-profile"),
+                  {"Default Binds", "Arcade Binds", "Vehicle Binds"});
+    out << R"(<button data-focus data-action="new-binds" class="button">+ New</button><button data-focus data-action="rename-binds" class="button">Rename</button><button data-focus data-action="reset-binds" class="button">Reset</button><button data-focus data-action="delete-binds" class="button danger">Delete</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
     for (const Action &action : actions) {
       if (!contains_ci(action.name, state_.control_filter) &&
           !contains_ci(action.type, state_.control_filter) &&
@@ -1522,7 +1880,26 @@ std::string GubsyApp::BuildControls() const {
         << state_.selected_action
         << R"(</h2><p>Logical actions accept multiple physical controls. A binding may listen for input or explicitly browse a device, control, direction, conversion, and qualifier.</p><div class="binding-row"><em>1</em><span><strong>D-Pad Up</strong><small>Xbox Wireless Controller · digital</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="binding-row"><em>2</em><span><strong>Keyboard W</strong><small>Keyboard + Mouse · digital</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="binding-row"><em>3</em><span><strong>Right Trigger → Button</strong><small>Threshold 0.62 · rising edge · explicit conversion</small></span><button data-focus data-action="capture-binding" class="text-button">Listen</button><button data-focus data-action="choose-binding" class="text-button">Choose</button><button data-focus data-action="remove-binding" class="remove">×</button></div><div class="actions"><button data-focus data-action="capture-binding" class="button primary">)"
         << (state_.capture_mode ? "Listening…" : "+ Listen for input")
-        << R"(</button><button data-focus data-action="choose-binding" class="button">Browse controls…</button></div><div class="conversion-panel"><h3>EXPLICIT BINDING EDITOR</h3><div class="form-row"><span>Device<small>Any, owned device, or exact instance</small></span><button data-focus data-action="choose-device" class="select-button">Xbox Wireless Controller⌄</button></div><div class="form-row"><span>Physical control<small>Axes, hats, buttons, keys, gestures</small></span><button data-focus data-action="choose-control" class="select-button">Right Trigger⌄</button></div><div class="form-row"><span>Conversion<small>Scalar input drives a digital action</small></span><button data-focus data-action="choose-conversion" class="select-button">Axis → Button⌄</button></div><div class="form-row"><span>Threshold / edge<small>Qualify activation without losing the source</small></span><button data-focus data-action="choose-threshold" class="select-button">0.62 · Rising⌄</button></div></div></aside></div>)";
+        << R"(</button><button data-focus data-action="choose-binding" class="button">Browse controls…</button></div><div class="conversion-panel"><h3>EXPLICIT BINDING EDITOR</h3><div class="form-row"><span>Device<small>Any, owned device, or exact instance</small></span>)";
+    append_select(out, "choice-value-binding-device",
+                  map_value(state_.choice_values, "binding-device"),
+                  {"Any owned device", "Xbox Wireless Controller",
+                   "T-LCM Pedals", "T.16000M Flight Stick"});
+    out << R"(</div><div class="form-row"><span>Physical control<small>Axes, hats, buttons, keys, gestures</small></span>)";
+    append_select(out, "choice-value-binding-control",
+                  map_value(state_.choice_values, "binding-control"),
+                  {"Right Trigger", "Left Trigger", "Button South", "Axis 0"});
+    out << R"(</div><div class="form-row"><span>Conversion<small>Scalar input drives a digital action</small></span>)";
+    append_select(out, "choice-value-binding-conversion",
+                  map_value(state_.choice_values, "binding-conversion"),
+                  {"Axis → Button", "Axis → Scalar", "Button → Scalar",
+                   "Raw passthrough"});
+    out << R"(</div><div class="form-row"><span>Threshold / edge<small>Qualify activation without losing the source</small></span>)";
+    append_select(
+        out, "choice-value-binding-threshold",
+        map_value(state_.choice_values, "binding-threshold"),
+        {"0.25 · Rising", "0.50 · Rising", "0.62 · Rising", "0.75 · Falling"});
+    out << R"(</div></div></aside></div>)";
   } else if (state_.controls_tab == "Devices") {
     struct Device {
       const char *action;
@@ -1558,7 +1935,42 @@ std::string GubsyApp::BuildControls() const {
         << static_cast<int>(state_.raw_input_value * 100.0f)
         << R"(%;"></i></em></div><div class="raw-control"><span>Button 1 · South</span><b>UP</b><em><i style="width:0%;"></i></em></div><div class="raw-control"><span>Hat 0 · D-Pad</span><b>UP-RIGHT</b><em><i style="width:66%;"></i></em></div><p>This raw view reveals names and ranges exactly as Gubsy recognizes unusual hardware.</p></div></aside></div>)";
   } else {
-    out << R"(<div class="master-detail tuning-workspace"><section class="panel master-list scroll-list"><div class="scroll-body"><div class="section-title"><span><small>INPUT PROFILE</small><strong>Standard</strong></span><b>Xbox Wireless Controller</b></div><div class="tuning-row"><span><strong>Look sensitivity</strong><small>Horizontal and vertical camera speed</small></span><em><i style="width:45%;"></i></em><b>45%</b></div><div class="tuning-row"><span><strong>Stick deadzone</strong><small>Ignore small stick movement near center</small></span><em><i style="width:12%;"></i></em><b>12%</b></div><div class="tuning-row"><span><strong>Vibration strength</strong><small>Controller rumble output</small></span><em><i style="width:80%;"></i></em><b>80%</b></div><div class="tuning-row"><span><strong>Trigger deadzone</strong><small>Minimum pedal or trigger travel</small></span><em><i style="width:5%;"></i></em><b>5%</b></div><div class="form-row"><span>Response curve<small>Stick magnitude transformation</small></span><button data-focus data-action="curve" class="select-button">Smooth⌄</button></div><div class="form-row"><span>Invert Y-axis<small>Reverse vertical camera movement</small></span><button data-focus data-action="invert" class="button">OFF</button></div><button data-focus data-action="reset-tuning" class="button">Reset input profile</button></div></section><aside class="panel detail response-preview"><small>DEVICE RESPONSE</small><h2>Live response</h2><div class="response-circle"><i></i></div><dl class="summary"><dt>Device</dt><dd>Xbox Wireless Controller</dd><dt>Deadzone</dt><dd>12%</dd><dt>Vibration</dt><dd>80%</dd><dt>Curve</dt><dd>Smooth</dd></dl><p>Move the device to compare raw and qualified output.</p></aside></div>)";
+    out << R"(<div class="master-detail tuning-workspace"><section class="panel master-list scroll-list"><div class="scroll-body"><div class="section-title"><span><small>INPUT PROFILE</small><strong>Standard</strong></span><b>Xbox Wireless Controller</b></div>)";
+    auto tuning_range = [&](const char *id, const char *name,
+                            const char *note) {
+      const std::string value = map_value(state_.tuning_values, id);
+      out << R"(<div class="tuning-row"><span><strong>)" << name
+          << R"(</strong><small>)" << note
+          << R"(</small></span><input data-focus data-action="tuning-value-)"
+          << id
+          << R"(" class="native-range tuning-range" type="range" min="0" max="100" step="1" value=")"
+          << value << R"("/><b id="tuning-output-)" << id << R"(">)" << value
+          << R"(%</b></div>)";
+    };
+    tuning_range("look-sensitivity", "Look sensitivity",
+                 "Horizontal and vertical camera speed");
+    tuning_range("stick-deadzone", "Stick deadzone",
+                 "Ignore small stick movement near center");
+    tuning_range("vibration", "Vibration strength", "Controller rumble output");
+    tuning_range("trigger-deadzone", "Trigger deadzone",
+                 "Minimum pedal or trigger travel");
+    out << R"(<div class="form-row"><span>Response curve<small>Stick magnitude transformation</small></span>)";
+    append_select(out, "tuning-value-response-curve",
+                  map_value(state_.tuning_values, "response-curve"),
+                  {"Linear", "Smooth", "Aggressive", "Custom"});
+    out << R"(</div><div class="form-row"><span>Invert Y-axis<small>Reverse vertical camera movement</small></span><div class="toggle-with-label"><input data-focus data-action="tuning-value-invert-y" class="native-toggle" type="checkbox" value="true")";
+    if (map_value(state_.tuning_values, "invert-y") == "true")
+      out << R"( checked="checked")";
+    out << R"(/><b id="tuning-output-invert-y">)"
+        << (map_value(state_.tuning_values, "invert-y") == "true" ? "ON"
+                                                                  : "OFF")
+        << R"(</b></div></div><button data-focus data-action="reset-tuning" class="button">Reset input profile</button></div></section><aside class="panel detail response-preview"><small>DEVICE RESPONSE</small><h2>Live response</h2><div class="response-circle"><i></i></div><dl class="summary"><dt>Device</dt><dd>Xbox Wireless Controller</dd><dt>Deadzone</dt><dd id="tuning-summary-stick-deadzone">)"
+        << map_value(state_.tuning_values, "stick-deadzone")
+        << R"(%</dd><dt>Vibration</dt><dd id="tuning-summary-vibration">)"
+        << map_value(state_.tuning_values, "vibration")
+        << R"(%</dd><dt>Curve</dt><dd id="tuning-summary-response-curve">)"
+        << map_value(state_.tuning_values, "response-curve")
+        << R"(</dd></dl><p>Move the device to compare raw and qualified output.</p></aside></div>)";
   }
   return out.str();
 }
@@ -1639,7 +2051,11 @@ std::string GubsyApp::BuildMods() const {
     out << R"(</div>)";
     out << R"(</section><aside class="panel detail mod-detail"><img class="hero-art" src="../mods/sheet-1-4.png"/><small>INSTALLED PACKAGE</small><h2>)"
         << state_.selected_mod
-        << R"(</h2><p>Game-ready content with authored rooms, mechanics, and data supplied through the Gubsy package graph.</p><div class="form-row"><span>Selected version<small>Changing versions re-solves dependencies</small></span><button data-focus data-action="select-version" class="select-button">v1.4.0⌄</button></div><div class="dependency"><h3>REQUIRES</h3><div><span>↳ Base Content ≥ 1.4</span><b>INSTALLED</b></div><div><span>↳ Underground Rivers ≥ 2.0</span><b>INSTALLED</b></div><h3>REQUIRED BY</h3><div><span>↑ Temple Weather</span><b>ACTIVE</b></div><div><span>↑ Pocket Expedition</span><b>ACTIVE</b></div></div><div class="warning-box"><strong>Cascading uninstall is guarded</strong><small>Removing this package also affects two installed dependents. Gubsy computes and presents the full change plan before mutation.</small></div><div class="actions"><button data-focus data-action="update-mod" class="button primary">Update</button><button data-focus data-action="open-mod-folder" class="button">Open files</button><button data-focus data-action="uninstall-plan" class="button danger">Uninstall…</button></div></aside></div>)";
+        << R"(</h2><p>Game-ready content with authored rooms, mechanics, and data supplied through the Gubsy package graph.</p><div class="form-row"><span>Selected version<small>Changing versions re-solves dependencies</small></span>)";
+    append_select(out, "choice-value-mod-version",
+                  map_value(state_.choice_values, "mod-version"),
+                  {"v1.2.0", "v1.3.1", "v1.4.0", "Latest compatible"});
+    out << R"(</div><div class="dependency"><h3>REQUIRES</h3><div><span>↳ Base Content ≥ 1.4</span><b>INSTALLED</b></div><div><span>↳ Underground Rivers ≥ 2.0</span><b>INSTALLED</b></div><h3>REQUIRED BY</h3><div><span>↑ Temple Weather</span><b>ACTIVE</b></div><div><span>↑ Pocket Expedition</span><b>ACTIVE</b></div></div><div class="warning-box"><strong>Cascading uninstall is guarded</strong><small>Removing this package also affects two installed dependents. Gubsy computes and presents the full change plan before mutation.</small></div><div class="actions mod-actions"><button data-focus data-action="update-mod" class="button primary">Update</button><button data-focus data-action="open-mod-folder" class="button">Open files</button><button data-focus data-action="uninstall-plan" class="button danger">Uninstall…</button></div></aside></div>)";
   } else {
     struct Catalog {
       const char *action;
@@ -1696,10 +2112,10 @@ std::string GubsyApp::BuildMods() const {
          "4.2k", "73%", "Built for game 0.9 only", false}};
     out << R"(<div class="catalog-tools"><input data-focus data-action="search-catalog" class="search-field" type="text" value=")"
         << escape_attribute(state_.mod_filter)
-        << R"(" placeholder="Search the Gubsy mod catalog…"/><button data-focus data-action="toggle-compatible" class=")"
-        << selected_class(state_.compatible_only, "check-button") << R"("><b>)"
-        << (state_.compatible_only ? "✓" : "")
-        << R"(</b><span>Compatible only<small>Hide mods unusable on this build</small></span></button><button data-focus data-action="refresh-catalog" class="button">↻ Refresh</button></div><div class="master-detail"><section class="panel master-list scroll-list catalog-list"><div class="scroll-body"><small>)"
+        << R"(" placeholder="Search the Gubsy mod catalog…"/><label class="check-control"><input data-focus data-action="compatible-value" class="native-toggle" type="checkbox" value="true")";
+    if (state_.compatible_only)
+      out << R"( checked="checked")";
+    out << R"(/><span>Compatible only<small>Hide mods unusable on this build</small></span></label><button data-focus data-action="refresh-catalog" class="button">↻ Refresh</button></div><div class="master-detail"><section class="panel master-list scroll-list catalog-list"><div class="scroll-body"><small>)"
         << (state_.compatible_only ? "COMPATIBLE MODS" : "20 CATALOG MODS")
         << R"(</small>)";
     for (const Catalog &mod : mods) {

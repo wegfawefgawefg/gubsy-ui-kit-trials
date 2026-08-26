@@ -70,6 +70,25 @@ private:
         {"tutorials", "Smart"},      {"camera-shake", "35"},
         {"auto-pause", "true"},      {"checkpoint-hints", "true"},
         {"speedrun-timer", "false"}, {"telemetry", "false"}};
+    std::unordered_map<std::string, std::string> rule_values{
+        {"difficulty", "Standard"},  {"variation", "Quest-authored"},
+        {"shared-lives", "4"},       {"starting-health", "4"},
+        {"ghost-arrival", "180"},    {"shop-frequency", "Normal"},
+        {"lantern-fuel", "Standard"}};
+    std::unordered_map<std::string, std::string> tuning_values{
+        {"look-sensitivity", "45"},   {"stick-deadzone", "12"},
+        {"vibration", "80"},          {"trigger-deadzone", "5"},
+        {"response-curve", "Smooth"}, {"invert-y", "false"}};
+    std::unordered_map<std::string, std::string> choice_values{
+        {"player-profile", "Moss"},
+        {"player-bindings", "Default Binds"},
+        {"player-tuning", "Standard"},
+        {"bind-profile", "Default Binds"},
+        {"binding-device", "Xbox Wireless Controller"},
+        {"binding-control", "Right Trigger"},
+        {"binding-conversion", "Axis → Button"},
+        {"binding-threshold", "0.62 · Rising"},
+        {"mod-version", "v1.4.0"}};
     bool party_pane = false;
     bool session_running = false;
     bool shortcuts = true;
@@ -93,6 +112,8 @@ private:
   bool dirty_ = true;
   std::string toast_;
   double toast_until_ = 0.0;
+  int controller_x_latch_ = 0;
+  int controller_y_latch_ = 0;
 
   void MarkDirty();
   void Render();

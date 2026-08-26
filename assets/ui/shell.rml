@@ -28,7 +28,7 @@
         <div id="screen-content"></div>
       </main>
     </div>
-    <footer>↑ ↓ ← → &nbsp; Navigate &nbsp;&nbsp; Enter / A &nbsp; Select &nbsp;&nbsp; Esc / B &nbsp; Back &nbsp;&nbsp; LB / RB &nbsp; Local section <span><i></i> Native focus graph active</span></footer>
+    <footer>D-pad / left stick &nbsp; Navigate &nbsp;&nbsp; Enter / A &nbsp; Select &nbsp;&nbsp; Esc / B &nbsp; Back &nbsp;&nbsp; LB / RB &nbsp; Local section <span><i></i> Native focus graph active</span></footer>
     <div id="toast"></div>
     <div id="modal-root"></div>
   </div>
