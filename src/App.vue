@@ -39,8 +39,10 @@ const saveTab = ref('Continue')
 const modsTab = ref('Installed')
 const sessionAccess = ref('Friends can join')
 const sessionHost = ref('Automatic')
-const sessionDifficulty = ref('Standard')
 const sessionMode = ref('Continue expedition')
+const selectedQuestId = ref('violet-reach')
+const selectedCheckpoint = ref(state.saves[0]?.checkpoints?.[0]?.name)
+const selectedRuleKey = ref('difficulty')
 const selectedPlayer = ref(0)
 const selectedAction = ref('Menu Up')
 const selectedSave = ref(state.saves[0]?.id)
@@ -62,10 +64,52 @@ const sessionCatalogSelection = ref(state.modCatalog?.[0]?.id)
 const sessionModSearch = ref('')
 let toastTimer
 
+const quests = [
+  { id: 'violet-reach', name: 'The Violet Reach', region: 'Temple frontier', length: '6 stages', difficulty: 'Moderate', description: 'Follow a fractured relay signal through flooded archives, fungal crossings, and a temple complex waking beneath the mountain.', stages: ['North Pass', 'Mushroom Crossing', 'Flooded Archive', 'Temple Gate', 'The Relay', 'Violet Core'] },
+  { id: 'sunken-road', name: 'The Sunken Road', region: 'River caverns', length: '5 stages', difficulty: 'Hard', description: 'Recover the brass survey team’s route through moving waterways where every opened sluice changes the return path.', stages: ['Old Well', 'Broken Aqueduct', 'Ferryman’s Lock', 'Drowned Market', 'River Heart'] },
+  { id: 'green-below', name: 'A Green Beginning', region: 'Valley underworks', length: '4 stages', difficulty: 'Welcoming', description: 'A shorter introductory quest through farms, limestone tunnels, and the first settlements below the valley.', stages: ['Valley Camp', 'Root Cellar', 'Limestone Steps', 'Lantern Town'] },
+  { id: 'glass-pilgrim', name: 'The Glass Pilgrim', region: 'Crystal descent', length: '7 stages', difficulty: 'Severe', description: 'Track a silent pilgrim into refracting chambers where false routes, light puzzles, and brittle floors punish haste.', stages: ['Shale Mouth', 'Prism Hall', 'Blue Fault', 'Mirror Camp', 'Crystal Choir', 'Lightless Span', 'Pilgrim’s Rest'] },
+]
+const sessionRules = reactive({ difficulty: 'Standard', generation: 'Quest-authored', lives: 4, health: 4, damage: 100, speed: 100, ghostTimer: 180, shops: 'Normal', shortcuts: true, sharedMoney: true, friendlyFire: false, revives: 'At next stage', rounds: 5, timeLimit: 180, bombs: 4, ropes: 4, pickups: 'Standard', mapRotation: 'All arenas', teams: 'Free for all', suddenDeath: true, spectators: true })
+const expeditionRuleDefinitions = [
+  { key: 'difficulty', label: 'Expedition difficulty', note: 'Overall danger and resource pressure.', detail: 'Adjusts enemy patterns, trap density, and the generosity of recovery rooms without changing the authored quest route.', type: 'select', options: ['Relaxed','Standard','Relentless'] },
+  { key: 'generation', label: 'Stage variation', note: 'How authored rooms are remixed.', detail: 'Quest-authored preserves major landmarks. Remixed varies connecting rooms. Wild allows the broadest procedural substitutions.', type: 'select', options: ['Quest-authored','Remixed','Wild'] },
+  { key: 'lives', label: 'Shared lives', note: 'Continues available to the party.', detail: 'When the party wipes, one shared life restarts the current stage. At zero, the expedition returns to its last persistent checkpoint.', type: 'range', min: 0, max: 9, unit: '' },
+  { key: 'health', label: 'Starting health', note: 'Hearts granted at expedition start.', detail: 'Applies to each joining player. Continuing players keep their checkpoint health unless recovery-on-resume is enabled.', type: 'range', min: 1, max: 12, unit: ' hearts' },
+  { key: 'ghostTimer', label: 'Ghost arrival', note: 'Seconds before the stage begins hunting.', detail: 'The pursuit ghost enters after this time. Longer timers encourage exploration; shorter timers force decisive routes.', type: 'range', min: 60, max: 300, step: 30, unit: ' sec' },
+  { key: 'shops', label: 'Shop frequency', note: 'Merchant room availability.', detail: 'Controls optional shop placements between required quest landmarks. Inventory rolls remain governed by the quest.', type: 'select', options: ['Sparse','Normal','Frequent'] },
+  { key: 'shortcuts', label: 'Discovered shortcuts', note: 'Allow unlocked route entrances.', detail: 'Lets the party enter from previously discovered quest junctions. Disabled for a clean route from stage one.', type: 'toggle' },
+  { key: 'sharedMoney', label: 'Shared treasury', note: 'Combine party currency.', detail: 'All collected currency enters one pool used by any player. Disable for individual wallets and purchases.', type: 'toggle' },
+  { key: 'friendlyFire', label: 'Friendly fire', note: 'Party attacks can cause damage.', detail: 'Traps and thrown objects always interact with the party; this option additionally enables direct weapon damage.', type: 'toggle' },
+  { key: 'revives', label: 'Defeated players return', note: 'Co-op recovery rule.', detail: 'Controls when defeated players can rejoin without consuming the entire party’s shared life.', type: 'select', options: ['At next room','At next stage','Only at checkpoints'] },
+]
+const arenaRuleDefinitions = [
+  { key: 'teams', label: 'Team format', note: 'How victory and spawning are grouped.', detail: 'Free for all scores each player independently. Teams share score, spawn colors, and round victories.', type: 'select', options: ['Free for all','2 versus 2','Asymmetric hunt'] },
+  { key: 'rounds', label: 'Rounds to win', note: 'Match victory threshold.', detail: 'The first player or team to win this many rounds takes the match. Tied final rounds enter sudden death when enabled.', type: 'range', min: 1, max: 15, unit: '' },
+  { key: 'timeLimit', label: 'Round time', note: 'Maximum seconds per round.', detail: 'At expiry the surviving player with the most treasure wins; exact ties invoke sudden death.', type: 'range', min: 30, max: 600, step: 30, unit: ' sec' },
+  { key: 'health', label: 'Starting health', note: 'Hearts granted each round.', detail: 'Every player respawns with this health at the beginning of a round.', type: 'range', min: 1, max: 12, unit: ' hearts' },
+  { key: 'damage', label: 'Player damage', note: 'Global damage multiplier.', detail: 'Scales direct attacks, thrown objects, explosions, and environmental damage caused by another player.', type: 'range', min: 25, max: 300, step: 25, unit: '%' },
+  { key: 'speed', label: 'Movement speed', note: 'Global player movement multiplier.', detail: 'Changes run, climb, and swim speed. Jump arcs are compensated so authored arena geometry remains reachable.', type: 'range', min: 50, max: 200, step: 10, unit: '%' },
+  { key: 'bombs', label: 'Starting bombs', note: 'Bombs granted each round.', detail: 'Sets each player’s starting stock. Arena pickups may add more when enabled by the pickup set.', type: 'range', min: 0, max: 20, unit: '' },
+  { key: 'ropes', label: 'Starting ropes', note: 'Ropes granted each round.', detail: 'Sets each player’s starting traversal stock. Some compact arenas ignore ropes entirely.', type: 'range', min: 0, max: 20, unit: '' },
+  { key: 'pickups', label: 'Arena pickups', note: 'Items that can appear during play.', detail: 'Competitive removes high-variance items; Chaotic enables the complete item pool and shorter spawn intervals.', type: 'select', options: ['None','Competitive','Standard','Chaotic'] },
+  { key: 'mapRotation', label: 'Map rotation', note: 'Arena pool used between rounds.', detail: 'Choose the curated standard pool, every installed arena, or a random subset weighted away from repeats.', type: 'select', options: ['Standard rotation','All arenas','Random five'] },
+  { key: 'suddenDeath', label: 'Sudden death', note: 'Resolve tied rounds.', detail: 'Removes safe terrain over time until only one player or team remains.', type: 'toggle' },
+  { key: 'spectators', label: 'Late-join spectators', note: 'Allow watching until next match.', detail: 'New remote players may enter immediately as spectators and join the roster after the current match.', type: 'toggle' },
+]
+
 const currentProfile = computed(() => state.profiles.find((item) => item.name === state.activeProfile) || state.profiles[0])
 const currentPlayer = computed(() => state.players[selectedPlayer.value] || state.players[0])
 const currentBindProfile = computed(() => state.bindProfiles.find((item) => item.name === state.bindProfile) || state.bindProfiles[0])
 const currentSave = computed(() => state.saves.find((item) => item.id === selectedSave.value) || state.saves[0])
+const selectedQuest = computed(() => quests.find((quest) => quest.id === selectedQuestId.value) || quests[0])
+const activeRuleDefinitions = computed(() => sessionMode.value === 'Arena' ? arenaRuleDefinitions : expeditionRuleDefinitions)
+const currentRuleDefinition = computed(() => activeRuleDefinitions.value.find((rule) => rule.key === selectedRuleKey.value) || activeRuleDefinitions.value[0])
+const lobbyPlayers = computed(() => {
+  const actual = state.players.filter((player) => player.name !== 'Open Slot')
+  return sessionAccess.value === 'Solo' ? actual.slice(0, 1) : actual
+})
+const lobbyCapacity = computed(() => sessionAccess.value === 'Solo' ? 1 : 4)
 const currentMod = computed(() => state.mods.find((item) => item.id === selectedMod.value) || state.mods[0])
 const currentCatalogMod = computed(() => state.modCatalog?.find((item) => item.id === selectedCatalogMod.value) || state.modCatalog?.[0])
 const currentRoom = computed(() => state.rooms.find((item) => item.id === selectedRoom.value) || state.rooms[0])
@@ -88,11 +132,23 @@ const filteredCatalog = computed(() => state.modCatalog.filter((item) => {
 const sectionTitle = computed(() => navItems.find((item) => item.id === destination.value)?.label || 'Menu')
 
 watch(state, () => localStorage.setItem('gubsy-ui-demo-state', JSON.stringify(state)), { deep: true })
+watch(sessionMode, () => { selectedRuleKey.value = activeRuleDefinitions.value[0].key })
+watch(selectedSave, (id) => {
+  selectedQuestId.value = id === 2 ? 'green-below' : id === 3 ? 'sunken-road' : 'violet-reach'
+  selectedCheckpoint.value = currentSave.value?.checkpoints?.[0]?.name
+})
 
 function notify(message) {
   toast.value = message
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toast.value = '' }, 2600)
+}
+
+function resetSessionRules() {
+  Object.assign(sessionRules, sessionMode.value === 'Arena'
+    ? { teams: 'Free for all', rounds: 5, timeLimit: 180, health: 4, damage: 100, speed: 100, bombs: 4, ropes: 4, pickups: 'Standard', mapRotation: 'All arenas', suddenDeath: true, spectators: true }
+    : { difficulty: 'Standard', generation: 'Quest-authored', lives: 4, health: 4, ghostTimer: 180, shops: 'Normal', shortcuts: true, sharedMoney: true, friendlyFire: false, revives: 'At next stage' })
+  notify(`${sessionMode.value} defaults restored`)
 }
 
 function chooseDestination(id) {
@@ -167,11 +223,6 @@ function confirmModal() {
     state.saves = state.saves.filter((entry) => entry.id !== item.payload)
     selectedSave.value = state.saves[0]?.id
     notify('Save deleted')
-  } else if (item.type === 'new-game') {
-    const id = Date.now()
-    state.saves.unshift({ id, name: name || 'New Expedition', owner: state.activeProfile, kind: 'Campaign', detail: 'Green Valley · 0%', time: '0m', status: 'ready', stamp: 'Just now', modManifest: state.mods.filter((mod) => mod.sessionEnabled).map((mod) => ({ name: mod.name, version: mod.version })), checkpoints: [{ name: 'Expedition start', stamp: 'Just now', current: true }] })
-    selectedSave.value = id
-    notify('New expedition created')
   } else if (item.type === 'apply-display') {
     notify('Display mode applied; auto-revert timer simulated')
   } else if (item.type === 'quit') {
@@ -393,7 +444,7 @@ function back() {
     closeModal()
     return
   }
-  if (destination.value === 'play' && playView.value === 'mods') {
+  if (destination.value === 'play' && playView.value !== 'lobby') {
     playView.value = 'lobby'
     nextTick(focusFirstContent)
     return
@@ -503,38 +554,40 @@ onUnmounted(() => {
               <section class="lobby-config panel">
                 <div class="lobby-heading">
                   <span class="save-thumb lobby-art"></span>
-                  <div><p class="eyebrow">CURRENT LOBBY</p><h2>{{ currentSave?.name || 'New expedition' }}</h2><p>{{ currentSave?.detail || 'No progression selected' }} · {{ currentSave?.time || '0m' }} · {{ currentSave?.owner || state.activeProfile }}</p></div>
-                  <button data-focus class="button compact" @click="showModal('select-progress','Choose progression')">Change</button>
+                  <div><p class="eyebrow">{{ sessionMode === 'Arena' ? 'VERSUS MATCH' : sessionMode === 'New expedition' ? 'NEW QUEST' : 'CONTINUE QUEST' }}</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials' : selectedQuest.name }}</h2><p v-if="sessionMode === 'Continue expedition'">{{ currentSave?.name }} · {{ selectedCheckpoint }} · {{ currentSave?.owner }}</p><p v-else-if="sessionMode === 'New expedition'">{{ selectedQuest.region }} · {{ selectedQuest.length }} · {{ selectedQuest.difficulty }}</p><p v-else>Competitive arenas · {{ sessionRules.teams }} · first to {{ sessionRules.rounds }}</p></div>
+                  <button data-focus class="button compact" @click="playView = sessionMode === 'Arena' ? 'settings' : 'quest'">{{ sessionMode === 'Continue expedition' ? 'Checkpoint' : sessionMode === 'New expedition' ? 'Choose quest' : 'Match rules' }}</button>
                 </div>
 
                 <div class="lobby-options">
-                  <label class="lobby-option"><span><strong>Activity</strong><small>What this lobby will launch</small></span><select data-focus v-model="sessionMode"><option>Continue expedition</option><option>New expedition</option><option>Free play</option></select></label>
+                  <label class="lobby-option"><span><strong>Activity</strong><small>Splonks supplies a different session model for each activity</small></span><select data-focus v-model="sessionMode"><option>Continue expedition</option><option>New expedition</option><option>Arena</option></select></label>
+                  <button v-if="sessionMode !== 'Arena'" data-focus class="lobby-option command" @click="playView = 'quest'"><span><strong>{{ sessionMode === 'Continue expedition' ? 'Resume point' : 'Quest' }}</strong><small>{{ sessionMode === 'Continue expedition' ? `${selectedCheckpoint} · ${selectedQuest.name}` : `${selectedQuest.name} · ${selectedQuest.length}` }}</small></span><b>{{ sessionMode === 'Continue expedition' ? 'CHOOSE CHECKPOINT ›' : 'VIEW ROUTE ›' }}</b></button>
                   <label class="lobby-option"><span><strong>Play with</strong><small>Who may occupy the remaining slots</small></span><select data-focus v-model="sessionAccess"><option>Solo</option><option>Local players only</option><option>Friends can join</option><option>Invite only</option><option>Public</option></select></label>
                   <label class="lobby-option" :class="{ disabled: ['Solo','Local players only'].includes(sessionAccess) }"><span><strong>Host using</strong><small>Automatic chooses the best available route</small></span><select data-focus v-model="sessionHost" :disabled="['Solo','Local players only'].includes(sessionAccess)"><option>Automatic</option><option>Direct connection</option><option>Gubsy relay</option><option>Dedicated server</option><option>Steam lobby</option></select></label>
-                  <button data-focus class="lobby-option command" @click="showModal('session-settings','Game settings')"><span><strong>Game settings</strong><small>{{ sessionDifficulty }} · 4 players · Friendly fire off</small></span><b>EDIT ›</b></button>
+                  <button data-focus class="lobby-option command" @click="playView = 'settings'"><span><strong>{{ sessionMode === 'Arena' ? 'Match rules' : 'Expedition rules' }}</strong><small v-if="sessionMode === 'Arena'">{{ sessionRules.teams }} · {{ sessionRules.damage }}% damage · {{ sessionRules.speed }}% speed</small><small v-else>{{ sessionRules.difficulty }} · {{ sessionRules.lives }} lives · ghost at {{ sessionRules.ghostTimer }}s</small></span><b>EDIT ALL ›</b></button>
                   <button data-focus class="lobby-option command" @click="playView = 'mods'; sessionModsTab = 'Current set'"><span><strong>Session mods</strong><small>{{ state.mods.filter(mod => mod.sessionEnabled).length }} active · {{ savedModStatus.exact ? 'matches progression' : 'differs from progression' }}</small></span><b>MANAGE ›</b></button>
                 </div>
 
                 <div class="lobby-bottom">
                   <button data-focus class="button" @click="showModal('pause','Game paused',{ message: 'This previews the same shell in an in-game context.' })">Pause preview</button>
-                  <button data-focus class="button primary large" @click="startSession">▶ {{ sessionMode === 'Continue expedition' ? 'Continue' : 'Start game' }}</button>
+                  <button data-focus class="button primary large" @click="startSession">▶ {{ sessionMode === 'Continue expedition' ? `Resume ${selectedCheckpoint}` : sessionMode === 'Arena' ? 'Start match' : 'Begin expedition' }}</button>
                 </div>
               </section>
 
               <aside class="party-panel panel">
                 <div class="panel-title"><div><p class="eyebrow">PLAYERS</p><h3>Your party</h3></div><span class="party-state">{{ onlineStatus }}</span></div>
                 <div class="party-slots">
-                  <button v-for="(player,index) in state.players" :key="player.id" data-focus class="party-slot" @click="selectedPlayer = index; chooseDestination('players')"><span class="player-number">P{{ index + 1 }}</span><span><strong>{{ player.name }}</strong><small>{{ player.device }}</small></span><b>{{ player.ready ? 'READY' : 'JOIN' }}</b></button>
-                  <button v-for="slot in Math.max(0, 4 - state.players.length)" :key="`empty-${slot}`" data-focus class="party-slot empty" :disabled="sessionAccess === 'Solo'" @click="sessionAccess === 'Local players only' ? addLocalPlayer() : copyInviteLink()"><span class="player-number">＋</span><span><strong>Open slot</strong><small>{{ sessionAccess === 'Local players only' ? 'Press a local controller button' : 'Invite a friend or add locally' }}</small></span></button>
+                  <button v-for="(player,index) in lobbyPlayers" :key="player.id" data-focus class="party-slot" @click="selectedPlayer = state.players.findIndex(item => item.id === player.id); chooseDestination('players')"><span class="player-number">P{{ index + 1 }}</span><span><strong>{{ player.name }}</strong><small>{{ player.device }}</small></span><b>{{ player.ready ? 'READY' : 'JOIN' }}</b></button>
+                  <button v-for="slot in Math.max(0, lobbyCapacity - lobbyPlayers.length)" :key="`empty-${slot}`" data-focus class="party-slot empty" @click="sessionAccess === 'Local players only' ? addLocalPlayer() : copyInviteLink()"><span class="player-number">＋</span><span><strong>Open slot</strong><small>{{ sessionAccess === 'Local players only' ? 'Press a local controller button' : 'Invite a friend or add locally' }}</small></span></button>
                 </div>
-                <div class="party-actions">
+                <div v-if="sessionAccess !== 'Solo'" class="party-actions">
                   <button data-focus class="button" :disabled="['Solo','Local players only'].includes(sessionAccess)" @click="copyInviteLink">Invite / copy link</button>
                   <button data-focus class="button" @click="showModal('find-game','Join another game')">Friends & public games</button>
                 </div>
-                <div class="session-summary"><span>CONTENT</span><strong>{{ state.mods.filter(mod => mod.sessionEnabled).length }} mods</strong><span>DIFFICULTY</span><strong>{{ sessionDifficulty }}</strong><span>NETWORK</span><strong>{{ ['Solo','Local players only'].includes(sessionAccess) ? 'None' : sessionHost }}</strong></div>
+                <div v-if="sessionAccess === 'Solo'" class="solo-note"><strong>Solo expedition</strong><small>No empty network or local slots exist in this session. Change “Play with” to open the party.</small></div>
+                <div class="session-summary"><span>CONTENT</span><strong>{{ state.mods.filter(mod => mod.sessionEnabled).length }} mods</strong><span>RULESET</span><strong>{{ sessionMode === 'Arena' ? sessionRules.teams : sessionRules.difficulty }}</strong><span>NETWORK</span><strong>{{ ['Solo','Local players only'].includes(sessionAccess) ? 'None' : sessionHost }}</strong></div>
               </aside>
             </div>
-            <div v-else class="session-mod-workspace">
+            <div v-else-if="playView === 'mods'" class="session-mod-workspace">
               <header class="session-mod-header panel">
                 <button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button>
                 <div><p class="eyebrow">CURRENT LOBBY / CONTENT</p><h2>Session mods</h2><p>{{ currentSave?.name }} expects {{ savedModStatus.manifest.length }} exact {{ savedModStatus.manifest.length === 1 ? 'mod' : 'mods' }}.</p></div>
@@ -569,6 +622,42 @@ onUnmounted(() => {
                   <div class="relationship-block"><strong>Dependency plan</strong><div v-if="!dependencyRows(currentSessionCatalogMod).length" class="relationship-empty">No additional packages required.</div><div v-for="row in dependencyRows(currentSessionCatalogMod)" :key="`${row.kind}-${row.name}`" class="relationship-row"><span>{{ row.kind === 'Required' ? '↳' : '◇' }} {{ row.name }}</span><b>{{ row.kind }} · {{ row.installed ? 'installed' : 'auto-install' }}</b></div></div>
                   <button data-focus class="button primary" :disabled="currentSessionCatalogMod.installable === false || findMod(currentSessionCatalogMod.name)?.sessionEnabled" @click="installCatalogMod(currentSessionCatalogMod, true)">{{ findMod(currentSessionCatalogMod.name)?.sessionEnabled ? 'Active in lobby' : findMod(currentSessionCatalogMod.name) ? 'Add installed mod' : `Install${currentSessionCatalogMod.dependencies?.length ? ' dependencies' : ''} & add` }}</button>
                   <p class="capture-note">One action downloads the mod and all required dependencies, then activates the resolved set for this lobby.</p>
+                </aside>
+              </div>
+            </div>
+            <div v-else-if="playView === 'quest'" class="play-subview">
+              <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS QUEST PROVIDER</p><h2>{{ sessionMode === 'New expedition' ? 'Choose a quest' : 'Choose a resume point' }}</h2><p>{{ sessionMode === 'New expedition' ? 'A new expedition begins at stage one; no arbitrary name is required.' : 'Continue data selects a quest, its owning profile, and a checkpoint inside that quest.' }}</p></div></header>
+              <div class="quest-workspace">
+                <div class="quest-browser panel">
+                  <template v-if="sessionMode === 'New expedition'">
+                    <p class="eyebrow">AVAILABLE QUESTS</p>
+                    <button v-for="quest in quests" :key="quest.id" data-focus class="quest-row" :class="{ selected: selectedQuest.id === quest.id }" @click="selectedQuestId = quest.id"><span>{{ quest.stages.length }}</span><div><strong>{{ quest.name }}</strong><small>{{ quest.region }} · {{ quest.difficulty }}</small></div><b>QUEST</b></button>
+                  </template>
+                  <template v-else>
+                    <p class="eyebrow">EXPEDITIONS</p>
+                    <button v-for="save in state.saves.filter(item => item.status === 'ready')" :key="save.id" data-focus class="quest-row compact" :class="{ selected: selectedSave === save.id }" @click="selectedSave = save.id"><span>◈</span><div><strong>{{ save.name }}</strong><small>{{ save.owner }} · {{ save.time }}</small></div></button>
+                    <p class="eyebrow checkpoint-label">CHECKPOINTS IN {{ currentSave.name.toUpperCase() }}</p>
+                    <button v-for="checkpoint in currentSave.checkpoints" :key="checkpoint.name" data-focus class="checkpoint-choice" :class="{ selected: selectedCheckpoint === checkpoint.name }" @click="selectedCheckpoint = checkpoint.name"><span></span><div><strong>{{ checkpoint.name }}</strong><small>{{ checkpoint.stamp }}</small></div><b v-if="checkpoint.current">LATEST</b></button>
+                  </template>
+                </div>
+                <article class="quest-detail panel">
+                  <div class="quest-hero"><div><p class="eyebrow">{{ selectedQuest.region }}</p><h2>{{ selectedQuest.name }}</h2><p>{{ selectedQuest.description }}</p><div class="quest-meta"><span>{{ selectedQuest.length }}</span><span>{{ selectedQuest.difficulty }}</span><span>{{ sessionMode === 'Continue expedition' ? currentSave.time : 'Fresh route' }}</span></div></div></div>
+                  <div class="quest-route"><p class="eyebrow">QUEST ROUTE</p><div class="route-line"><div v-for="(stage,index) in selectedQuest.stages" :key="stage" class="route-stage" :class="{ reached: sessionMode === 'Continue expedition' && index < Math.min(currentSave.checkpoints.length + 1, selectedQuest.stages.length), selected: stage.toLowerCase().includes((selectedCheckpoint || '').split(' ')[0].toLowerCase()) }"><span>{{ index + 1 }}</span><strong>{{ stage }}</strong></div></div></div>
+                  <div class="quest-context"><strong>{{ sessionMode === 'New expedition' ? 'New expedition data' : 'Checkpoint payload' }}</strong><p v-if="sessionMode === 'New expedition'">Starts {{ selectedQuest.name }} at {{ selectedQuest.stages[0] }} with {{ state.activeProfile }}, the current lobby rules, players, and active mod manifest.</p><p v-else>Resumes {{ currentSave.name }} at {{ selectedCheckpoint }} as {{ currentSave.owner }}. Inventory, quest flags, world seed, and exact mods come from this checkpoint.</p></div>
+                  <div class="action-row"><button data-focus class="button primary" @click="playView = 'lobby'; notify(sessionMode === 'New expedition' ? `${selectedQuest.name} selected` : `${selectedCheckpoint} selected`)">{{ sessionMode === 'New expedition' ? 'Use this quest' : 'Resume from this checkpoint' }}</button></div>
+                </article>
+              </div>
+            </div>
+            <div v-else-if="playView === 'settings'" class="play-subview rules-workspace">
+              <header class="play-subview-header panel"><button data-focus class="button" @click="playView = 'lobby'">‹ Back to lobby</button><div><p class="eyebrow">SPLONKS SESSION RULES</p><h2>{{ sessionMode === 'Arena' ? 'Cavern Trials match settings' : 'Expedition settings' }}</h2><p>{{ activeRuleDefinitions.length }} settings supplied by the selected {{ sessionMode.toLowerCase() }} activity.</p></div><button data-focus class="button" @click="resetSessionRules">Reset mode defaults</button></header>
+              <div class="rules-layout">
+                <div class="rules-list panel">
+                  <div v-for="rule in activeRuleDefinitions" :key="rule.key" data-focus tabindex="0" class="rule-row" :class="{ selected: currentRuleDefinition.key === rule.key }" @click="selectedRuleKey = rule.key"><div><strong>{{ rule.label }}</strong><small>{{ rule.note }}</small></div><button v-if="rule.type === 'toggle'" data-focus class="toggle" :class="{ on: sessionRules[rule.key] }" @click.stop="sessionRules[rule.key] = !sessionRules[rule.key]"><span></span>{{ sessionRules[rule.key] ? 'ON' : 'OFF' }}</button><select v-else-if="rule.type === 'select'" data-focus v-model="sessionRules[rule.key]" @click.stop><option v-for="option in rule.options" :key="option">{{ option }}</option></select><label v-else class="range-control" @click.stop><input data-focus type="range" :min="rule.min" :max="rule.max" :step="rule.step || 1" v-model.number="sessionRules[rule.key]"><output>{{ sessionRules[rule.key] }}{{ rule.unit }}</output></label></div>
+                </div>
+                <aside class="rule-detail panel">
+                  <p class="eyebrow">SELECTED RULE</p><h2>{{ currentRuleDefinition.label }}</h2><p>{{ currentRuleDefinition.detail }}</p><div class="rule-value"><span>CURRENT VALUE</span><strong>{{ typeof sessionRules[currentRuleDefinition.key] === 'boolean' ? (sessionRules[currentRuleDefinition.key] ? 'Enabled' : 'Disabled') : `${sessionRules[currentRuleDefinition.key]}${currentRuleDefinition.unit || ''}` }}</strong></div>
+                  <div class="rule-impact"><p class="eyebrow">SESSION EFFECT</p><div><span>Activity</span><strong>{{ sessionMode }}</strong></div><div><span>Applies to</span><strong>{{ sessionMode === 'Arena' ? 'Every round' : sessionMode === 'Continue expedition' ? 'Future stages' : 'Entire new quest' }}</strong></div><div><span>Authority</span><strong>{{ sessionAccess === 'Solo' ? 'Local player' : 'Lobby host' }}</strong></div><div><span>Synced</span><strong>{{ sessionAccess === 'Solo' ? 'Not required' : 'Before launch' }}</strong></div></div>
+                  <p class="capture-note">The game supplies these rule definitions and descriptions. Gubsy supplies the stable editor widgets, focus behavior, serialization, and host synchronization.</p>
                 </aside>
               </div>
             </div>
@@ -622,7 +711,7 @@ onUnmounted(() => {
           </section>
 
           <section v-else-if="destination === 'saves'" class="screen progress-screen">
-            <div class="toolbar"><div><p class="eyebrow">GAME-PROVIDED PROGRESSION</p><h3>{{ state.saves.length }} campaigns · automatic checkpoints</h3></div><button data-focus class="button primary" @click="showModal('new-game','Begin a new expedition',{ value:'New Expedition' })">＋ New campaign</button></div>
+            <div class="toolbar"><div><p class="eyebrow">GAME-PROVIDED PROGRESSION</p><h3>{{ state.saves.length }} campaigns · automatic checkpoints</h3></div><button data-focus class="button primary" @click="sessionMode = 'New expedition'; chooseDestination('play'); playView = 'quest'">＋ Choose a new quest</button></div>
             <div class="saves-layout"><div class="save-list panel"><div class="panel-title"><div><p class="eyebrow">CAMPAIGNS</p><h3>Persistent progression</h3></div></div><button v-for="save in state.saves" :key="save.id" data-focus class="save-row" :class="{ selected: selectedSave === save.id }" @click="selectedSave = save.id"><span class="save-thumb"></span><span><strong>{{ save.name }}</strong><small>{{ save.owner }} · {{ save.detail }}</small></span><span><strong>{{ save.time }}</strong><small>{{ save.stamp }}</small></span><b :class="save.status">{{ save.status }}</b></button></div><div class="detail-panel panel progress-detail" v-if="currentSave"><p class="eyebrow">{{ currentSave.kind }} · {{ currentSave.status.toUpperCase() }}</p><h2>{{ currentSave.name }}</h2><div class="progress-owner"><span class="avatar" :style="{ '--avatar': state.profiles.find(profile => profile.name === currentSave.owner)?.color || '#a9f08b' }">{{ currentSave.owner.slice(0,2).toUpperCase() }}</span><span><small>ASSOCIATED PROFILE</small><strong>{{ currentSave.owner }}</strong><em>Ownership is fixed by this game's progression provider.</em></span></div><div class="save-manifest"><p class="eyebrow">RECORDED MOD SET · {{ currentSave.modManifest.length === 1 ? 'VANILLA' : `${currentSave.modManifest.length} PACKAGES` }}</p><div v-for="entry in currentSave.modManifest" :key="entry.name"><span>{{ entry.name }}</span><b>v{{ entry.version }}</b></div><small>The exact manifest is retained even when packages are not currently installed.</small></div><div class="checkpoint-list"><p class="eyebrow">CHECKPOINT HISTORY</p><div v-for="checkpoint in currentSave.checkpoints" :key="`${checkpoint.name}-${checkpoint.stamp}`" class="checkpoint-row"><span :class="{ current: checkpoint.current }"></span><div><strong>{{ checkpoint.name }}</strong><small>{{ checkpoint.stamp }}</small></div><b v-if="checkpoint.current">RESUME POINT</b></div></div><div class="action-row"><button data-focus class="button primary" :disabled="currentSave.status !== 'ready'" @click="state.activeProfile = currentSave.owner; chooseDestination('play'); notify(`${currentSave.name} selected with ${currentSave.owner}`)">Use in Play lobby</button><button data-focus class="button" @click="showModal('rename-save','Rename campaign',{ value:currentSave.name,payload:currentSave.id })">Rename</button><button data-focus class="button" @click="copySave(currentSave)">Copy</button><button data-focus class="button danger" @click="showModal('delete-save','Delete this campaign?',{ payload:currentSave.id,message:'The campaign and its checkpoints will be removed.',danger:true })">Delete</button></div><p v-if="currentSave.status !== 'ready'" class="warning">This progression was created by an incompatible game version. Keep it installed until a migration is available.</p></div></div>
           </section>
 
@@ -644,22 +733,16 @@ onUnmounted(() => {
     <footer class="prompt-bar"><div><kbd>↑↓←→</kbd><span>Navigate</span><kbd>Enter</kbd><span>Select</span><kbd>Esc</kbd><span>Back</span><kbd>Q / E</kbd><span>Local section</span></div><div><span class="focus-light"></span> Focus graph active</div></footer>
 
     <div v-if="modal" class="modal-layer" @mousedown.self="closeModal">
-      <section class="modal" :class="{ wide: ['session-settings','find-game','select-progress','profile-history','disable-chain','uninstall-chain'].includes(modal.type) }" role="dialog" aria-modal="true">
+      <section class="modal" :class="{ wide: ['find-game','profile-history','disable-chain','uninstall-chain'].includes(modal.type) }" role="dialog" aria-modal="true">
         <button data-focus class="modal-close" @click="closeModal">×</button>
         <p class="eyebrow">{{ modal.type === 'capture' ? 'INPUT CAPTURE' : modal.type === 'pause' ? 'GAME SUSPENDED' : modal.danger ? 'CONFIRM ACTION' : 'CURRENT LOBBY' }}</p>
         <h2>{{ modal.title }}</h2>
         <p v-if="modal.message" class="modal-message">{{ modal.message }}</p>
-        <input v-if="['new-profile','rename-profile','new-bind-profile','rename-bind-profile','rename-save','new-game'].includes(modal.type)" data-focus v-model="modal.value" class="modal-input" @keyup.enter="confirmModal">
+        <input v-if="['new-profile','rename-profile','new-bind-profile','rename-bind-profile','rename-save'].includes(modal.type)" data-focus v-model="modal.value" class="modal-input" @keyup.enter="confirmModal">
 
         <div v-if="['disable-chain','uninstall-chain'].includes(modal.type)" class="lobby-modal-body">
           <div class="dependency-impact"><p class="eyebrow">AFFECTED PACKAGES</p><div v-for="name in (modal.type === 'disable-chain' ? [modal.payload.root, ...modal.payload.names] : modal.payload.names)" :key="name" class="relationship-row"><span>{{ name }}</span><b>{{ name === modal.payload.root || name === modal.payload.names?.[0] ? 'SELECTED' : 'DEPENDENT' }}</b></div></div>
           <div class="action-row modal-actions"><button data-focus class="button danger" @click="applyModChainAction">{{ modal.type === 'uninstall-chain' ? 'Remove affected set' : 'Disable affected set' }}</button><button data-focus class="button" @click="closeModal">Keep current set</button></div>
-        </div>
-
-        <div v-else-if="modal.type === 'select-progress'" class="lobby-modal-body">
-          <p class="modal-message">Choose progression without leaving the lobby. The owning profile and latest resumable checkpoint travel with it.</p>
-          <button v-for="save in state.saves" :key="save.id" data-focus class="progress-picker-row" :disabled="save.status !== 'ready'" @click="state.activeProfile = save.owner; selectedSave = save.id; closeModal(); notify(`${save.name} selected with ${save.owner}`)"><span class="save-thumb"></span><span><strong>{{ save.name }}</strong><small>{{ save.owner }} · {{ save.detail }} · {{ save.checkpoints?.[0]?.name }}</small></span><b>{{ save.status !== 'ready' ? 'INCOMPATIBLE' : save.owner === state.activeProfile ? 'SELECT' : 'SWITCH PROFILE' }}</b></button>
-          <div class="action-row modal-actions"><button data-focus class="button" @click="closeModal(); chooseDestination('saves')">Manage progression</button><button data-focus class="button primary" @click="showModal('new-game','Begin a new expedition',{ value:'New Expedition' })">＋ New campaign</button></div>
         </div>
 
         <div v-else-if="modal.type === 'profile-history' && modalProfile" class="lobby-modal-body">
@@ -667,14 +750,6 @@ onUnmounted(() => {
           <div class="stat-grid"><div><span>RUNS</span><strong>{{ modalProfile.stats.runs }}</strong></div><div><span>WINS</span><strong>{{ modalProfile.stats.wins }}</strong></div><div><span>DEATHS</span><strong>{{ modalProfile.stats.deaths }}</strong></div><div><span>BEST SCORE</span><strong>{{ modalProfile.stats.score }}</strong></div><div><span>DEEPEST</span><strong>{{ modalProfile.stats.deepest }}</strong></div><div><span>CURRENCY</span><strong>{{ modalProfile.stats.currency }}</strong></div></div>
           <div class="profile-history-section"><p class="eyebrow">RECENT HISTORY</p><div class="history-row"><span>▶</span><div><strong>Temple 7-3 daily run</strong><small>Score 184,200 · 18m 42s · replay saved</small></div></div><div class="history-row"><span>✦</span><div><strong>First no-damage guardian</strong><small>Milestone earned 3 days ago</small></div></div><div class="history-row"><span>↻</span><div><strong>{{ modalProfile.stats.replays }} saved replays</strong><small>Game-provided run history associated with this profile</small></div></div></div>
           <div class="action-row modal-actions"><button data-focus class="button" @click="notify('Replay browser opened (demo)')">Browse replays</button><button data-focus class="button primary" @click="closeModal">Done</button></div>
-        </div>
-
-        <div v-else-if="modal.type === 'session-settings'" class="lobby-modal-body">
-          <label class="lobby-option"><span><strong>Difficulty</strong><small>Enemy pressure and resource scarcity</small></span><select data-focus v-model="sessionDifficulty"><option>Relaxed</option><option>Standard</option><option>Expedition</option></select></label>
-          <label class="lobby-option"><span><strong>Maximum players</strong><small>Local and remote players share these slots</small></span><select data-focus><option>2 players</option><option selected>4 players</option></select></label>
-          <label class="lobby-option"><span><strong>Starting area</strong><small>The group enters together</small></span><select data-focus><option>Temple Depths</option><option>Green Valley</option><option>Random safe room</option></select></label>
-          <label class="toggle-row"><span><strong>Friendly fire</strong><small>Party members can damage one another</small></span><input data-focus type="checkbox"></label>
-          <div class="action-row modal-actions"><button data-focus class="button primary" @click="closeModal(); notify('Lobby game settings updated')">Done</button></div>
         </div>
 
         <div v-else-if="modal.type === 'find-game'" class="lobby-modal-body">

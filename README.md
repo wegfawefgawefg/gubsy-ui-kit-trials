@@ -35,6 +35,11 @@ button to restore the original fake dataset.
 - A Valve-style persistent Play lobby combining continue/new-game activity,
   solo/local/friends/public access, automatic/direct/relay/dedicated/Steam host
   choice, roster, invites, game settings, session mods, joining, and launch.
+- A game-provided Splonks Play implementation rather than a universal lobby:
+  new expeditions choose authored quests and inspect their stage route, continued
+  expeditions choose a recorded checkpoint, and Arena exposes a different
+  session payload and twelve match rules. Gubsy owns the surrounding shell and
+  reusable editors, while each game owns the activity schema and composition.
 - Local players, profiles (create/select/rename/reset/delete), device assignment,
   roster readiness and refresh.
 - Display, audio, accessibility, and gameplay settings with all basic widget
