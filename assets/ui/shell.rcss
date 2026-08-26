@@ -84,7 +84,7 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .subview-header p { font-size: 11dp; }
 .master-list { min-width: 420dp; flex: 1 1 420dp; display: flex; flex-direction: column; align-items: stretch; padding: 14dp; }
 .scroll-list { min-height: 0; overflow: hidden; }
-.scroll-body { width: 100%; min-height: 0; flex: 1; overflow: auto; }
+.scroll-body { width: 100%; min-height: 0; flex: 1; padding-right: 14dp; overflow: auto; }
 .detail { min-width: 390dp; flex: 1.45 1 390dp; display: flex; flex-direction: column; align-items: stretch; padding: 18dp; overflow-y: auto; }
 .detail > * { flex: none; }
 .list-row, .rule-row, .mod-row { width: 100%; min-height: 66dp; flex: none; display: flex; align-items: center; padding: 10dp 12dp; border: 0; border-bottom: 1dp #2b4145; background: transparent; text-align: left; }
@@ -220,8 +220,8 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .native-toggle:checked, .setting-toggle:checked { border-color: #9df181; background-color: #4d8a52; }
 .native-toggle:focus, .setting-toggle:focus { border: 2dp #d8ff9a; }
 .native-range, .setting-range { width: 170dp; height: 30dp; flex: none; }
-.native-range slidertrack, .setting-range slidertrack { height: 22dp; margin-top: 4dp; border: 1dp #294045; background-color: #13252a; }
-.native-range sliderprogress, .setting-range sliderprogress { height: 8dp; margin-top: 11dp; background-color: #9df181; }
+.native-range slidertrack, .setting-range slidertrack { height: 8dp; margin-top: 11dp; border: 1dp #294045; background-color: #13252a; }
+.native-range sliderprogress, .setting-range sliderprogress { height: 8dp; margin-top: 4dp; background-color: #9df181; }
 .native-range sliderbar, .setting-range sliderbar { width: 20dp; height: 20dp; margin: 5dp -10dp 0; border: 2dp #edf5f5; border-radius: 11dp; background-color: #527e59; }
 .native-range:focus slidertrack, .setting-range:focus slidertrack { border-color: #9df181; }
 .native-range sliderarrowdec, .native-range sliderarrowinc, .setting-range sliderarrowdec, .setting-range sliderarrowinc { width: 0; height: 30dp; }
