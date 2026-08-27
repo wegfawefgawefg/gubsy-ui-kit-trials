@@ -121,6 +121,10 @@ INFO: FONT: Default font loaded successfully (224 glyphs)
 INFO: SYSTEM: Working Directory: /home/vega/Coding/GameDev/gubsy-ui-kit-trials
 INFO: TIMER: Target time per frame: 0.000 milliseconds
 backend=raygui frames=1000 viewport=1920x1080 ui_and_render_cpu_ms=0.1194 fps_equivalent=8378.4 rss_kib=113188
+
+raygui rerun after DejaVu font atlas, icon, dropdown overlay, and scrolling pass:
+backend=raygui frames=1000 viewport=1280x720 ui_and_render_cpu_ms=0.1437 fps_equivalent=6960.2 rss_kib=113612
+backend=raygui frames=1000 viewport=1920x1080 ui_and_render_cpu_ms=0.1461 fps_equivalent=6845.2 rss_kib=113636
 INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
 INFO: SHADER: [ID 3] Default shader unloaded successfully
 INFO: TEXTURE: [ID 1] Default texture unloaded successfully
