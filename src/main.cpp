@@ -385,7 +385,13 @@ int main(int argc, char** argv) {
     SetConfigFlags(window_flags);
     InitWindow(args.width,args.height,"Gubsy raygui trial");
     MarkWindowUtility("Gubsy raygui trial");
-    if (args.benchmark == 0 && args.capture.empty()) ClearWindowState(FLAG_WINDOW_HIDDEN);
+    if (args.benchmark == 0 && args.capture.empty()) {
+        const int monitor = 0;
+        const Vector2 origin = GetMonitorPosition(monitor);
+        SetWindowPosition(int(origin.x) + (GetMonitorWidth(monitor) - args.width) / 2,
+                          int(origin.y) + (GetMonitorHeight(monitor) - args.height) / 2);
+        ClearWindowState(FLAG_WINDOW_HIDDEN);
+    }
     SetWindowMinSize(720,480);
     SetTargetFPS(args.benchmark > 0 ? 0 : 144);
     GuiSetStyle(DEFAULT,TEXT_SIZE,args.height>=900?16:13);
