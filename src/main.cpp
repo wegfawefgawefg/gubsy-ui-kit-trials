@@ -21,8 +21,8 @@ namespace {
 using Clock=std::chrono::steady_clock;
 double Ms(Clock::time_point a,Clock::time_point b){return std::chrono::duration<double,std::milli>(b-a).count();}
 long RssKiB(){FILE* f=std::fopen("/proc/self/statm","r");long total=0,resident=0;if(f){std::fscanf(f,"%ld %ld",&total,&resident);std::fclose(f);}return resident*long(sysconf(_SC_PAGESIZE))/1024;}
-struct Args{int width=1280,height=720,screen=0,frames=0;std::string capture;};
-Args Parse(int argc,char** argv){Args a;for(int i=1;i<argc;i++){std::string_view v=argv[i];if(v=="--resolution"&&i+1<argc)std::sscanf(argv[++i],"%dx%d",&a.width,&a.height);else if(v=="--screen"&&i+1<argc){std::string n=argv[++i];const char* names[]={"play","players","settings","controls","progress","mods"};a.screen=std::atoi(n.c_str());for(int j=0;j<6;j++)if(n==names[j])a.screen=j;}else if(v=="--benchmark"&&i+1<argc)a.frames=std::max(121,std::atoi(argv[++i]));else if(v=="--capture"&&i+1<argc){a.capture=argv[++i];a.frames=5;}}return a;}
+struct Args{int width=1280,height=720,screen=0,play_view=0,frames=0;std::string capture;};
+Args Parse(int argc,char** argv){Args a;for(int i=1;i<argc;i++){std::string_view v=argv[i];if(v=="--resolution"&&i+1<argc)std::sscanf(argv[++i],"%dx%d",&a.width,&a.height);else if(v=="--screen"&&i+1<argc){std::string n=argv[++i];const char* names[]={"play","players","settings","controls","progress","mods"};a.screen=std::atoi(n.c_str());for(int j=0;j<6;j++)if(n==names[j])a.screen=j;}else if(v=="--play-view"&&i+1<argc)a.play_view=std::clamp(std::atoi(argv[++i]),0,3);else if(v=="--benchmark"&&i+1<argc)a.frames=std::max(121,std::atoi(argv[++i]));else if(v=="--capture"&&i+1<argc){a.capture=argv[++i];a.frames=5;}}return a;}
 
 SDL_GPUTexture* LoadTexture(SDL_GPUDevice* gpu, const char* path) {
   int width=0,height=0,channels=0;
@@ -54,7 +54,7 @@ int main(int argc,char** argv){
   int pixel_w=args.width,pixel_h=args.height;SDL_GetWindowSizeInPixels(window,&pixel_w,&pixel_h);
   SDL_GPUTexture* offscreen=nullptr;SDL_GPUTransferBuffer* transfer=nullptr;
   if(hidden){SDL_GPUTextureCreateInfo ti{};ti.type=SDL_GPU_TEXTURETYPE_2D;ti.format=info.ColorTargetFormat;ti.usage=SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;ti.width=pixel_w;ti.height=pixel_h;ti.layer_count_or_depth=1;ti.num_levels=1;ti.sample_count=SDL_GPU_SAMPLECOUNT_1;offscreen=SDL_CreateGPUTexture(gpu,&ti);if(!args.capture.empty()){SDL_GPUTransferBufferCreateInfo bi{};bi.usage=SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;bi.size=Uint32(pixel_w*pixel_h*4);transfer=SDL_CreateGPUTransferBuffer(gpu,&bi);}}
-  UiState state;state.screen=std::clamp(args.screen,0,5);bool running=true;int frame=0;double build_total=0,record_total=0,submit_total=0,wait_total=0,frame_total=0;
+  UiState state;state.screen=std::clamp(args.screen,0,5);state.play_view=args.play_view;bool running=true;int frame=0;double build_total=0,record_total=0,submit_total=0,wait_total=0,frame_total=0;
   while(running){auto fs=Clock::now();SDL_Event e;while(SDL_PollEvent(&e)){ImGui_ImplSDL3_ProcessEvent(&e);if(e.type==SDL_EVENT_QUIT)running=false;if(e.type==SDL_EVENT_KEY_DOWN&&e.key.key>=SDLK_F1&&e.key.key<=SDLK_F6)state.screen=int(e.key.key-SDLK_F1);}
     int w=0,h=0;SDL_GetWindowSize(window,&w,&h);ImGui_ImplSDLGPU3_NewFrame();ImGui_ImplSDL3_NewFrame();ImGui::NewFrame();auto bs=Clock::now();DrawGubsyUi(state,w,h);ImGui::Render();auto be=Clock::now();build_total+=Ms(bs,be);
     SDL_GPUCommandBuffer* cb=SDL_AcquireGPUCommandBuffer(gpu);SDL_GPUTexture* swap=nullptr;Uint32 sw=0,sh=0;if(!hidden&&!SDL_WaitAndAcquireGPUSwapchainTexture(cb,window,&swap,&sw,&sh)){SDL_CancelGPUCommandBuffer(cb);break;}SDL_GPUTexture* target=hidden?offscreen:swap;if(!target){SDL_CancelGPUCommandBuffer(cb);continue;}
