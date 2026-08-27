@@ -13,6 +13,8 @@
 #include <vector>
 #include <unistd.h>
 
+void MarkWindowUtility(const char* title);
+
 namespace {
 
 constexpr Color kBg{8, 18, 21, 255};
@@ -103,8 +105,6 @@ long RssKiB() {
     }
     return resident * long(sysconf(_SC_PAGESIZE)) / 1024;
 }
-
-void MarkWindowUtility(const char* title);
 
 Rectangle Inset(Rectangle r, float v) { return {r.x + v, r.y + v, r.width - v * 2, r.height - v * 2}; }
 
