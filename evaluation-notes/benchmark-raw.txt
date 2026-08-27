@@ -128,5 +128,5 @@ INFO: Window closed successfully
 backend=nuklear frames=1000 viewport=1920x1080 ui_build_ms=0.0132 render_cpu_ms=0.1857 frame_cpu_ms=0.2185 rss_kib=116400
 binary=rmlui bytes=8562032
 binary=dear-imgui bytes=5041504
-binary=raygui bytes=1500552
+binary=raygui bytes=1505096
 binary=nuklear bytes=496016

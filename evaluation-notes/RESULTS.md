@@ -34,7 +34,7 @@ are initialized. Hiding and showing the resident document average 0.0048 ms and
 |---|---:|---:|
 | RmlUi + SDL_GPU | 88,428 KiB | 8,562,032 bytes |
 | Dear ImGui + SDL_GPU | 79,812 KiB | 5,041,504 bytes |
-| raygui + raylib/OpenGL | 113,052 KiB | 1,500,552 bytes |
+| raygui + raylib/OpenGL | 113,052 KiB | 1,505,096 bytes |
 | Nuklear + SDL2/OpenGL | 116,472 KiB | 496,016 bytes |
 
 RSS is the whole process—including SDL/raylib, Vulkan or OpenGL userspace
