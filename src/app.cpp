@@ -543,7 +543,7 @@ bool GubsyApp::RunSelfTest() {
   if (context_->GetFocusElement() != session_mods)
     return false;
   NavigateFocus(-1, 0);
-  if (context_->GetFocusElement() != document_->GetElementById("nav-play"))
+  if (context_->GetFocusElement() != session_mods)
     return false;
 
   Rml::Element *resume =
@@ -572,6 +572,11 @@ bool GubsyApp::RunSelfTest() {
   SDL_Event controller_back{};
   controller_back.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
   controller_back.gbutton.button = SDL_GAMEPAD_BUTTON_EAST;
+  if (!HandleSdlEvent(controller_back) ||
+      context_->GetFocusElement() != document_->GetElementById("nav-play"))
+    return false;
+  if (!HandleSdlEvent(activate) || context_->GetFocusElement() != host_control)
+    return false;
   if (!HandleSdlEvent(controller_back) ||
       context_->GetFocusElement() != document_->GetElementById("nav-play"))
     return false;
@@ -642,7 +647,16 @@ bool GubsyApp::RunSelfTest() {
     return false;
   for (int index = 0; index < 20; ++index)
     NavigateFocus(-1, 0);
+  if (!is_descendant_of(context_->GetFocusElement(), players_main))
+    return false;
+  const Rml::String remembered_player_action =
+      context_->GetFocusElement()->GetAttribute<Rml::String>("data-action", "");
+  FocusActiveNavigation();
   if (context_->GetFocusElement() != document_->GetElementById("nav-players"))
+    return false;
+  if (!HandleSdlEvent(activate) || !context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != remembered_player_action)
     return false;
 
   SelectToolScreen(7);
@@ -1161,16 +1175,8 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
       return;
     }
     const bool enter_content = compact_horizontal_nav ? dy < 0 : dx > 0;
-    if (enter_content && main) {
-      Rml::ElementList content;
-      main->QuerySelectorAll(content, "[data-focus]");
-      for (Rml::Element *candidate : content) {
-        if (is_visible_focus(candidate)) {
-          focus(candidate);
-          break;
-        }
-      }
-    }
+    if (enter_content && main)
+      FocusRememberedContent();
     return;
   }
 
@@ -1198,8 +1204,6 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
         const int next = index + (dx > 0 ? 1 : -1);
         if (next >= 0 && next < static_cast<int>(tabs.size()))
           focus(tabs[next], true);
-        else if (next < 0)
-          focus(active_nav);
       }
       return;
     }
@@ -1259,9 +1263,6 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     }
     if (Rml::Element *best = geometric_target(current, content))
       focus(best);
-    else if ((!compact_horizontal_nav && dx < 0) ||
-             (compact_horizontal_nav && dy > 0))
-      focus(active_nav);
     return;
   }
 
@@ -1317,29 +1318,87 @@ void GubsyApp::ActivateFocus() {
 }
 
 void GubsyApp::FocusActiveNavigation() {
+  int memory_index = 0;
   const char *id = "nav-play";
   switch (state_.destination) {
   case Destination::Players:
     id = "nav-players";
+    memory_index = 1;
     break;
   case Destination::Settings:
     id = "nav-settings";
+    memory_index = 2;
     break;
   case Destination::Controls:
     id = "nav-controls";
+    memory_index = 3;
     break;
   case Destination::Progress:
     id = "nav-progress";
+    memory_index = 4;
     break;
   case Destination::Mods:
     id = "nav-mods";
+    memory_index = 5;
     break;
   case Destination::Play:
     break;
   }
+  if (Rml::Element *main = document_->QuerySelector("main");
+      main && is_descendant_of(context_->GetFocusElement(), main)) {
+    if (Rml::Element *action = action_element(context_->GetFocusElement()))
+      content_focus_memory_[memory_index] =
+          action->GetAttribute<Rml::String>("data-action", "");
+  }
   if (Rml::Element *element = document_->GetElementById(id)) {
     element->Focus(true);
     element->ScrollIntoView(false);
+  }
+}
+
+void GubsyApp::FocusRememberedContent() {
+  int memory_index = 0;
+  switch (state_.destination) {
+  case Destination::Players:
+    memory_index = 1;
+    break;
+  case Destination::Settings:
+    memory_index = 2;
+    break;
+  case Destination::Controls:
+    memory_index = 3;
+    break;
+  case Destination::Progress:
+    memory_index = 4;
+    break;
+  case Destination::Mods:
+    memory_index = 5;
+    break;
+  case Destination::Play:
+    break;
+  }
+  Rml::Element *main = document_->QuerySelector("main");
+  if (!main)
+    return;
+  Rml::ElementList candidates;
+  main->QuerySelectorAll(candidates, "[data-focus]");
+  Rml::Element *fallback = nullptr;
+  for (Rml::Element *candidate : candidates) {
+    if (!is_visible_focus(candidate))
+      continue;
+    if (!fallback)
+      fallback = candidate;
+    if (!content_focus_memory_[memory_index].empty() &&
+        candidate->GetAttribute<Rml::String>("data-action", "") ==
+            content_focus_memory_[memory_index]) {
+      candidate->Focus(true);
+      candidate->ScrollIntoView(false);
+      return;
+    }
+  }
+  if (fallback) {
+    fallback->Focus(true);
+    fallback->ScrollIntoView(false);
   }
 }
 

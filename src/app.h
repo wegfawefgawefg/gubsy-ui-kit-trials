@@ -3,6 +3,7 @@
 #include <RmlUi/Core/EventListener.h>
 #include <SDL3/SDL_events.h>
 
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -118,6 +119,7 @@ private:
   bool controller_editing_ = false;
   std::string controller_edit_original_value_;
   std::string pending_focus_action_;
+  std::array<std::string, 6> content_focus_memory_;
 
   void MarkDirty();
   void Render();
@@ -126,6 +128,7 @@ private:
   void NavigateFocus(int dx, int dy);
   void ActivateFocus();
   void FocusActiveNavigation();
+  void FocusRememberedContent();
   void Back();
   void SetToast(std::string message);
 
