@@ -116,6 +116,28 @@ Rml::Element *action_element(Rml::Element *element) {
   return nullptr;
 }
 
+bool is_descendant_of(Rml::Element *element, Rml::Element *ancestor) {
+  for (; element; element = element->GetParentNode()) {
+    if (element == ancestor)
+      return true;
+  }
+  return false;
+}
+
+Rml::Element *ancestor_with_class(Rml::Element *element,
+                                  const char *class_name) {
+  for (; element; element = element->GetParentNode()) {
+    if (element->IsClassSet(class_name))
+      return element;
+  }
+  return nullptr;
+}
+
+bool is_visible_focus(Rml::Element *element) {
+  return element && element->GetOffsetWidth() > 0 &&
+         element->GetOffsetHeight() > 0;
+}
+
 } // namespace
 
 GubsyApp::GubsyApp(Rml::Context *context) : context_(context) {}
@@ -497,6 +519,59 @@ bool GubsyApp::RunSelfTest() {
   if (!nav_play)
     return false;
   nav_play->Focus(true);
+  SDL_Event primary_navigation{};
+  primary_navigation.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  primary_navigation.gbutton.button = SDL_GAMEPAD_BUTTON_DPAD_DOWN;
+  if (!HandleSdlEvent(primary_navigation) ||
+      state_.destination != Destination::Players ||
+      context_->GetFocusElement() != document_->GetElementById("nav-players"))
+    return false;
+  Update();
+  context_->Update();
+
+  Rml::Element *players_main = document_->QuerySelector("main");
+  Rml::ElementList player_controls;
+  players_main->QuerySelectorAll(player_controls, "[data-focus]");
+  Rml::Element *last_visible_control = nullptr;
+  for (Rml::Element *control : player_controls) {
+    if (is_visible_focus(control))
+      last_visible_control = control;
+  }
+  if (!last_visible_control)
+    return false;
+  last_visible_control->Focus(true);
+  for (int index = 0; index < 20; ++index)
+    NavigateFocus(0, 1);
+  if (!is_descendant_of(context_->GetFocusElement(), players_main) ||
+      context_->GetFocusElement()->IsClassSet("quit"))
+    return false;
+  for (int index = 0; index < 20; ++index)
+    NavigateFocus(-1, 0);
+  if (context_->GetFocusElement() != document_->GetElementById("nav-players"))
+    return false;
+
+  SelectToolScreen(7);
+  Update();
+  context_->Update();
+  Rml::Element *display_tab =
+      document_->QuerySelector("[data-action='settings-tab-Display']");
+  if (!display_tab)
+    return false;
+  display_tab->Focus(true);
+  NavigateFocus(1, 0);
+  if (state_.settings_tab != "Audio" ||
+      !context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "settings-tab-Audio")
+    return false;
+  Update();
+  context_->Update();
+
+  SelectToolScreen(0);
+  Update();
+  context_->Update();
+  nav_play = document_->GetElementById("nav-play");
+  nav_play->Focus(true);
   SDL_Event stick_navigation{};
   stick_navigation.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
   stick_navigation.gaxis.axis = SDL_GAMEPAD_AXIS_LEFTX;
@@ -832,50 +907,207 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
 void GubsyApp::NavigateFocus(int dx, int dy) {
   if (!document_)
     return;
+
   Rml::ElementList candidates;
   document_->QuerySelectorAll(candidates, state_.modal.empty()
                                               ? "[data-focus]"
                                               : "#modal-root [data-focus]");
+  candidates.erase(
+      std::remove_if(candidates.begin(), candidates.end(),
+                     [](Rml::Element *element) {
+                       return !is_visible_focus(element);
+                     }),
+      candidates.end());
   if (candidates.empty())
     return;
 
   Rml::Element *current = context_->GetFocusElement();
-  if (!current || std::find(candidates.begin(), candidates.end(), current) ==
-                      candidates.end()) {
-    candidates.front()->Focus(true);
-    candidates.front()->ScrollIntoView(false);
+  auto focus = [](Rml::Element *element, bool activate = false) {
+    if (!element)
+      return;
+    element->Focus(true);
+    element->ScrollIntoView(false);
+    if (activate)
+      element->Click();
+  };
+
+  auto geometric_target = [&](Rml::Element *origin,
+                              const Rml::ElementList &pool) {
+    if (!origin)
+      return static_cast<Rml::Element *>(nullptr);
+    const Rml::Vector2f current_position =
+        origin->GetAbsoluteOffset(Rml::BoxArea::Border);
+    const float cx = current_position.x + origin->GetOffsetWidth() * 0.5f;
+    const float cy = current_position.y + origin->GetOffsetHeight() * 0.5f;
+    Rml::Element *best = nullptr;
+    float best_score = std::numeric_limits<float>::max();
+    for (Rml::Element *candidate : pool) {
+      if (candidate == origin || !is_visible_focus(candidate))
+        continue;
+      const Rml::Vector2f position =
+          candidate->GetAbsoluteOffset(Rml::BoxArea::Border);
+      const float x = position.x + candidate->GetOffsetWidth() * 0.5f;
+      const float y = position.y + candidate->GetOffsetHeight() * 0.5f;
+      const float delta_x = x - cx;
+      const float delta_y = y - cy;
+      const float forward = delta_x * dx + delta_y * dy;
+      if (forward <= 1.0f)
+        continue;
+      const float lateral = std::abs(delta_x * dy - delta_y * dx);
+      const float score =
+          forward + lateral * 3.0f + lateral * lateral / forward;
+      if (score < best_score) {
+        best_score = score;
+        best = candidate;
+      }
+    }
+    return best;
+  };
+
+  if (!state_.modal.empty()) {
+    if (!current || std::find(candidates.begin(), candidates.end(), current) ==
+                        candidates.end())
+      focus(candidates.front());
+    else
+      focus(geometric_target(current, candidates));
     return;
   }
 
-  const Rml::Vector2f current_position =
-      current->GetAbsoluteOffset(Rml::BoxArea::Border);
-  const float cx = current_position.x + current->GetOffsetWidth() * 0.5f;
-  const float cy = current_position.y + current->GetOffsetHeight() * 0.5f;
-  Rml::Element *best = nullptr;
-  float best_score = std::numeric_limits<float>::max();
-  for (Rml::Element *candidate : candidates) {
-    if (candidate == current)
-      continue;
-    const Rml::Vector2f position =
-        candidate->GetAbsoluteOffset(Rml::BoxArea::Border);
-    const float x = position.x + candidate->GetOffsetWidth() * 0.5f;
-    const float y = position.y + candidate->GetOffsetHeight() * 0.5f;
-    const float delta_x = x - cx;
-    const float delta_y = y - cy;
-    const float forward = delta_x * dx + delta_y * dy;
-    if (forward <= 1.0f)
-      continue;
-    const float lateral = std::abs(delta_x * dy - delta_y * dx);
-    const float score = forward + lateral * 3.0f + lateral * lateral / forward;
-    if (score < best_score) {
-      best_score = score;
-      best = candidate;
+  const char *active_nav_id = "nav-play";
+  switch (state_.destination) {
+  case Destination::Players:
+    active_nav_id = "nav-players";
+    break;
+  case Destination::Settings:
+    active_nav_id = "nav-settings";
+    break;
+  case Destination::Controls:
+    active_nav_id = "nav-controls";
+    break;
+  case Destination::Progress:
+    active_nav_id = "nav-progress";
+    break;
+  case Destination::Mods:
+    active_nav_id = "nav-mods";
+    break;
+  case Destination::Play:
+    break;
+  }
+  Rml::Element *active_nav = document_->GetElementById(active_nav_id);
+  Rml::Element *main = document_->QuerySelector("main");
+  Rml::Element *nav = document_->QuerySelector("nav");
+  const bool compact_horizontal_nav =
+      viewport_width_ <= 700 ||
+      (viewport_height_ <= 500 && viewport_width_ <= 1000);
+
+  const auto is_primary_nav = [](Rml::Element *element) {
+    return element &&
+           element->GetAttribute<Rml::String>("id", "").rfind("nav-", 0) == 0;
+  };
+  const auto is_quit = [](Rml::Element *element) {
+    return element && element->IsClassSet("quit");
+  };
+  constexpr const char *nav_ids[]{"nav-play", "nav-players", "nav-settings",
+                                  "nav-controls", "nav-progress", "nav-mods"};
+  auto primary_index = [&](Rml::Element *element) {
+    for (int index = 0; index < 6; ++index) {
+      if (element == document_->GetElementById(nav_ids[index]))
+        return index;
     }
+    return -1;
+  };
+
+  if (!current || std::find(candidates.begin(), candidates.end(), current) ==
+                      candidates.end()) {
+    focus(active_nav);
+    return;
   }
-  if (best) {
-    best->Focus(true);
-    best->ScrollIntoView(false);
+
+  if (is_primary_nav(current)) {
+    const int movement = compact_horizontal_nav ? dx : dy;
+    const int index = primary_index(current);
+    if (movement != 0) {
+      const int next = index + (movement > 0 ? 1 : -1);
+      if (next >= 0 && next < 6)
+        focus(document_->GetElementById(nav_ids[next]), true);
+      else if (!compact_horizontal_nav && next == 6) {
+        Rml::Element *quit = nav ? nav->QuerySelector("button.quit") : nullptr;
+        focus(quit);
+      }
+      return;
+    }
+    const bool enter_content = compact_horizontal_nav ? dy < 0 : dx > 0;
+    if (enter_content && main) {
+      Rml::ElementList content;
+      main->QuerySelectorAll(content, "[data-focus]");
+      focus(geometric_target(current, content));
+    }
+    return;
   }
+
+  if (is_quit(current)) {
+    if (!compact_horizontal_nav && dy < 0)
+      focus(document_->GetElementById("nav-mods"), true);
+    else if (!compact_horizontal_nav && dx > 0 && main) {
+      Rml::ElementList content;
+      main->QuerySelectorAll(content, "[data-focus]");
+      focus(geometric_target(current, content));
+    }
+    return;
+  }
+
+  Rml::Element *tab_bar = ancestor_with_class(current, "local-tabs");
+  if (!tab_bar)
+    tab_bar = ancestor_with_class(current, "mobile-local-tabs");
+  if (tab_bar) {
+    if (dx != 0) {
+      Rml::ElementList tabs;
+      tab_bar->QuerySelectorAll(tabs, "[data-focus]");
+      const auto it = std::find(tabs.begin(), tabs.end(), current);
+      if (it != tabs.end()) {
+        const int index = static_cast<int>(it - tabs.begin());
+        const int next = index + (dx > 0 ? 1 : -1);
+        if (next >= 0 && next < static_cast<int>(tabs.size()))
+          focus(tabs[next], true);
+        else if (next < 0)
+          focus(active_nav);
+      }
+      return;
+    }
+    if (dy > 0 && main) {
+      Rml::ElementList content;
+      main->QuerySelectorAll(content, "[data-focus]");
+      content.erase(std::remove_if(content.begin(), content.end(),
+                                   [&](Rml::Element *element) {
+                                     return ancestor_with_class(
+                                                element, "local-tabs") ||
+                                            ancestor_with_class(
+                                                element, "mobile-local-tabs");
+                                   }),
+                    content.end());
+      focus(geometric_target(current, content));
+    }
+    return;
+  }
+
+  if (main && is_descendant_of(current, main)) {
+    Rml::ElementList content;
+    main->QuerySelectorAll(content, "[data-focus]");
+    content.erase(
+        std::remove_if(content.begin(), content.end(),
+                       [](Rml::Element *element) {
+                         return !is_visible_focus(element);
+                       }),
+        content.end());
+    if (Rml::Element *best = geometric_target(current, content))
+      focus(best);
+    else if ((!compact_horizontal_nav && dx < 0) ||
+             (compact_horizontal_nav && dy > 0))
+      focus(active_nav);
+    return;
+  }
+
+  focus(active_nav);
 }
 
 void GubsyApp::ActivateFocus() {
@@ -959,8 +1191,10 @@ void GubsyApp::HandleAction(const std::string &action) {
     state_.play_view = PlayView::SessionMods;
   else if (action == "play-lobby")
     state_.play_view = PlayView::Lobby;
-  else if (action == "toggle-party")
-    state_.party_pane = !state_.party_pane;
+  else if (action == "show-setup")
+    state_.party_pane = false;
+  else if (action == "show-party")
+    state_.party_pane = true;
   else if (action == "toggle-shortcuts") {
     state_.selected_rule = "Discovered shortcuts";
     state_.shortcuts = !state_.shortcuts;
@@ -1112,9 +1346,21 @@ void GubsyApp::HandleAction(const std::string &action) {
               static_cast<int>(choices.size());
       value = choices[index];
     };
-    if (state_.destination == Destination::Players)
+    if (state_.destination == Destination::Play &&
+        state_.play_view == PlayView::SessionMods) {
+      state_.session_mod_browse = step > 0;
+      pending_focus_action_ =
+          state_.session_mod_browse ? "session-browse" : "session-current";
+    } else if (state_.destination == Destination::Play &&
+               state_.play_view == PlayView::Lobby &&
+               (viewport_width_ <= 700 ||
+                (viewport_height_ <= 500 && viewport_width_ <= 1000))) {
+      state_.party_pane = step > 0;
+      pending_focus_action_ = state_.party_pane ? "show-party" : "show-setup";
+    } else if (state_.destination == Destination::Players) {
       cycle(state_.player_tab, {"Local players", "Profiles", "Devices"});
-    else if (state_.destination == Destination::Settings) {
+      pending_focus_action_ = "player-tab-" + state_.player_tab;
+    } else if (state_.destination == Destination::Settings) {
       cycle(state_.settings_tab,
             {"Display", "Audio", "Accessibility", "Gameplay"});
       if (state_.settings_tab == "Display")
@@ -1125,11 +1371,14 @@ void GubsyApp::HandleAction(const std::string &action) {
         state_.selected_setting = "Text scale";
       else
         state_.selected_setting = "Context tutorials";
-    } else if (state_.destination == Destination::Controls)
+      pending_focus_action_ = "settings-tab-" + state_.settings_tab;
+    } else if (state_.destination == Destination::Controls) {
       cycle(state_.controls_tab, {"Bindings", "Devices", "Input tuning"});
-    else if (state_.destination == Destination::Mods)
+      pending_focus_action_ = "controls-tab-" + state_.controls_tab;
+    } else if (state_.destination == Destination::Mods) {
       cycle(state_.mods_tab, {"Installed", "Browse catalog"});
-    else {
+      pending_focus_action_ = "mods-tab-" + state_.mods_tab;
+    } else {
       SetToast("No local tabs on this screen");
       return;
     }
@@ -1145,7 +1394,9 @@ void GubsyApp::Render() {
     return;
   RenderChrome();
   Rml::String focused_action;
-  if (Rml::Element *focused = action_element(context_->GetFocusElement()))
+  if (!pending_focus_action_.empty())
+    focused_action = pending_focus_action_;
+  else if (Rml::Element *focused = action_element(context_->GetFocusElement()))
     focused_action = focused->GetAttribute<Rml::String>("data-action", "");
   if (Rml::Element *content = document_->GetElementById("screen-content"))
     content->SetInnerRML(BuildCurrentScreen());
@@ -1160,6 +1411,7 @@ void GubsyApp::Render() {
       }
     }
   }
+  pending_focus_action_.clear();
   if (Rml::Element *modal = document_->GetElementById("modal-root")) {
     if (state_.modal.empty()) {
       modal->SetInnerRML("");
@@ -1252,9 +1504,9 @@ std::string GubsyApp::BuildPlayLobby() const {
   const char *action_label =
       continuing ? "▶ Resume latest checkpoint"
                  : (arena ? "▶ Enter arena lobby" : "▶ Begin expedition");
-  out << R"(<div class="mobile-local-tabs"><button data-focus data-action="toggle-party" class=")"
+  out << R"(<div class="mobile-local-tabs"><button data-focus data-action="show-setup" class=")"
       << (state_.party_pane ? "" : "selected")
-      << R"(">Setup</button><button data-focus data-action="toggle-party" class=")"
+      << R"(">Setup</button><button data-focus data-action="show-party" class=")"
       << (state_.party_pane ? "selected" : "")
       << R"(">Party · 1/4</button></div><div class="workspace lobby-workspace">)";
   out << R"(<section class="panel setup-pane )"

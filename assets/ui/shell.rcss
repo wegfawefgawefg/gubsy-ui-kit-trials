@@ -33,6 +33,7 @@ nav button span { min-width: 0; flex: 1; font-size: 16dp; }
 nav button small { margin-top: 3dp; }
 nav button b { color: #9df181; }
 nav button.selected { color: #edf5f5; border: 1dp #416447; border-left: 3dp #9df181; background-color: #10241c; }
+nav button:focus { color: #ffffff; border: 1dp #75dce6; border-left: 3dp #9df181; background-color: #173326; }
 .nav-spacer { flex: 1; }
 nav button.quit { border-top: 1dp #26383b; }
 nav button.quit em { color: #ff7373; }
@@ -78,6 +79,7 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .local-tabs { height: 44dp; flex: none; display: flex; align-items: stretch; margin-bottom: 12dp; border-bottom: 1dp #2b4145; }
 .local-tabs button { border: 0; border-bottom: 2dp transparent; background: transparent; }
 .local-tabs button.selected { color: #edf5f5; border-bottom-color: #9df181; background-color: #10241c; }
+.local-tabs button:focus { color: #ffffff; border-bottom-color: #d9ff9d; background-color: #21452e; }
 .local-tabs span { margin-left: auto; padding: 15dp 6dp; color: #8fa1a3; font-size: 10dp; }
 .subview-header { min-height: 76dp; flex: none; display: flex; align-items: center; padding: 12dp 16dp; margin-bottom: 12dp; }
 .subview-header > div { min-width: 0; flex: 1; margin: 0 18dp; }
@@ -304,6 +306,7 @@ footer span { float: right; }
   .mobile-local-tabs { height: 45dp; flex: none; display: flex; gap: 4dp; margin-bottom: 6dp; }
   .mobile-local-tabs button { min-width: 0; flex: 1; padding: 8dp; }
   .mobile-local-tabs button.selected { border-color: #527e59; background-color: #10241c; }
+  .mobile-local-tabs button:focus { color: #ffffff; border-color: #d9ff9d; background-color: #21452e; }
   .workspace { display: block; overflow: hidden; }
   .setup-pane, .party-pane { min-width: 0; width: 100%; height: 100%; padding: 10dp; }
   .phone-hidden { display: none; }

@@ -115,6 +115,7 @@ private:
   double toast_until_ = 0.0;
   int controller_x_latch_ = 0;
   int controller_y_latch_ = 0;
+  std::string pending_focus_action_;
 
   void MarkDirty();
   void Render();
