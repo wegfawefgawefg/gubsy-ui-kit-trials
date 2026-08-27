@@ -27,6 +27,7 @@ constexpr Color kAccent{151, 239, 116, 255};
 constexpr Color kCyan{91, 213, 224, 255};
 constexpr Color kDanger{244, 103, 103, 255};
 Font g_font{};
+Texture2D g_mod_sheet{};
 float g_ui_scale = 1.0f;
 
 enum class Screen { Play, Players, Settings, Controls, Progress, Mods };
@@ -34,20 +35,42 @@ enum class Screen { Play, Players, Settings, Controls, Progress, Mods };
 struct App {
     Screen screen = Screen::Play;
     int play_activity = 0;
+    int play_view = 0;
+    int selected_checkpoint = 0;
+    int session_mods_tab = 0;
+    int selected_session_mod = 0;
+    std::array<bool, 8> session_enabled{true,true,true,true,true,true,true,false};
     int host_mode = 0;
     int join_mode = 1;
     bool pause_preview = false;
     bool friendly_fire = false;
     bool shared_treasury = true;
     bool discovered_shortcuts = true;
+    int expedition_difficulty = 1;
+    int stage_variation = 0;
+    int shop_frequency = 1;
+    int revive_mode = 0;
+    float enemy_damage = 100.0f;
     float shared_lives = 4.0f;
     float starting_health = 4.0f;
     float ghost_arrival = 180.0f;
     int players_tab = 0;
+    int selected_profile = 0;
+    int selected_device = 0;
+    int selected_progress = 0;
+    bool local_ready = true;
     int settings_tab = 0;
     int controls_tab = 0;
+    int controls_view = 0;
+    int browsed_input = 0;
     int mods_tab = 1;
     bool fullscreen = false;
+    bool subtitles = true;
+    bool color_distinction = true;
+    bool reduced_motion = false;
+    bool pause_unfocused = true;
+    bool tutorial_prompts = true;
+    bool damage_numbers = false;
     int resolution = 1;
     int frame_cap = 2;
     int dynamic_range = 1;
@@ -66,6 +89,8 @@ struct App {
     std::array<Vector2, 6> detail_scroll{};
     int selected_action = 0;
     int selected_mod = 0;
+    int selected_installed = 0;
+    std::array<bool, 20> catalog_installed{};
     Rectangle dropdown_anchor{};
     const char* dropdown_options = nullptr;
     int* dropdown_value = nullptr;
@@ -79,6 +104,7 @@ struct Args {
     int width = 1280;
     int height = 720;
     int screen = 0;
+    int play_view = 0;
     int benchmark = 0;
     std::string capture;
 };
@@ -98,6 +124,8 @@ Args ParseArgs(int argc, char** argv) {
             out.benchmark = std::max(1, std::atoi(argv[++i]));
         } else if (arg == "--capture" && i + 1 < argc) {
             out.capture = argv[++i];
+        } else if (arg == "--play-view" && i + 1 < argc) {
+            out.play_view = std::clamp(std::atoi(argv[++i]), 0, 3);
         }
     }
     return out;
@@ -116,12 +144,12 @@ long RssKiB() {
 Rectangle Inset(Rectangle r, float v) { return {r.x + v, r.y + v, r.width - v * 2, r.height - v * 2}; }
 
 void Text(const char* text, float x, float y, int size = 16, Color color = kText) {
-    const float font_size = float(std::max(size, 13)) * g_ui_scale;
+    const float font_size = float(std::max(size, 15)) * g_ui_scale;
     DrawTextEx(g_font.texture.id ? g_font : GetFontDefault(), text, {x, y}, font_size, 0.5f, color);
 }
 
 float TextWidth(const char* text, int size) {
-    const float font_size = float(std::max(size, 13)) * g_ui_scale;
+    const float font_size = float(std::max(size, 15)) * g_ui_scale;
     return MeasureTextEx(g_font.texture.id ? g_font : GetFontDefault(), text, font_size, 0.5f).x;
 }
 
@@ -227,6 +255,17 @@ void Row(Rectangle r, const char* title, const char* sub, const char* value = nu
     if (value) Text(value, r.x + r.width - TextWidth(value, 11) - 12, r.y + 18, 11, kAccent);
 }
 
+void ToggleRow(Rectangle r, const char* title, const char* sub, bool* value) {
+    Row(r,title,sub,nullptr,*value);
+    GuiToggle({r.x+r.width-82,r.y+14,66,30},*value?"ON":"OFF",value);
+}
+
+bool ActionRow(Rectangle r, const char* title, const char* sub, const char* value = nullptr, bool selected = false) {
+    const bool hover = CheckCollisionPointRec(GetMousePosition(), r);
+    Row(r, title, sub, value, selected || hover);
+    return hover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+}
+
 bool Select(App& app, int id, Rectangle r, const char* options, int* active) {
     if (app.dropdown_open && app.open_dropdown == id) {
         app.dropdown_anchor = r;
@@ -307,12 +346,84 @@ void DrawDropdownOverlay(App& app) {
 
 void SliderRow(Rectangle r, const char* title, const char* sub, float* value, float min, float max, const char* suffix) {
     Row(r, title, sub);
-    Rectangle slider{r.x + r.width * .48f, r.y + 20, r.width * .34f, 18};
+    Rectangle slider{r.x + r.width * .48f, r.y + 20, r.width * .34f, 20};
     GuiSliderBar(slider, nullptr, nullptr, value, min, max);
+    Rectangle hit{slider.x - 5, slider.y - 7, slider.width + 10, slider.height + 14};
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetMousePosition(), hit)) {
+        const float t = std::clamp((GetMousePosition().x - slider.x) / slider.width, 0.0f, 1.0f);
+        *value = min + t * (max - min);
+    }
     Text(TextFormat("%.0f%s", *value, suffix), r.x + r.width - 58, r.y + 21, 11, kAccent);
 }
 
+void CheckpointPicker(App& app, Rectangle body) {
+    const bool is_new = app.play_activity != 0;
+    Label(is_new ? "SPLONKS / PLAY / QUEST" : "SPLONKS / PLAY / CHECKPOINT", body.x, body.y);
+    Text(is_new ? "Choose a quest" : "Choose checkpoint", body.x, body.y + 18, 38);
+    if (Button({body.x, body.y + 70, 150, 38}, "< Back to lobby")) app.play_view = 0;
+    Rectangle left{body.x, body.y + 120, body.width * .48f, body.height - 120};
+    Rectangle right{left.x + left.width + 12, left.y, body.width - left.width - 12, left.height};
+    Panel(left); Panel(right);
+    Label(is_new ? "AVAILABLE QUESTS" : "THE VIOLET REACH", left.x + 16, left.y + 16);
+    const char* checkpoint_names[] = {"Temple safe room", "Flooded archive", "Mushroom crossing"};
+    const char* checkpoint_details[] = {"Today, 06:52 - Stage 4", "Yesterday - Stage 3", "Aug 24 - Stage 2"};
+    const char* quest_names[] = {"The Violet Reach", "Clockwork Descent", "Mushroom Below"};
+    const char* quest_details[] = {"8 stages - standard route", "6 stages - machinery route", "10 stages - branching route"};
+    for (int i = 0; i < 3; ++i) {
+        Rectangle row{left.x + 14, left.y + 48 + i * 68.0f, left.width - 28, 64};
+        if (ActionRow(row, is_new ? quest_names[i] : checkpoint_names[i], is_new ? quest_details[i] : checkpoint_details[i], is_new ? "SELECT" : i == 0 ? "LATEST" : "BACKUP", app.selected_checkpoint == i)) app.selected_checkpoint = i;
+    }
+    Label(is_new ? "QUEST ROUTE" : "CHECKPOINT DETAILS", right.x + 18, right.y + 16);
+    Text(is_new ? quest_names[app.selected_checkpoint] : checkpoint_names[app.selected_checkpoint], right.x + 18, right.y + 42, 24);
+    Text(is_new ? "Starts at stage one with the current profile, lobby rules,\nparty, and active mod manifest." : "Quest: The Glass Caverns\nProfile: Vega\nStage: authored route\nMods: 7 package recorded set", right.x + 18, right.y + 88, 13, kMuted);
+    if (Button({right.x + 18, right.y + right.height - 54, right.width - 36, 38}, is_new ? "Use this quest" : "Use this checkpoint", true)) {
+        app.play_view = 0;
+    }
+}
+
+void SessionMods(App& app, Rectangle body) {
+    Label("SPLONKS / PLAY / SESSION MODS", body.x, body.y);Text("Session mods",body.x,body.y+18,38);
+    if(Button({body.x,body.y+70,150,38},"< Back to lobby"))app.play_view=0;
+    app.session_mods_tab=Tabs({body.x+168,body.y+70,body.width-168,38},{"Current set","Browse & add"},app.session_mods_tab);
+    Rectangle left{body.x,body.y+120,body.width*.52f,body.height-120};Rectangle right{left.x+left.width+12,left.y,body.width-left.width-12,left.height};Panel(left);Panel(right);
+    const char* names[]={"Base Content","Cartographer's Desk","Old Lanterns","Underground Rivers","Temple Weather","Pocket Expedition","Quiet Campfires","Mycelium Below"};
+    const char* sub[]={"Required by game","Quest dependency","Update available","World dependency","Adds weather rules","Adds pocket quests","Cosmetic","Catalog package - ready to install"};
+    Label(app.session_mods_tab?"ADD CONTENT TO THIS LOBBY":"CURRENT LOBBY MANIFEST",left.x+16,left.y+16);
+    for(int i=0;i<8;i++){if(!app.session_mods_tab&&!app.session_enabled[i])continue;Rectangle r{left.x+14,left.y+44+i*54.0f,left.width-28,52};if(ActionRow(r,names[i],sub[i],app.session_enabled[i]?"ACTIVE":"ADD",app.selected_session_mod==i))app.selected_session_mod=i;}
+    Label("SESSION PACKAGE",right.x+18,right.y+16);Text(names[app.selected_session_mod],right.x+18,right.y+42,24);Text("Changes here affect this lobby's exact content manifest.\nDependencies are installed and activated together.",right.x+18,right.y+82,13,kMuted);
+    Row({right.x+14,right.y+136,right.width-28,52},"Base Content >= 1.4.0","Required dependency","INSTALLED");Row({right.x+14,right.y+190,right.width-28,52},"Lobby manifest","Recorded at launch",app.session_enabled[app.selected_session_mod]?"INCLUDED":"NOT INCLUDED");
+    const bool on=app.session_enabled[app.selected_session_mod];if(Button({right.x+18,right.y+right.height-54,right.width-36,38},on?"Remove from current session":"Install & add to current session",true))app.session_enabled[app.selected_session_mod]=!on;
+}
+
+void RulesEditor(App& app, Rectangle body) {
+    Label("SPLONKS / PLAY / RULES", body.x, body.y);
+    Text("Expedition settings", body.x, body.y + 18, 38);
+    if (Button({body.x, body.y + 70, 150, 38}, "< Back to lobby")) app.play_view = 0;
+    Rectangle left{body.x, body.y + 120, body.width * .56f, body.height - 120};
+    Rectangle right{left.x + left.width + 12, left.y, body.width - left.width - 12, left.height};
+    Panel(right);
+    Rectangle scrolled=BeginScrollRegion(left,690,app.detail_scroll[0]);float y=scrolled.y+10;
+    Row({scrolled.x+12,y,scrolled.width-24,60},"Expedition difficulty","Overall danger and resource pressure");Select(app,20,{scrolled.x+scrolled.width*.52f,y+12,scrolled.width*.43f,36},"Relaxed;Standard;Punishing",&app.expedition_difficulty);y+=62;
+    Row({scrolled.x+12,y,scrolled.width-24,60},"Stage variation","How authored rooms are remixed");Select(app,21,{scrolled.x+scrolled.width*.52f,y+12,scrolled.width*.43f,36},"Quest-authored;Seeded remix;Fully random",&app.stage_variation);y+=62;
+    SliderRow({scrolled.x + 12, y, scrolled.width - 24, 66}, "Shared lives", "Continues available to the party", &app.shared_lives, 1, 9, ""); y += 68;
+    SliderRow({scrolled.x + 12, y, scrolled.width - 24, 66}, "Starting health", "Hearts granted at expedition start", &app.starting_health, 1, 8, " hearts"); y += 68;
+    SliderRow({scrolled.x + 12, y, scrolled.width - 24, 66}, "Ghost arrival", "Seconds before the stage begins hunting", &app.ghost_arrival, 60, 300, " sec"); y += 68;
+    Row({scrolled.x+12,y,scrolled.width-24,60},"Shop frequency","Merchant room availability");Select(app,22,{scrolled.x+scrolled.width*.52f,y+12,scrolled.width*.43f,36},"Rare;Normal;Frequent",&app.shop_frequency);y+=62;
+    ToggleRow({scrolled.x+12,y,scrolled.width-24,60},"Discovered shortcuts","Allow unlocked route entrances",&app.discovered_shortcuts);y+=62;
+    ToggleRow({scrolled.x+12,y,scrolled.width-24,60},"Shared treasury","Combine party currency",&app.shared_treasury);y+=62;
+    ToggleRow({scrolled.x+12,y,scrolled.width-24,60},"Friendly fire","Party attacks can damage allies",&app.friendly_fire);y+=62;
+    Row({scrolled.x+12,y,scrolled.width-24,60},"Defeated players return","Co-op recovery rule");Select(app,23,{scrolled.x+scrolled.width*.52f,y+12,scrolled.width*.43f,36},"At next room;At next stage;Only at checkpoints",&app.revive_mode);y+=62;
+    SliderRow({scrolled.x+12,y,scrolled.width-24,66},"Enemy damage","Damage multiplier",&app.enemy_damage,50,200,"%");EndScrollRegion();
+    Label("SELECTED RULE", right.x + 18, right.y + 16);
+    Text("Expedition rules", right.x + 18, right.y + 42, 24);
+    Text("Game-provided rules are editable in this lobby.\nThe host synchronizes them before launch.", right.x + 18, right.y + 84, 13, kMuted);
+    if (Button({right.x + 18, right.y + right.height - 54, right.width - 36, 38}, "Apply and return", true)) app.play_view = 0;
+}
+
 void Play(App& app, Rectangle body) {
+    if (app.play_view == 1) { CheckpointPicker(app, body); return; }
+    if (app.play_view == 2) { RulesEditor(app, body); return; }
+    if (app.play_view == 3) { SessionMods(app, body); return; }
     Label("SPLONKS / PLAY", body.x, body.y);
     Text("Play", body.x, body.y + 18, 42);
     Rectangle left{body.x, body.y + 72, body.width * .64f, body.height - 72};
@@ -325,7 +436,7 @@ void Play(App& app, Rectangle body) {
     Row({left.x + 12, y, left.width - 24, 56}, "Activity", "Continue a checkpoint or start another quest");
     Select(app, 1, {left.x + left.width * .55f, y + 10, left.width * .4f, 36}, "Continue expedition;New expedition", &app.play_activity);
     y += 58;
-    Row({left.x + 12, y, left.width - 24, 56}, app.play_activity == 0 ? "Resume point" : "Quest", app.play_activity == 0 ? "Latest checkpoint - The Violet Reach" : "The Violet Reach - 8 stages - normal route", app.play_activity == 0 ? "CHOOSE CHECKPOINT >" : "CHOOSE QUEST >");
+    if (ActionRow({left.x + 12, y, left.width - 24, 56}, app.play_activity == 0 ? "Resume point" : "Quest", app.play_activity == 0 ? "Latest checkpoint - The Violet Reach" : "The Violet Reach - 8 stages - normal route", app.play_activity == 0 ? "CHOOSE CHECKPOINT >" : "CHOOSE QUEST >")) app.play_view = 1;
     y += 58;
     Row({left.x + 12, y, left.width - 24, 56}, "Play with", "Who may occupy the remaining slots");
     Select(app, 2, {left.x + left.width * .55f, y + 10, left.width * .4f, 36}, "Solo;Friends can join;Public", &app.join_mode);
@@ -333,8 +444,8 @@ void Play(App& app, Rectangle body) {
     Row({left.x + 12, y, left.width - 24, 56}, "Host using", "Automatic chooses direct or relay hosting");
     Select(app, 3, {left.x + left.width * .55f, y + 10, left.width * .4f, 36}, "Automatic;Direct;Relay", &app.host_mode);
     y += 58;
-    Row({left.x + 12, y, left.width - 24, 52}, "Expedition rules", "Standard - 4 lives - ghost at 180s", "EDIT ALL >"); y += 54;
-    Row({left.x + 12, y, left.width - 24, 52}, "Session mods", "7 active - dependency set valid", "MANAGE >");
+    if (ActionRow({left.x + 12, y, left.width - 24, 52}, "Expedition rules", "Standard - 4 lives - ghost at 180s", "EDIT ALL >")) app.play_view = 2; y += 54;
+    if (ActionRow({left.x + 12, y, left.width - 24, 52}, "Session mods", "7 active - dependency set valid", "MANAGE >")) app.play_view = 3;
     Button({left.x + 16, left.y + left.height - 53, 150, 38}, "Pause preview");
     Button({left.x + left.width - 265, left.y + left.height - 53, 245, 38}, app.play_activity == 0 ? "> Resume latest checkpoint" : "> Begin expedition", true);
 
@@ -365,22 +476,22 @@ void Players(App& app, Rectangle body) {
         Text("Associated devices", d.x + 16, d.y + 78, 12, kMuted);
         Row({d.x + 12, d.y + 96, d.width - 24, 55}, "Xbox Wireless Controller", "Gamepad 0 - connected", "ASSIGNED");
         Row({d.x + 12, d.y + 153, d.width - 24, 55}, "Keyboard + mouse", "Shared desktop input", "AVAILABLE");
-        Button({d.x + 14, d.y + d.height - 50, 135, 34}, "Assign device", true); Button({d.x + 157, d.y + d.height - 50, 130, 34}, "Mark not ready");
+        if(Button({d.x + 14, d.y + d.height - 50, 135, 34}, "Assign device", true))app.players_tab=2;if(Button({d.x + 157, d.y + d.height - 50, 130, 34}, app.local_ready?"Mark not ready":"Mark ready"))app.local_ready=!app.local_ready;
     } else if (app.players_tab == 1) {
         Label("PROFILE LIBRARY", panel.x + 18, panel.y + 16); Text("3 profiles - profile data is not a save", panel.x + 18, panel.y + 34, 11, kMuted);
         Button({panel.x + panel.width - 126, panel.y + 16, 108, 34}, "+ New profile", true);
         const char* names[] = {"Moss", "Vega", "Guest"}; const char* stats[] = {"38h 22m - 84 runs - 21 wins", "14h 11m - 31 runs - 4 wins", "Never - 0 runs - 0 wins"};
-        for (int i=0;i<3;i++) { Rectangle c{panel.x + 16 + i*(panel.width-44)/3, panel.y+70, (panel.width-56)/3, 128}; Panel(c); Text(names[i], c.x+18,c.y+18,20); Text(stats[i],c.x+18,c.y+48,11,kMuted); Text(i==0?"ACTIVE":"SELECT",c.x+18,c.y+88,11,kAccent); }
-        Text("Moss's history", panel.x + 18, panel.y + 226, 23);
+        for (int i=0;i<3;i++) { Rectangle c{panel.x + 16 + i*(panel.width-44)/3, panel.y+70, (panel.width-56)/3, 128}; Panel(c);if(app.selected_profile==i)DrawRectangleLinesEx(c,2,kAccent); Text(names[i], c.x+18,c.y+18,20); Text(stats[i],c.x+18,c.y+48,11,kMuted); Text(i==app.selected_profile?"ACTIVE":"SELECT",c.x+18,c.y+88,11,kAccent);if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(GetMousePosition(),c))app.selected_profile=i; }
+        Text(TextFormat("%s's history",names[app.selected_profile]), panel.x + 18, panel.y + 226, 23);
         const char* labels[] = {"84\nPLAYS","21\nWINS","138\nDEATHS","2.4M\nSCORE","42\nREPLAYS"};
         for(int i=0;i<5;i++) Text(labels[i], panel.x+40+i*panel.width/5, panel.y+276, 16, i==0?kAccent:kText);
     } else {
         Label("CONNECTED INPUT", panel.x + 18, panel.y + 16); Text("Devices may belong to more than one local player", panel.x + 18, panel.y + 34, 11, kMuted);
-        Row({panel.x+16,panel.y+68,panel.width*.55f,66},"Xbox Wireless Controller","Gamepad 0 - battery 82%","MOSS",true);
-        Row({panel.x+16,panel.y+136,panel.width*.55f,66},"Keyboard + mouse","Desktop aggregate","AVAILABLE");
-        Row({panel.x+16,panel.y+204,panel.width*.55f,66},"T.16000M Joystick","14 axes - 32 buttons","UNASSIGNED");
+        if(ActionRow({panel.x+16,panel.y+68,panel.width*.55f,66},"Xbox Wireless Controller","Gamepad 0 - battery 82%","MOSS",app.selected_device==0))app.selected_device=0;
+        if(ActionRow({panel.x+16,panel.y+136,panel.width*.55f,66},"Keyboard + mouse","Desktop aggregate","AVAILABLE",app.selected_device==1))app.selected_device=1;
+        if(ActionRow({panel.x+16,panel.y+204,panel.width*.55f,66},"T.16000M Joystick","14 axes - 32 buttons","UNASSIGNED",app.selected_device==2))app.selected_device=2;
         Rectangle d{panel.x+panel.width*.59f,panel.y+68,panel.width*.38f,panel.height-90}; Panel(d);
-        Label("LIVE INPUT EXPLORER",d.x+16,d.y+14); Text("Xbox Wireless Controller",d.x+16,d.y+35,20);
+        const char* devices[]={"Xbox Wireless Controller","Keyboard + mouse","T.16000M Joystick"};Label("LIVE INPUT EXPLORER",d.x+16,d.y+14); Text(devices[app.selected_device],d.x+16,d.y+35,20);
         Text("A / Button South       idle\nLeft X                  +0.04\nRight Trigger           0.00\nD-pad                   centered",d.x+16,d.y+78,12,kMuted);
     }
 }
@@ -397,8 +508,8 @@ void Settings(App& app, Rectangle body) {
         Row({left.x+12,y,left.width-24,60},"Frame cap","Maximum simulation frames per second");Select(app,11,{left.x+left.width*.52f,y+12,left.width*.42f,36},"60 FPS;120 FPS;144 FPS;Unlimited",&app.frame_cap);y+=62;
         SliderRow({left.x+12,y,left.width-24,66},"Brightness","Fine-tune scene visibility",&app.brightness,0,100,"%");
     } else if(app.settings_tab==1){ SliderRow({left.x+12,y,left.width-24,72},"Master volume","Overall output level",&app.master_volume,0,100,"%"); y+=74; SliderRow({left.x+12,y,left.width-24,72},"Music volume","Score and ambient layers",&app.music_volume,0,100,"%"); y+=74; Row({left.x+12,y,left.width-24,62},"Dynamic range","Compress loud and quiet sounds"); Select(app,12,{left.x+left.width*.52f,y+12,left.width*.42f,36},"Night;Balanced;Wide",&app.dynamic_range); }
-    else if(app.settings_tab==2){ Row({left.x+12,y,left.width-24,64},"Subtitles","Dialogue and important callouts","ON",true);y+=66;Row({left.x+12,y,left.width-24,64},"Color distinction","Shape and label reinforcement","ON");y+=66;Row({left.x+12,y,left.width-24,64},"Reduced motion","Limit camera and menu animation","OFF");y+=66;Row({left.x+12,y,left.width-24,64},"Text scale","Interface and subtitle size","110%"); }
-    else { Row({left.x+12,y,left.width-24,64},"Pause when unfocused","Suspend local simulation","ON",true);y+=66;Row({left.x+12,y,left.width-24,64},"Tutorial prompts","Context-sensitive hints","ON");y+=66;Row({left.x+12,y,left.width-24,64},"Damage numbers","Combat feedback","OFF"); }
+    else if(app.settings_tab==2){ ToggleRow({left.x+12,y,left.width-24,64},"Subtitles","Dialogue and important callouts",&app.subtitles);y+=66;ToggleRow({left.x+12,y,left.width-24,64},"Color distinction","Shape and label reinforcement",&app.color_distinction);y+=66;ToggleRow({left.x+12,y,left.width-24,64},"Reduced motion","Limit camera and menu animation",&app.reduced_motion);y+=66;Row({left.x+12,y,left.width-24,64},"Text scale","Interface and subtitle size","110%"); }
+    else { ToggleRow({left.x+12,y,left.width-24,64},"Pause when unfocused","Suspend local simulation",&app.pause_unfocused);y+=66;ToggleRow({left.x+12,y,left.width-24,64},"Tutorial prompts","Context-sensitive hints",&app.tutorial_prompts);y+=66;ToggleRow({left.x+12,y,left.width-24,64},"Damage numbers","Combat feedback",&app.damage_numbers); }
     Label("SELECTED SETTING",right.x+18,right.y+16); Text(app.settings_tab==0?"Render scale":app.settings_tab==1?"Master volume":app.settings_tab==2?"Subtitles":"Pause when unfocused",right.x+18,right.y+38,26);
     Text("This value is stored in the active profile. The game provides the\nsetting schema; Gubsy provides stable native controls and serialization.",right.x+18,right.y+79,12,kMuted);
     Panel({right.x+18,right.y+130,right.width-36,80}); Label("CURRENT VALUE",right.x+32,right.y+146); Text(app.settings_tab==0?TextFormat("%.0f%%",app.render_scale):app.settings_tab==1?TextFormat("%.0f%%",app.master_volume):"Enabled",right.x+32,right.y+170,25,kAccent);
@@ -407,6 +518,7 @@ void Settings(App& app, Rectangle body) {
 }
 
 void Controls(App& app, Rectangle body) {
+    if(app.controls_view!=0){Label("SPLONKS / CONTROLS / BINDING",body.x,body.y);Text(app.controls_view==1?"Listen for input":"Browse controls",body.x,body.y+18,38);if(Button({body.x,body.y+70,150,38},"< Back to bindings"))app.controls_view=0;Rectangle panel{body.x,body.y+120,body.width,body.height-120};Panel(panel);if(app.controls_view==1){Label("CAPTURE ACTIVE",panel.x+18,panel.y+18);Text("Perform an input now",panel.x+18,panel.y+44,25);Text("Buttons, keys, 1D axes, 2D sticks, triggers, pedals, wheels,\nand hats are accepted. Noise qualification is applied before binding.",panel.x+18,panel.y+86,13,kMuted);Panel({panel.x+18,panel.y+150,panel.width-36,86});Text("Xbox Wireless Controller",panel.x+34,panel.y+169,15);Text("Waiting for qualified input...",panel.x+34,panel.y+198,13,kAccent);if(Button({panel.x+18,panel.y+panel.height-54,160,38},"Cancel capture"))app.controls_view=0;}else{const char* inputs[]={"Button South (A)","Button East (B)","Left Trigger axis","Right Trigger axis","Left Stick 2D","Wheel axis","Pedal axis","Hat 0 Up"};Rectangle left{panel.x+14,panel.y+52,panel.width*.48f,panel.height-70};Rectangle right{left.x+left.width+12,left.y,panel.width-left.width-40,left.height};Panel(left);Panel(right);Label("DEVICE INPUTS",left.x+16,left.y+16);for(int i=0;i<8;i++){Rectangle r{left.x+12,left.y+44+i*45.0f,left.width-24,43};if(ActionRow(r,inputs[i],i<2?"Button":"Analog / directional input",nullptr,app.browsed_input==i))app.browsed_input=i;}Label("MANUAL BINDING",right.x+18,right.y+16);Text(inputs[app.browsed_input],right.x+18,right.y+44,22);Text("Source device: Xbox Wireless Controller\nTransform: raw input to selected Gubsy action",right.x+18,right.y+82,13,kMuted);if(Button({right.x+18,right.y+right.height-54,right.width-36,38},"Use this input",true))app.controls_view=0;}return;}
     Label("SPLONKS / CONTROLS",body.x,body.y);Text("Controls",body.x,body.y+18,42);
     app.controls_tab=Tabs({body.x,body.y+72,body.width,44},{"Bindings","Devices","Input tuning"},app.controls_tab);
     Rectangle left{body.x,body.y+128,body.width*.5f,body.height-128};Rectangle right{left.x+left.width+12,left.y,body.width-left.width-12,left.height};Panel(left);Panel(right);
@@ -416,7 +528,7 @@ void Controls(App& app, Rectangle body) {
         for(int i=0;i<8;i++){Rectangle r{left.x+14,left.y+62+i*46,left.width-28,44};Row(r,actions[i],i<6?"Button action":"Analog action",binds[i],i==app.selected_action);if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(GetMousePosition(),r))app.selected_action=i;}
         Label("SELECTED ACTION",right.x+18,right.y+16);Text(actions[app.selected_action],right.x+18,right.y+38,26);Text("Each action may have multiple bindings, including transformed axes.",right.x+18,right.y+76,12,kMuted);
         Row({right.x+14,right.y+108,right.width-28,54},"1   Gamepad binding",binds[app.selected_action],"REPLACE");Row({right.x+14,right.y+164,right.width-28,54},"2   Keyboard binding","Keyboard W / arrow key","REPLACE");
-        Button({right.x+18,right.y+235,130,36},"Listen for input",true);Button({right.x+156,right.y+235,138,36},"Browse controls");
+        if(Button({right.x+18,right.y+235,130,36},"Listen for input",true))app.controls_view=1;if(Button({right.x+156,right.y+235,138,36},"Browse controls"))app.controls_view=2;
         Text("Manual browse supports unusual mappings such as trigger-to-button,\nwheel pedals, joysticks, and macro pads.",right.x+18,right.y+292,11,kMuted);
     } else if(app.controls_tab==1){
         Label("DEVICE ASSIGNMENT",left.x+16,left.y+16);Row({left.x+14,left.y+50,left.width-28,66},"Xbox Wireless Controller","Gamepad 0 - connected","MOSS",true);Row({left.x+14,left.y+118,left.width-28,66},"Keyboard + mouse","Desktop aggregate","AVAILABLE");Row({left.x+14,left.y+186,left.width-28,66},"T.16000M Joystick","14 axes - 32 buttons","MOSS");
@@ -428,11 +540,12 @@ void Controls(App& app, Rectangle body) {
 }
 
 void Progress(App& app, Rectangle body) {
-    (void)app;Label("SPLONKS / PROGRESS",body.x,body.y);Text("Progress",body.x,body.y+18,42);Label("GAME-PROVIDED PROGRESSION",body.x,body.y+75);Text("3 campaigns - automatic checkpoints",body.x,body.y+92,11,kMuted);
+    Label("SPLONKS / PROGRESS",body.x,body.y);Text("Progress",body.x,body.y+18,42);Label("GAME-PROVIDED PROGRESSION",body.x,body.y+75);Text("3 campaigns - automatic checkpoints",body.x,body.y+92,11,kMuted);
     Rectangle left{body.x,body.y+122,body.width*.5f,body.height-122};Rectangle right{left.x+left.width+12,left.y,body.width-left.width-12,left.height};Panel(left);Panel(right);
-    Row({left.x+14,left.y+26,left.width-28,66},"The Glass Caverns","Moss - Temple Depths - 42%","12h 48m  READY",true);Row({left.x+14,left.y+94,left.width-28,66},"A Quiet Beginning","Vega - Green Valley - 11%","3h 06m  READY");Row({left.x+14,left.y+162,left.width-28,66},"Old Expedition","Moss - Version 0.7 data","INCOMPATIBLE");
-    Label("ASSOCIATED PROFILE",right.x+16,right.y+16);Row({right.x+14,right.y+38,right.width-28,56},"MO   Moss","Ownership recorded by progression provider");Label("RECORDED MOD SET - 7 PACKAGES",right.x+16,right.y+112);Row({right.x+14,right.y+130,right.width-28,38},"Base Content","Required package","v1.4.0");Row({right.x+14,right.y+170,right.width-28,38},"Cartographer's Desk","Quest dependency","v0.8.2");Row({right.x+14,right.y+210,right.width-28,38},"Old Lanterns","Installed package","UPDATE");Label("CHECKPOINT HISTORY",right.x+16,right.y+270);Row({right.x+14,right.y+288,right.width-28,48},"Temple safe room","Today, 06:52 - Stage 4","RESUME");Row({right.x+14,right.y+338,right.width-28,48},"Flooded archive","Yesterday - Stage 3","BACKUP");
-    Button({right.x+right.width-270,right.y+right.height-48,155,34},"> Resume campaign",true);Button({right.x+right.width-108,right.y+right.height-48,92,34},"Export");
+    const char* campaigns[]={"The Glass Caverns","A Quiet Beginning","Old Expedition"};const char* detail[]={"Moss - Temple Depths - 42%","Vega - Green Valley - 11%","Moss - Version 0.7 data"};const char* status[]={"12h 48m  READY","3h 06m  READY","INCOMPATIBLE"};
+    for(int i=0;i<3;i++)if(ActionRow({left.x+14,left.y+26+i*68.0f,left.width-28,66},campaigns[i],detail[i],status[i],app.selected_progress==i))app.selected_progress=i;
+    Label("SELECTED CAMPAIGN",right.x+16,right.y+16);Text(campaigns[app.selected_progress],right.x+16,right.y+38,22);Label("ASSOCIATED PROFILE",right.x+16,right.y+76);Row({right.x+14,right.y+96,right.width-28,56},app.selected_progress==1?"VE   Vega":"MO   Moss","Ownership recorded by progression provider");Label("RECORDED MOD SET",right.x+16,right.y+166);Row({right.x+14,right.y+184,right.width-28,38},"Base Content","Required package","v1.4.0");Row({right.x+14,right.y+224,right.width-28,38},"Cartographer's Desk","Quest dependency","v0.8.2");Label("CHECKPOINT HISTORY",right.x+16,right.y+278);Row({right.x+14,right.y+296,right.width-28,48},"Temple safe room","Today, 06:52 - Stage 4","RESUME");Row({right.x+14,right.y+346,right.width-28,48},"Flooded archive","Yesterday - Stage 3","BACKUP");
+    if(Button({right.x+right.width-270,right.y+right.height-48,155,34},"> Use in Play",true)&&app.selected_progress<2){app.screen=Screen::Play;app.play_activity=0;}Button({right.x+right.width-108,right.y+right.height-48,92,34},"Export");
 }
 
 void Mods(App& app, Rectangle body) {
@@ -446,45 +559,74 @@ void Mods(App& app, Rectangle body) {
 
     Rectangle left_bounds{body.x,body.y+180,body.width*.5f,body.height-180};
     Rectangle right_bounds{left_bounds.x+left_bounds.width+12,left_bounds.y,body.width-left_bounds.width-12,left_bounds.height};
-    static constexpr std::array names{
+    static constexpr std::array catalog_names{
         "Mycelium Below", "Brassline Grapple Kit", "Skybreak Caverns", "Abyssal Tide",
         "Old Lanterns", "Pocket Expedition", "Temple Weather", "Mirror Depths",
         "Clockwork Catacombs", "Riverglass Arsenal", "Fungal Cartographer", "Quiet Campfires",
         "Hollow Crown", "Cobalt Bestiary", "Relay Challenge Pack", "Mossy Machinery",
         "Moonlit Markets", "Echoing Vaults", "Daily Seed Tools", "Classic Palette"
     };
-    static constexpr std::array deps{
+    static constexpr std::array catalog_deps{
         "Requires Base Content", "Requires Cartographer's Desk", "Requires game 1.4", "Requires Underground Rivers",
         "Update available", "2 dependencies", "Required by 2 mods", "Requires Gubsy Mod API 0.2",
         "Requires Gearworks", "No dependencies", "Requires Mycelium Below", "No dependencies",
         "Requires game 1.5", "Requires Base Content", "Online-compatible", "Requires Gearworks",
         "Requires Trading API", "Requires Underground Rivers", "Developer utility", "Cosmetic only"
     };
-    Rectangle left = BeginScrollRegion(left_bounds, 20.0f*54.0f + 28.0f, app.list_scroll[int(Screen::Mods)]);
-    Label(app.mods_tab ? "20 CATALOG MODS" : "INSTALLED PACKAGES",left.x+14,left.y+10);
-    for(int i=0;i<int(names.size());i++){
+    static constexpr std::array installed_names{
+        "Base Content", "Cartographer's Desk", "Old Lanterns", "Underground Rivers",
+        "Temple Weather", "Pocket Expedition", "Quiet Campfires", "Classic Palette"
+    };
+    static constexpr std::array installed_deps{
+        "Core game content", "Required by Brassline Grapple Kit", "Update available", "Required by Abyssal Tide",
+        "Requires 2 packages", "Requires 2 packages", "No dependencies", "Cosmetic only"
+    };
+    const int count = app.mods_tab ? int(catalog_names.size()) : int(installed_names.size());
+    Rectangle left = BeginScrollRegion(left_bounds, count*64.0f + 34.0f, app.list_scroll[int(Screen::Mods)]);
+    Label(app.mods_tab ? "20 CATALOG MODS" : "8 INSTALLED PACKAGES",left.x+14,left.y+10);
+    for(int i=0;i<count;i++){
         Rectangle r{left.x+14,left.y+30+i*54.0f,left.width-30,52};
-        const bool incompatible = i==7 || i==12;
-        const char* status = incompatible ? "INCOMPATIBLE" : i==4 ? "UPDATE" : "93% POSITIVE";
-        Row(r,names[i],deps[i],status,i==app.selected_mod);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(GetMousePosition(),r))app.selected_mod=i;
+        const bool incompatible = app.mods_tab && (i==7 || i==12);
+        const char* status = incompatible ? "INCOMPATIBLE" : i==4 ? "UPDATE" : app.mods_tab ? "93% POSITIVE" : "INSTALLED";
+        const char* name = app.mods_tab ? catalog_names[i] : installed_names[i];
+        const char* dep = app.mods_tab ? catalog_deps[i] : installed_deps[i];
+        const int selected = app.mods_tab ? app.selected_mod : app.selected_installed;
+        if (g_mod_sheet.id != 0) {
+            const float cell = float(g_mod_sheet.width) / 5.0f;
+            DrawTexturePro(g_mod_sheet, {cell * float(i % 5), 0, cell, float(g_mod_sheet.height)},
+                           {r.x + 8, r.y + 5, 42, 42}, {0, 0}, 0, WHITE);
+            r.x += 48; r.width -= 48;
+        }
+        Row(r,name,dep,status,i==selected);
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(GetMousePosition(),r)) {
+            if (app.mods_tab) app.selected_mod=i; else app.selected_installed=i;
+        }
     }
     EndScrollRegion();
 
-    Rectangle right = BeginScrollRegion(right_bounds, 560.0f, app.detail_scroll[int(Screen::Mods)]);
-    Label(app.mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE",right.x+18,right.y+16);
-    Text(names[app.selected_mod],right.x+18,right.y+40,25);
-    Text("A substantial content package with carefully integrated rooms, mechanics,\nartwork, and native co-op synchronization.",right.x+18,right.y+80,12,kMuted);
-    Label("COMPATIBILITY & DEPENDENCIES",right.x+18,right.y+136);
-    Row({right.x+14,right.y+156,right.width-30,48},"-> Base Content >= 1.4.0","Core dependency","INSTALLED");
-    Row({right.x+14,right.y+206,right.width-30,48},"-> Underground Rivers >= 2.2.0","Automatic dependency","WILL INSTALL");
-    Label("REQUIRED BY",right.x+18,right.y+270);
-    Row({right.x+14,right.y+290,right.width-30,48},"<- Temple Weather","Dependent package","ACTIVE");
-    Row({right.x+14,right.y+340,right.width-30,48},"<- Pocket Expedition","Dependent package","ACTIVE");
+    Rectangle right = BeginScrollRegion(right_bounds, 600.0f, app.detail_scroll[int(Screen::Mods)]);
+    const int selected = app.mods_tab ? app.selected_mod : app.selected_installed;
+    const char* selected_name = app.mods_tab ? catalog_names[selected] : installed_names[selected];
+    if (g_mod_sheet.id != 0) {
+        const float cell = float(g_mod_sheet.width) / 5.0f;
+        DrawTexturePro(g_mod_sheet, {cell * float(selected % 5), 80, cell, float(g_mod_sheet.height) - 160},
+                       {right.x + 14, right.y + 14, right.width - 30, 112}, {0, 0}, 0, WHITE);
+        DrawRectangleGradientV(int(right.x + 14), int(right.y + 66), int(right.width - 30), 60, BLANK, kPanel);
+    }
+    Label(app.mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE",right.x+18,right.y+136);
+    Text(selected_name,right.x+18,right.y+158,25);
+    Text(app.mods_tab ? "Install from the catalog directly into this session\nor keep it installed for later." :
+         "Manage the installed package, inspect files, update it, or review dependent packages.",right.x+18,right.y+194,12,kMuted);
+    Label("COMPATIBILITY & DEPENDENCIES",right.x+18,right.y+234);
+    Row({right.x+14,right.y+254,right.width-30,48},"-> Base Content >= 1.4.0","Core dependency","INSTALLED");
+    Row({right.x+14,right.y+304,right.width-30,48},"-> Underground Rivers >= 2.2.0","Automatic dependency",app.mods_tab?"WILL INSTALL":"INSTALLED");
+    Label("REQUIRED BY",right.x+18,right.y+368);
+    Row({right.x+14,right.y+388,right.width-30,48},"<- Temple Weather","Dependent package","ACTIVE");
+    Row({right.x+14,right.y+438,right.width-30,48},"<- Pocket Expedition","Dependent package","ACTIVE");
     const bool incompatible = app.selected_mod==7 || app.selected_mod==12;
-    Text(incompatible?"This mod cannot be installed on the current game/API version.":"The full dependency change plan is shown before mutation.",right.x+18,right.y+412,12,incompatible?kDanger:kMuted);
-    Button({right.x+18,right.y+482,220,40},app.mods_tab?"Install & add to session":"Update",true);
-    Button({right.x+246,right.y+482,118,40},app.mods_tab?"Install only":"Open files");
+    Text(incompatible?"This mod cannot be installed on the current game/API version.":"The full dependency change plan is shown before mutation.",right.x+18,right.y+506,12,incompatible?kDanger:kMuted);
+    if(Button({right.x+18,right.y+538,220,40},app.mods_tab?(app.catalog_installed[app.selected_mod]?"Installed":"Install & add to session"):"Update",true)&&app.mods_tab)app.catalog_installed[app.selected_mod]=true;
+    Button({right.x+246,right.y+538,118,40},app.mods_tab?"Install only":"Open files");
     EndScrollRegion();
 }
 
@@ -512,11 +654,13 @@ int main(int argc, char** argv) {
     if (args.benchmark == 0 && args.capture.empty()) window_flags |= FLAG_VSYNC_HINT;
     SetConfigFlags(window_flags);
     InitWindow(args.width,args.height,"Gubsy raygui trial");
-    g_font = LoadFontEx(GUBSY_RAYGUI_FONT_PATH, 64, nullptr, 0);
+    g_font = LoadFontEx(GUBSY_RAYGUI_FONT_PATH, 32, nullptr, 0);
     if (g_font.texture.id != 0) {
         SetTextureFilter(g_font.texture, TEXTURE_FILTER_BILINEAR);
         GuiSetFont(g_font);
     }
+    g_mod_sheet = LoadTexture(GUBSY_RAYGUI_MOD_SHEET_PATH);
+    if (g_mod_sheet.id != 0) SetTextureFilter(g_mod_sheet, TEXTURE_FILTER_BILINEAR);
     MarkWindowUtility("Gubsy raygui trial");
     if (args.benchmark == 0 && args.capture.empty()) {
         const int monitor = 0;
@@ -527,7 +671,7 @@ int main(int argc, char** argv) {
     }
     SetWindowMinSize(720,480);
     SetTargetFPS(args.benchmark > 0 ? 0 : 144);
-    GuiSetStyle(DEFAULT,TEXT_SIZE,args.height>=900?16:13);
+    GuiSetStyle(DEFAULT,TEXT_SIZE,args.height>=900?18:15);
     GuiSetStyle(DEFAULT,BACKGROUND_COLOR,ColorToInt(kPanel));
     GuiSetStyle(DEFAULT,BASE_COLOR_NORMAL,ColorToInt(kPanel2));
     GuiSetStyle(DEFAULT,BORDER_COLOR_NORMAL,ColorToInt(kLine));
@@ -537,7 +681,7 @@ int main(int argc, char** argv) {
     GuiSetStyle(DEFAULT,TEXT_COLOR_FOCUSED,ColorToInt(kText));
     GuiSetStyle(DEFAULT,BASE_COLOR_PRESSED,ColorToInt(kAccent));
     GuiSetStyle(DEFAULT,TEXT_COLOR_PRESSED,ColorToInt(Color{9,25,20,255}));
-    App app;app.screen=Screen(std::clamp(args.screen,0,5));app.benchmark_frames=args.benchmark;app.capture=args.capture;
+    App app;app.screen=Screen(std::clamp(args.screen,0,5));app.play_view=args.play_view;app.benchmark_frames=args.benchmark;app.capture=args.capture;
     while(!WindowShouldClose()){
         for(int i=0;i<6;i++) if(IsKeyPressed(KEY_F1+i)) app.screen=Screen(i);
         const auto start=std::chrono::steady_clock::now();
@@ -549,6 +693,7 @@ int main(int argc, char** argv) {
             std::printf("backend=raygui frames=%d viewport=%dx%d ui_and_render_cpu_ms=%.4f fps_equivalent=%.1f rss_kib=%ld\n",app.frame_index,GetScreenWidth(),GetScreenHeight(),app.ui_ms_total/app.frame_index,1000.0/(app.ui_ms_total/app.frame_index),RssKiB());break;
         }
     }
+    if (g_mod_sheet.id != 0) UnloadTexture(g_mod_sheet);
     if (g_font.texture.id != 0) UnloadFont(g_font);
     CloseWindow();return 0;
 }

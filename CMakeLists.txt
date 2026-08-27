@@ -28,6 +28,12 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf
   COPYONLY
 )
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/mod-sheet-1.png
+  ${CMAKE_CURRENT_BINARY_DIR}/mod-sheet-1.png
+  COPYONLY
+)
 target_compile_definitions(gubsy-raygui-trial PRIVATE
   GUBSY_RAYGUI_FONT_PATH="${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf"
+  GUBSY_RAYGUI_MOD_SHEET_PATH="${CMAKE_CURRENT_BINARY_DIR}/mod-sheet-1.png"
 )
