@@ -1,8 +1,12 @@
 # Gubsy UI kit trials
 
-This workspace compares native UI approaches against the same Gubsy shell
+This repository compares native UI approaches against the same Gubsy shell
 interaction and content target. Visual theming is intentionally secondary to
 layout, control behavior, game embedding, and runtime cost.
+
+All implementations, shared scripts, reference assets, and evaluation results
+live in this single repository so changes can be reviewed and benchmarked as a
+coherent comparison suite.
 
 ## Implementations
 

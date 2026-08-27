@@ -1,7 +1,25 @@
-/dear-imgui/
-/nuklear/
-/raygui/
-/rmlui/
-/vue-reference/
+# Build trees and generated CMake metadata
+**/build/
+**/build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/compile_commands.json
+
+# JavaScript dependencies and bundler output
+**/node_modules/
+**/dist/
+**/.vite/
+**/.cache/
+
+# Runtime and benchmark artifacts
 /evaluation-notes/captures/
-/imgui.ini
+**/imgui.ini
+/raygui/gubsy-raygui-*.png
+*.log
+
+# Local editor and OS files
+.DS_Store
+*.swp
+*.swo
+*~

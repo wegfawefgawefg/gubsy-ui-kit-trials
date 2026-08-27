@@ -1,0 +1,36 @@
+<rml>
+<head>
+  <title>Gubsy RmlUi Design Demo</title>
+  <link type="text/rcss" href="shell.rcss"/>
+</head>
+<body>
+  <div id="shell">
+    <header>
+      <div class="brand-mark">G</div>
+      <div class="brand"><strong>GUBSY SHELL</strong><small>RmlUi native parity experiment</small></div>
+      <div class="status"><i></i> OFFLINE <span></span> VEGA</div>
+      <div class="viewport"><small>NATIVE VIEWPORT</small><strong id="viewport-size">1280 × 720</strong></div>
+    </header>
+    <div class="body-row">
+      <nav>
+        <div class="profile"><b>VE</b><span><small>ACTIVE PROFILE</small>Vega</span></div>
+        <button id="nav-play" data-focus data-action="nav-play"><em>▶</em><span>Play<small>Continue or start</small></span><b>›</b></button>
+        <button id="nav-players" data-focus data-action="nav-players"><em>◆</em><span>Players<small>Profiles &amp; devices</small></span><b>›</b></button>
+        <button id="nav-settings" data-focus data-action="nav-settings"><em>⚙</em><span>Settings<small>Game preferences</small></span><b>›</b></button>
+        <button id="nav-controls" data-focus data-action="nav-controls"><em>⌁</em><span>Controls<small>Bindings &amp; input</small></span><b>›</b></button>
+        <button id="nav-progress" data-focus data-action="nav-progress"><em>▣</em><span>Progress<small>Campaigns &amp; checkpoints</small></span><b>›</b></button>
+        <button id="nav-mods" data-focus data-action="nav-mods"><em>⬡</em><span>Mods<small>Installed content</small></span><b>›</b></button>
+        <div class="nav-spacer"></div>
+        <button class="quit" data-focus data-action="quit"><em>×</em><span>Quit<small>Return to desktop</small></span><b>›</b></button>
+      </nav>
+      <main>
+        <div class="content-heading"><div><p class="eyebrow">SPLONKS / NATIVE</p><h1 id="screen-title">Play lobby</h1></div><span id="controller-status">○ CONNECT CONTROLLER</span></div>
+        <div id="screen-content"></div>
+      </main>
+    </div>
+    <footer>D-pad / left stick &nbsp; Navigate &nbsp;&nbsp; Enter / A &nbsp; Select &nbsp;&nbsp; Esc / B &nbsp; Back &nbsp;&nbsp; LB / RB &nbsp; Local section <span><i></i> Native focus graph active</span></footer>
+    <div id="toast"></div>
+    <div id="modal-root"></div>
+  </div>
+</body>
+</rml>

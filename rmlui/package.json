@@ -1,0 +1,10 @@
+{
+  "name": "gubsy-rmlui-reference-tools",
+  "private": true,
+  "scripts": {
+    "capture:vue": "node tools/capture-vue-references.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.55.0"
+  }
+}
