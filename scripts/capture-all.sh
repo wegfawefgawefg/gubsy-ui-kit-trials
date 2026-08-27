@@ -10,10 +10,14 @@ for trial in dear-imgui raygui nuklear; do
   cmake -S "$workspace_dir/$trial" -B "$workspace_dir/$trial/build" -G Ninja -DCMAKE_BUILD_TYPE=Release
   cmake --build "$workspace_dir/$trial/build"
 done
+cmake -S "$workspace_dir/arbor" -B "$workspace_dir/arbor/build" -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build "$workspace_dir/arbor/build"
 
 for viewport in "${viewports[@]}"; do
   mkdir -p "$output_dir/$viewport"
   for screen in "${screens[@]}"; do
+    "$workspace_dir/arbor/scripts/capture.sh" \
+      "$output_dir/$viewport/arbor-$screen.png" "$screen" "$viewport"
     "$workspace_dir/dear-imgui/build/gubsy-dear-imgui-trial" \
       --resolution "$viewport" --screen "$screen" \
       --capture "$output_dir/$viewport/dear-imgui-$screen.bmp"
@@ -26,4 +30,4 @@ for viewport in "${viewports[@]}"; do
   done
 done
 
-printf 'Captured %d backend/route/viewport frames in %s\n' "$((3 * 6 * 4))" "$output_dir"
+printf 'Captured %d backend/route/viewport frames in %s\n' "$((4 * 6 * 4))" "$output_dir"

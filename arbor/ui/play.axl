@@ -1,0 +1,187 @@
+<import src="components/shell.axl" as="Shell" />
+<component name="PlayTrial" />
+
+<template>
+  <Shell a-model="destination" :controller="controllerStatus">
+    <panel class="page">
+      <label class="eyebrow">SPLONKS / PLAY</label>
+      <label class="title" d-if="playView == 'lobby'">Play</label>
+      <label class="title" d-if="playView == 'checkpoint'">Choose checkpoint</label>
+      <label class="title" d-if="playView == 'rules'">Session settings</label>
+      <label class="title" d-if="playView == 'sessionMods'">Session mods</label>
+
+      <panel class="play-grid" d-if="playView == 'lobby'">
+        <panel class="setup panel-card">
+          <panel class="quest-head">
+            <panel class="quest-art"><label>VR</label></panel>
+            <panel>
+              <label class="eyebrow" d-if="playActivity == 'Continue expedition'">CONTINUE QUEST</label>
+              <label class="eyebrow" d-if="playActivity == 'New expedition'">NEW EXPEDITION</label>
+              <label class="heading">The Violet Reach</label>
+              <label class="muted" d-if="playActivity == 'Continue expedition'">The Glass Caverns - latest checkpoint - Vega</label>
+              <label class="muted" d-if="playActivity == 'New expedition'">Choose a quest and begin at its first stage</label>
+            </panel>
+            <button class="small-button" @click="checkpoint">Quest map</button>
+          </panel>
+          <panel class="setting-row">
+            <panel><label>Activity</label><label class="muted">Continue a checkpoint or start another quest</label></panel>
+            <select class="select" a-model="playActivity">
+              <label>Continue expedition</label><label>New expedition</label>
+            </select>
+          </panel>
+          <button class="setting-row action-row" @click="checkpoint" d-if="playActivity == 'Continue expedition'">
+            <panel><label>Resume point</label><label class="muted">Latest checkpoint - The Violet Reach</label></panel>
+            <label class="link">CHOOSE CHECKPOINT ></label>
+          </button>
+          <button class="setting-row action-row" @click="checkpoint" d-if="playActivity == 'New expedition'">
+            <panel><label>Starting quest</label><label class="muted">The Violet Reach - 12 authored stages</label></panel>
+            <label class="link">CHOOSE QUEST ></label>
+          </button>
+          <panel class="setting-row">
+            <panel><label>Play with</label><label class="muted">Who may occupy the remaining slots</label></panel>
+            <select class="select" a-model="playAccess">
+              <label>Friends can join</label><label>Invite only</label><label>Solo</label><label>Public</label>
+            </select>
+          </panel>
+          <panel class="setting-row">
+            <panel><label>Host using</label><label class="muted">Automatic chooses direct or relay hosting</label></panel>
+            <select class="select" a-model="playHost">
+              <label>Automatic</label><label>Direct</label><label>Relay server</label>
+            </select>
+          </panel>
+          <button class="setting-row action-row" @click="rules">
+            <panel><label>Expedition rules</label><label class="muted">Standard - 4 lives - ghost at 180s</label></panel>
+            <label class="link">EDIT ALL ></label>
+          </button>
+          <button class="setting-row action-row" @click="sessionMods">
+            <panel><label>Session mods</label><label class="muted">7 active - dependency set valid</label></panel>
+            <label class="link">MANAGE ></label>
+          </button>
+          <panel class="actions"><button class="secondary">Pause preview</button><button class="primary">> Resume latest checkpoint</button></panel>
+        </panel>
+        <panel class="party panel-card">
+          <label class="eyebrow">PLAYERS</label><label class="heading">Your party</label>
+          <panel class="player ready"><label>P1   Moss</label><label class="muted">Xbox Wireless Controller</label></panel>
+          <button class="player">+ Open slot</button><button class="player">+ Open slot</button><button class="player">+ Open slot</button>
+          <panel class="actions"><button class="secondary">Invite / copy link</button><button class="secondary">Public games</button></panel>
+          <panel class="meta"><label>CONTENT</label><label>7 mods</label><label>RULESET</label><label>Standard</label><label>NETWORK</label><label>Automatic</label></panel>
+        </panel>
+      </panel>
+
+      <panel class="subview" d-if="playView == 'checkpoint'">
+        <panel class="subhead"><button class="secondary" @click="playBack">&lt; Back to lobby</button><panel><label class="eyebrow">QUEST AND CHECKPOINT PICKER</label><label class="heading">The Violet Reach</label></panel></panel>
+        <panel class="workspace">
+          <panel class="master scroll">
+            <label class="section">QUESTS</label>
+            <button class="record selected" @click="campaignGlass"><label>The Glass Caverns</label><label class="muted">12 stages - 42% explored - selected</label></button>
+            <button class="record" @click="campaignQuiet"><label>A Quiet Beginning</label><label class="muted">8 stages - 11% explored</label></button>
+            <button class="record" @click="campaignOld"><label>Old Expedition</label><label class="muted">Version 0.7 data - incompatible</label></button>
+          </panel>
+          <panel class="detail scroll">
+            <label class="eyebrow">SELECTED QUEST</label><label class="heading">{{ selectedCampaign }}</label>
+            <label class="body">A branching route through caverns, flooded archives, and the relay temple. The map and authored stages are supplied by Splonks.</label>
+            <panel class="map"><label>1 SAFE ROOM  ->  2 FLOODED ARCHIVE  ->  3 TEMPLE DEPTHS</label></panel>
+            <label class="section">CHECKPOINT HISTORY</label>
+            <button class="record"><label>Temple safe room</label><label class="muted">Today, 06:52 - Stage 4 - resume point</label></button>
+            <button class="record"><label>Flooded archive</label><label class="muted">Yesterday - Stage 3 - backup</label></button>
+            <button class="record"><label>Mushroom crossing</label><label class="muted">Aug 24 - Stage 2 - backup</label></button>
+            <panel class="actions"><button class="secondary">Inspect package set</button><button class="primary" @click="playBack">Use selected checkpoint</button></panel>
+          </panel>
+        </panel>
+      </panel>
+
+      <panel class="subview" d-if="playView == 'rules'">
+        <panel class="subhead"><button class="secondary" @click="playBack">&lt; Back to lobby</button><panel><label class="eyebrow">SPLONKS SESSION RULES</label><label class="heading">Expedition settings</label></panel><button class="secondary">Reset mode defaults</button></panel>
+        <panel class="workspace">
+          <panel class="master scroll">
+            <panel class="setting-row"><panel><label>Expedition difficulty</label><label class="muted">Overall danger and resource pressure</label></panel><select class="select" a-model="expeditionDifficulty"><label>Relaxed</label><label>Standard</label><label>Veteran</label></select></panel>
+            <panel class="setting-row"><panel><label>Stage variation</label><label class="muted">How authored rooms are remixed</label></panel><select class="select" a-model="stageVariation"><label>Quest-authored</label><label>Seeded remix</label><label>Fully random</label></select></panel>
+            <panel class="slider-row"><panel class="row-head"><label>Shared lives</label><label class="good">{{ sharedLives }}</label></panel><slider class="slider" a-model="sharedLives" :min="1" :max="9" :step="1" /></panel>
+            <panel class="slider-row"><panel class="row-head"><label>Starting health</label><label class="good">{{ startingHealth }} hearts</label></panel><slider class="slider" a-model="startingHealth" :min="1" :max="8" :step="1" /></panel>
+            <panel class="slider-row"><panel class="row-head"><label>Ghost arrival</label><label class="good">{{ ghostArrival }} sec</label></panel><slider class="slider" a-model="ghostArrival" :min="60" :max="300" :step="10" /></panel>
+            <panel class="setting-row"><panel><label>Shop frequency</label><label class="muted">Merchant room availability</label></panel><select class="select" a-model="shopFrequency"><label>Rare</label><label>Normal</label><label>Frequent</label></select></panel>
+            <panel class="setting-row"><panel><label>Discovered shortcuts</label><label class="muted">Allow unlocked route entrances</label></panel><checkbox class="toggle" a-model="discoveredShortcuts" /></panel>
+            <panel class="setting-row"><panel><label>Shared treasury</label><label class="muted">Combine party currency</label></panel><checkbox class="toggle" a-model="sharedTreasury" /></panel>
+            <panel class="setting-row"><panel><label>Friendly fire</label><label class="muted">Allow party damage</label></panel><checkbox class="toggle" a-model="friendlyFire" /></panel>
+          </panel>
+          <panel class="detail"><label class="eyebrow">SELECTED RULE</label><label class="heading">Session rule editor</label><label class="body">These controls are native Arbor selects, sliders, and checkboxes. Splonks supplies the definitions; Gubsy owns serialization and host synchronization.</label><panel class="context"><label>ACTIVITY</label><label class="cyan">{{ playActivity }}</label><label>AUTHORITY</label><label class="cyan">Lobby host</label><label>SYNCED</label><label class="cyan">Before launch</label></panel></panel>
+        </panel>
+      </panel>
+
+      <panel class="subview" d-if="playView == 'sessionMods'">
+        <panel class="subhead"><button class="secondary" @click="playBack">&lt; Back to lobby</button><panel><label class="eyebrow">SESSION CONTENT SET</label><label class="heading">7 active packages</label></panel><button class="primary" @click="browseMods">Browse and add</button></panel>
+        <panel class="workspace">
+          <panel class="master scroll">
+            <label class="section">CURRENT SET</label>
+            <button class="record selected" @click="modBase"><label>Base Content</label><label class="good">REQUIRED</label></button>
+            <button class="record" @click="modCartographer"><label>Cartographer's Desk</label><label class="good">ACTIVE</label></button>
+            <button class="record" @click="modOldLanterns"><label>Old Lanterns</label><label class="warn">UPDATE</label></button>
+            <button class="record" @click="modUnderground"><label>Underground Rivers</label><label class="good">DEPENDENCY</label></button>
+            <button class="record" @click="modTempleWeather"><label>Temple Weather</label><label class="good">ACTIVE</label></button>
+            <button class="record" @click="modPocket"><label>Pocket Expedition</label><label class="good">ACTIVE</label></button>
+          </panel>
+          <panel class="detail scroll">
+            <label class="eyebrow">SELECTED SESSION PACKAGE</label><label class="heading">{{ selectedMod }}</label>
+            <label class="body">Session membership, compatibility, dependencies, and checkpoint differences are managed together. Installed packages can be added here without a trip through a separate screen.</label>
+            <label class="section">DEPENDENCIES</label>
+            <panel class="dependency"><label>-> Base Content >= 1.4.0</label><label class="good">INSTALLED</label></panel>
+            <panel class="dependency"><label>-> Underground Rivers >= 2.2.0</label><label class="good">ACTIVE</label></panel>
+            <panel class="warning"><label>Checkpoint set differs</label><label class="muted">Review an exact change plan before resuming. Runtime-safe packages may be changed during a session.</label></panel>
+            <panel class="actions"><button class="danger">Remove from session</button><button class="primary" @click="playBack">Apply set</button></panel>
+          </panel>
+        </panel>
+      </panel>
+    </panel>
+  </Shell>
+</template>
+
+<style>
+.page { width: 100%; height: 100%; gap: 5px; }
+.eyebrow { color: #9cf47d; font-size: 10px; line-height: 14px; }
+.title { font-size: 40px; line-height: 46px; }
+.heading { font-size: 20px; line-height: 26px; }
+.section { color: #9cf47d; font-size: 10px; line-height: 18px; }
+.muted { color: #8ea0a2; font-size: 10px; line-height: 14px; }
+.body { color: #b8c4c3; font-size: 12px; line-height: 19px; }
+.good,.link { color: #9cf47d; font-size: 10px; line-height: 14px; }
+.warn { color: #f2cb63; font-size: 10px; line-height: 14px; }
+.cyan { color: #63d9e6; }
+.play-grid { width: 100%; flex-grow: 1; padding: 8px 0px 0px 0px; flex-direction: row; gap: 12px; overflow: hidden; }
+.panel-card { height: 100%; padding: 14px; gap: 8px; background-color: #07171a; border-color: #294047; border-width: 1px; }
+.setup { flex-grow: 1; }
+.party { width: 310px; }
+.quest-head { width: 100%; height: 64px; flex-direction: row; align-items: center; gap: 12px; border-color: #294047; border-width: 1px; }
+.quest-art { width: 48px; height: 42px; align-items: center; justify-content: center; background-color: #39445e; }
+.quest-head > panel { flex-grow: 1; }
+.small-button,.secondary { padding: 9px 12px; background-color: #11252a; color: #c7d3d2; border-color: #385158; border-width: 1px; }
+.setting-row { width: 100%; height: 53px; padding: 8px 8px; flex-direction: row; align-items: center; justify-content: space-between; border-color: #294047; border-width: 1px; background-color: #07171a; color: #e1e9e8; }
+.action-row:focus,.record:focus { background-color: #173025; border-color: #63d9e6; }
+.select { width: 240px; height: 38px; padding: 9px 12px; background-color: #030b0d; color: #e1e9e8; border-color: #385158; border-width: 1px; }
+.select:focus { border-color: #63d9e6; }
+.select > popup { background-color: #0d2024; border-color: #63d9e6; border-width: 1px; }
+.actions { width: 100%; height: 42px; flex-direction: row; gap: 8px; }
+.actions > button { flex-grow: 1; }
+.primary { padding: 10px 14px; background-color: #9cf47d; color: #07100d; border-width: 1px; border-color: #b5ff9b; }
+.danger { padding: 9px 12px; background-color: #241416; color: #ff7777; border-color: #8f4545; border-width: 1px; }
+.player { width: 100%; height: 51px; padding: 9px 12px; background-color: #08191c; color: #dbe5e4; border-color: #294047; border-width: 1px; }
+.ready { background-color: #163329; }
+.meta { width: 100%; padding: 8px 0px; flex-direction: row; justify-content: space-between; color: #8ea0a2; font-size: 9px; line-height: 14px; }
+.subview { width: 100%; flex-grow: 1; gap: 12px; overflow: hidden; }
+.subhead { width: 100%; height: 68px; padding: 10px; flex-direction: row; align-items: center; gap: 16px; overflow: hidden; background-color: #07171a; border-color: #294047; border-width: 1px; }
+.subhead > panel { flex-grow: 1; }
+.workspace { width: 100%; flex-grow: 1; flex-direction: row; gap: 12px; overflow: hidden; }
+.master,.detail { height: 100%; padding: 14px; gap: 8px; background-color: #07171a; border-color: #294047; border-width: 1px; }
+.master { width: 50%; }
+.detail { width: 46%; overflow: hidden; }
+.scroll { overflow: auto; }
+.record { width: 100%; height: 54px; padding: 9px 12px; flex-direction: row; align-items: center; justify-content: space-between; background-color: #08191c; color: #dbe5e4; border-color: #294047; border-width: 1px; }
+.selected { background-color: #163329; border-color: #54895e; }
+.map { width: 100%; height: 100px; padding: 18px; align-items: center; justify-content: center; background-color: #111b30; border-color: #41506b; border-width: 1px; }
+.slider-row { width: 100%; height: 66px; padding: 8px 12px; gap: 5px; border-color: #294047; border-width: 1px; }
+.row-head { width: 100%; flex-direction: row; justify-content: space-between; }
+.slider { width: 100%; height: 22px; background-color: #132a2e; color: #9cf47d; }
+.toggle { width: 52px; height: 30px; background-color: #132a2e; color: #9cf47d; border-color: #54895e; border-width: 1px; }
+.context { width: 100%; padding: 12px; gap: 8px; border-color: #294047; border-width: 1px; }
+.dependency { width: 100%; height: 44px; padding: 10px; flex-direction: row; justify-content: space-between; border-color: #294047; border-width: 1px; }
+.warning { width: 100%; padding: 12px; gap: 4px; background-color: #291b13; border-color: #a05e34; border-width: 1px; }
+</style>

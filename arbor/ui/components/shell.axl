@@ -1,0 +1,49 @@
+<component name="Shell">
+  <property name="active" type="string" />
+  <property name="controller" type="string" />
+  <event name="navigate" type="string" />
+</component>
+<template>
+  <panel class="shell">
+    <panel class="topbar">
+      <panel class="brand-mark"><label>G</label></panel>
+      <panel class="brand-copy"><label class="brand">G U B S Y  S H E L L</label><label class="tiny">Arbor retained UI trial</label></panel>
+      <panel class="top-spacer" />
+      <label class="status">*  OFFLINE    |    VEGA</label>
+      <label class="viewport">NATIVE VIEWPORT</label>
+    </panel>
+    <panel class="shell-body">
+      <panel class="sidebar">
+        <panel class="profile"><panel class="avatar"><label>VE</label></panel><panel><label class="tiny">ACTIVE PROFILE</label><label>Vega</label></panel></panel>
+        <tabs-root class="primary-nav" :value="active" @change="navigate">
+          <button class="nav-button tabs-trigger" value="play">>  Play</button>
+          <button class="nav-button tabs-trigger" value="players">+  Players</button>
+          <button class="nav-button tabs-trigger" value="settings">*  Settings</button>
+          <button class="nav-button tabs-trigger" value="controls">~  Controls</button>
+          <button class="nav-button tabs-trigger" value="progress">#  Progress</button>
+          <button class="nav-button tabs-trigger" value="mods">o  Mods</button>
+        </tabs-root>
+        <panel class="side-spacer" />
+        <button class="quit">x  Quit</button>
+      </panel>
+      <panel class="content"><slot /></panel>
+    </panel>
+    <panel class="footer"><label>up/down  Navigate    Enter / A  Select    Esc / B  Back    LB / RB  Local section</label><panel class="top-spacer" /><label>{{ controller }}</label></panel>
+  </panel>
+</template>
+<style scoped>
+.shell { width: 100%; height: 100%; overflow: hidden; background-color: #050d10; color: #dbe5e4; }
+.topbar { width: 100%; height: 58px; padding: 8px 18px; flex-direction: row; align-items: center; gap: 12px; border-color: #24363b; border-width: 1px; }
+.brand-mark { width: 34px; height: 34px; align-items: center; justify-content: center; background-color: #9cf47d; color: #07100d; }
+.brand-copy { gap: 1px; }.brand { font-size: 12px; line-height: 16px; }.tiny { color: #819497; font-size: 9px; line-height: 12px; }
+.top-spacer, .side-spacer { flex-grow: 1; }.status { margin: 0px 34px 0px 0px; font-size: 11px; line-height: 16px; }.viewport { color: #63d9e6; font-size: 9px; line-height: 12px; }
+.shell-body { width: 100%; flex-grow: 1; flex-direction: row; overflow: hidden; }
+.sidebar { width: 244px; height: 100%; padding: 16px 14px; gap: 12px; border-color: #24363b; border-width: 1px; }
+.profile { width: 100%; height: 64px; padding: 8px; flex-direction: row; align-items: center; gap: 10px; border-color: #24363b; border-width: 1px; }
+.avatar { width: 38px; height: 38px; align-items: center; justify-content: center; border-color: #63d9e6; border-width: 1px; color: #63d9e6; }
+.primary-nav { width: 100%; gap: 3px; }.nav-button { width: 100%; height: 53px; padding: 15px 14px; color: #aebdbc; background-color: #061114; border-width: 3px; border-color: #061114; font-size: 14px; line-height: 20px; }
+.nav-button:selected { color: #e9f2f0; background-color: #173025; border-color: #9cf47d; }.nav-button:focus { border-color: #63d9e6; background-color: #18333a; }
+.quit { width: 100%; height: 44px; padding: 11px 14px; color: #d9e2e1; background-color: #061114; border-color: #24363b; border-width: 1px; }
+.content { width: 70%; height: 100%; flex-grow: 1; padding: 26px 32px; overflow: hidden; }
+.footer { width: 100%; height: 28px; padding: 6px 18px; flex-direction: row; color: #819497; border-color: #24363b; border-width: 1px; font-size: 9px; line-height: 12px; }
+</style>

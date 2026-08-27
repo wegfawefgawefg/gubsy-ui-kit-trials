@@ -1,0 +1,15 @@
+Measured 2026-08-27, release build, 1,200 sampled frames after 120 warmup frames.
+Every sampled frame changes one visible model binding.
+
+viewport=1280x720 screen=play ui_total_mean_ms=0.3242 ui_total_p95_ms=0.4020 frame_mean_ms=0.4506 frame_p95_ms=0.7693 frame_max_ms=2.8381 rss_kib=100608 startup_ready_ms=190.6112
+viewport=1280x720 screen=mods ui_total_mean_ms=0.5444 ui_total_p95_ms=0.5742 frame_mean_ms=0.6708 frame_p95_ms=1.0007 frame_max_ms=2.5203 rss_kib=101100 startup_ready_ms=170.0635
+viewport=1920x1080 screen=play ui_total_mean_ms=0.3921 ui_total_p95_ms=0.4928 frame_mean_ms=0.5338 frame_p95_ms=0.8580 frame_max_ms=2.3157 rss_kib=100168 startup_ready_ms=187.1948
+viewport=1920x1080 screen=mods ui_total_mean_ms=0.6743 ui_total_p95_ms=0.8361 frame_mean_ms=0.8119 frame_p95_ms=1.1208 frame_max_ms=2.9234 rss_kib=100552 startup_ready_ms=195.7795
+
+release_executable_bytes=3930080
+resident_hide_mean_ms=0.0000
+resident_show_mean_ms=0.0000
+
+The startup figure includes SDL initialization, Vulkan/SDL_GPU setup, font
+loading, and preparation of all six route documents. RSS is the full process,
+not the size of an Arbor object or document.

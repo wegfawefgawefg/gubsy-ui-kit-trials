@@ -1,0 +1,16 @@
+<component name="Tabs">
+  <property name="active" type="string" />
+  <event name="change" type="string" />
+</component>
+<template>
+  <tabs-root class="local-tabs" :value="active" @change="change">
+    <slot />
+  </tabs-root>
+</template>
+<style>
+.local-tabs { width: 100%; height: 100%; gap: 10px; }
+.tab-row { width: 100%; height: 42px; flex-direction: row; gap: 4px; border-color: #284047; border-width: 1px; }
+.tab { height: 41px; padding: 9px 16px; color: #92a6a9; background-color: #071417; border-width: 2px; border-color: #071417; font-size: 13px; line-height: 18px; }
+.tab:selected { color: #e7f0ef; background-color: #12252a; border-color: #9cf47d; }
+.tab:focus { border-color: #63d9e6; }
+</style>

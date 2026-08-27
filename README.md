@@ -12,6 +12,7 @@ coherent comparison suite.
 
 - `vue-reference/` — browser design/reference prototype.
 - `rmlui/` — retained HTML/CSS-like native implementation on SDL3 + SDL_GPU.
+- `arbor/` — retained AXL/Yoga implementation on SDL3 + SDL_GPU.
 - `dear-imgui/` — immediate-mode implementation on SDL3 + SDL_GPU.
 - `raygui/` — immediate-mode implementation on raylib.
 - `nuklear/` — immediate-mode implementation using Nuklear.
@@ -26,6 +27,7 @@ centered 1280x720 utility window by default:
 
 ```sh
 ./scripts/run.sh rmlui
+./scripts/run.sh arbor
 ./scripts/run.sh dear-imgui
 ./scripts/run.sh raygui
 ./scripts/run.sh nuklear
