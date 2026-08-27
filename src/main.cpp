@@ -235,10 +235,12 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
     std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
     return 1;
   }
+  SDL_SetGamepadEventsEnabled(true);
 
   SDL_WindowFlags flags =
       SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_UTILITY;
@@ -407,14 +409,32 @@ int main(int argc, char **argv) {
   Timings timings;
   BenchmarkSamples benchmark_samples;
   std::vector<SDL_Gamepad *> gamepads;
+  auto refresh_gamepad_status = [&]() {
+    const char *name =
+        gamepads.empty() ? "" : SDL_GetGamepadName(gamepads.front());
+    app->SetGamepadStatus(static_cast<int>(gamepads.size()),
+                          name ? name : "Gamepad");
+  };
   int gamepad_count = 0;
   if (SDL_JoystickID *ids = SDL_GetGamepads(&gamepad_count)) {
     for (int i = 0; i < gamepad_count; ++i) {
-      if (SDL_Gamepad *gamepad = SDL_OpenGamepad(ids[i]))
+      if (std::any_of(gamepads.begin(), gamepads.end(), [&](SDL_Gamepad *pad) {
+            return SDL_GetGamepadID(pad) == ids[i];
+          }))
+        continue;
+      if (SDL_Gamepad *gamepad = SDL_OpenGamepad(ids[i])) {
         gamepads.push_back(gamepad);
+        std::fprintf(stderr, "Opened gamepad %u: %s (%s)\n",
+                     SDL_GetGamepadID(gamepad), SDL_GetGamepadName(gamepad),
+                     SDL_GetGamepadPath(gamepad));
+      } else {
+        std::fprintf(stderr, "Could not open gamepad %u: %s\n", ids[i],
+                     SDL_GetError());
+      }
     }
     SDL_free(ids);
   }
+  refresh_gamepad_status();
   while (running) {
     const auto frame_start = Clock::now();
     SDL_Event event;
@@ -423,8 +443,19 @@ int main(int argc, char **argv) {
       if (event.type == SDL_EVENT_QUIT)
         running = false;
       if (event.type == SDL_EVENT_GAMEPAD_ADDED) {
-        if (SDL_Gamepad *gamepad = SDL_OpenGamepad(event.gdevice.which))
-          gamepads.push_back(gamepad);
+        const bool already_open = std::any_of(
+            gamepads.begin(), gamepads.end(), [&](SDL_Gamepad *pad) {
+              return SDL_GetGamepadID(pad) == event.gdevice.which;
+            });
+        if (!already_open) {
+          if (SDL_Gamepad *gamepad = SDL_OpenGamepad(event.gdevice.which)) {
+            gamepads.push_back(gamepad);
+            std::fprintf(stderr, "Opened gamepad %u: %s (%s)\n",
+                         SDL_GetGamepadID(gamepad), SDL_GetGamepadName(gamepad),
+                         SDL_GetGamepadPath(gamepad));
+            refresh_gamepad_status();
+          }
+        }
       }
       if (event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         auto it = std::find_if(
@@ -434,6 +465,7 @@ int main(int argc, char **argv) {
         if (it != gamepads.end()) {
           SDL_CloseGamepad(*it);
           gamepads.erase(it);
+          refresh_gamepad_status();
         }
       }
       if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F1)

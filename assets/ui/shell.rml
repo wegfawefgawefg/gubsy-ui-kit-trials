@@ -24,7 +24,7 @@
         <button class="quit" data-focus data-action="quit"><em>×</em><span>Quit<small>Return to desktop</small></span><b>›</b></button>
       </nav>
       <main>
-        <div class="content-heading"><div><p class="eyebrow">SPLONKS / NATIVE</p><h1 id="screen-title">Play lobby</h1></div><span>⌁ CONTROLLER NAVIGATION</span></div>
+        <div class="content-heading"><div><p class="eyebrow">SPLONKS / NATIVE</p><h1 id="screen-title">Play lobby</h1></div><span id="controller-status">○ CONNECT CONTROLLER</span></div>
         <div id="screen-content"></div>
       </main>
     </div>

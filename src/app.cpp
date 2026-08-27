@@ -279,6 +279,17 @@ void GubsyApp::SetProviderState(int index) {
   MarkDirty();
 }
 
+void GubsyApp::SetGamepadStatus(int count, const std::string &name) {
+  if (!document_)
+    return;
+  if (Rml::Element *status = document_->GetElementById("controller-status")) {
+    if (count > 0)
+      status->SetInnerRML("● CONTROLLER · " + escape_attribute(name));
+    else
+      status->SetInnerRML("○ CONNECT CONTROLLER");
+  }
+}
+
 bool GubsyApp::RunSelfTest() {
   auto click = [&](const char *action) {
     Rml::ElementList candidates;

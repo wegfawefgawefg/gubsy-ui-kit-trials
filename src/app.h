@@ -23,6 +23,7 @@ public:
   void SetViewport(int width, int height);
   void SelectToolScreen(int index);
   void SetProviderState(int index);
+  void SetGamepadStatus(int count, const std::string &name);
   bool HandleSdlEvent(const SDL_Event &event);
   bool RunSelfTest();
   void ProcessEvent(Rml::Event &event) override;

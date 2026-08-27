@@ -71,9 +71,9 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .open-slot { color: #9df181; border-color: #365549; }
 .open-slot span { margin-left: 13dp; color: #dce7e7; }
 .pair .button { min-width: 0; flex: 1; padding: 9dp; font-size: 11dp; }
-.summary { margin-top: 12dp; padding-top: 10dp; border-top: 1dp #26383b; }
-.summary dt { float: left; clear: left; color: #738789; font-size: 10dp; letter-spacing: 1dp; }
-.summary dd { margin-left: 100dp; text-align: right; font-size: 10dp; }
+.summary { margin-top: 12dp; padding-top: 10dp; overflow: hidden; border-top: 1dp #26383b; }
+.summary dt { width: 50%; float: left; clear: left; color: #738789; font-size: 10dp; letter-spacing: 1dp; }
+.summary dd { width: 50%; float: left; margin: 0; text-align: right; font-size: 10dp; }
 .mobile-local-tabs { display: none; }
 .local-tabs { height: 44dp; flex: none; display: flex; align-items: stretch; margin-bottom: 12dp; border-bottom: 1dp #2b4145; }
 .local-tabs button { border: 0; border-bottom: 2dp transparent; background: transparent; }
