@@ -59,6 +59,7 @@ main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: colu
 .select-button { min-width: 190dp; text-align: left; }
 .button.compact { padding: 10dp 12dp; }
 .button.primary { color: #07110a; border-color: #9df181; background-color: #9df181; }
+.button.primary:focus { color: #ffffff; border: 2dp #75dce6; background-color: #4d8a52; }
 .actions, .pair { display: flex; gap: 8dp; padding-top: 10dp; }
 .actions .primary { margin-left: auto; }
 .panel-heading { display: flex; align-items: center; }

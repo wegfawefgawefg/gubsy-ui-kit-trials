@@ -538,6 +538,34 @@ bool GubsyApp::RunSelfTest() {
             "data-action", "") != expected)
       return false;
   }
+  Rml::Element *session_mods = context_->GetFocusElement();
+  NavigateFocus(1, 0);
+  if (context_->GetFocusElement() != session_mods)
+    return false;
+  NavigateFocus(-1, 0);
+  if (context_->GetFocusElement() != document_->GetElementById("nav-play"))
+    return false;
+
+  Rml::Element *resume =
+      document_->QuerySelector("[data-action='start-session']");
+  Rml::Element *pause =
+      document_->QuerySelector("[data-action='pause-preview']");
+  if (!resume || !pause)
+    return false;
+  resume->Focus(true);
+  NavigateFocus(-1, 0);
+  if (context_->GetFocusElement() != pause)
+    return false;
+
+  Rml::Element *open_slot =
+      document_->QuerySelector("[data-action='add-player']");
+  if (!open_slot)
+    return false;
+  open_slot->Focus(true);
+  NavigateFocus(1, 0);
+  if (context_->GetFocusElement() != open_slot)
+    return false;
+
   Rml::Element *host_control =
       document_->QuerySelector("[data-action='play-value-host']");
   host_control->Focus(true);
@@ -1014,8 +1042,12 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
       return static_cast<Rml::Element *>(nullptr);
     const Rml::Vector2f current_position =
         origin->GetAbsoluteOffset(Rml::BoxArea::Border);
-    const float cx = current_position.x + origin->GetOffsetWidth() * 0.5f;
-    const float cy = current_position.y + origin->GetOffsetHeight() * 0.5f;
+    const float current_left = current_position.x;
+    const float current_top = current_position.y;
+    const float current_right = current_left + origin->GetOffsetWidth();
+    const float current_bottom = current_top + origin->GetOffsetHeight();
+    const float cx = (current_left + current_right) * 0.5f;
+    const float cy = (current_top + current_bottom) * 0.5f;
     Rml::Element *best = nullptr;
     float best_score = std::numeric_limits<float>::max();
     for (Rml::Element *candidate : pool) {
@@ -1023,16 +1055,31 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
         continue;
       const Rml::Vector2f position =
           candidate->GetAbsoluteOffset(Rml::BoxArea::Border);
-      const float x = position.x + candidate->GetOffsetWidth() * 0.5f;
-      const float y = position.y + candidate->GetOffsetHeight() * 0.5f;
+      const float left = position.x;
+      const float top = position.y;
+      const float right = left + candidate->GetOffsetWidth();
+      const float bottom = top + candidate->GetOffsetHeight();
+      const float x = (left + right) * 0.5f;
+      const float y = (top + bottom) * 0.5f;
       const float delta_x = x - cx;
       const float delta_y = y - cy;
       const float forward = delta_x * dx + delta_y * dy;
       if (forward <= 1.0f)
         continue;
+      const float cross_overlap =
+          dx != 0 ? std::min(current_bottom, bottom) -
+                        std::max(current_top, top)
+                  : std::min(current_right, right) -
+                        std::max(current_left, left);
+      if (cross_overlap <= 1.0f)
+        continue;
+      const float forward_gap =
+          dx > 0   ? std::max(0.0f, left - current_right)
+          : dx < 0 ? std::max(0.0f, current_left - right)
+          : dy > 0 ? std::max(0.0f, top - current_bottom)
+                   : std::max(0.0f, current_top - bottom);
       const float lateral = std::abs(delta_x * dy - delta_y * dx);
-      const float score =
-          forward + lateral * 3.0f + lateral * lateral / forward;
+      const float score = forward_gap * 4.0f + lateral;
       if (score < best_score) {
         best_score = score;
         best = candidate;
@@ -1117,7 +1164,12 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     if (enter_content && main) {
       Rml::ElementList content;
       main->QuerySelectorAll(content, "[data-focus]");
-      focus(geometric_target(current, content));
+      for (Rml::Element *candidate : content) {
+        if (is_visible_focus(candidate)) {
+          focus(candidate);
+          break;
+        }
+      }
     }
     return;
   }
