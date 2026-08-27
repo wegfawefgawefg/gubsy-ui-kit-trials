@@ -1,6 +1,6 @@
 # Vue reference captures
 
-Generated from `/home/vega/Coding/GameDev/gubsy-ui-design-demo` by
+Generated from [`vue-reference`](../../../vue-reference) by
 `tools/capture-vue-references.mjs`.
 
 The matrix contains seventeen representative views in each directory:

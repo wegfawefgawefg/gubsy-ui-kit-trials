@@ -1,7 +1,7 @@
 # Gubsy RmlUi Design Demo
 
 Native FOSS feasibility experiment for reproducing the approved
-[`gubsy-ui-design-demo`](../gubsy-ui-design-demo) interaction and layout in a
+[`vue-reference`](../vue-reference) interaction and layout in a
 C++ game process.
 
 This repository deliberately starts as a direct SDL integration, not a general
