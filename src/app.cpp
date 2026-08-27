@@ -466,16 +466,23 @@ bool GubsyApp::RunSelfTest() {
   if (state_.setting_values["fullscreen"] != "false" ||
       std::abs(settings_scroll->GetScrollTop() - settings_scroll_before) > 0.5f)
     return false;
+  SDL_Event activate{};
+  activate.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  activate.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
   brightness->Focus(true);
+  if (!HandleSdlEvent(activate) || !controller_editing_)
+    return false;
   SDL_Event adjust_range{};
   adjust_range.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
   adjust_range.gbutton.button = SDL_GAMEPAD_BUTTON_DPAD_RIGHT;
   if (!HandleSdlEvent(adjust_range) ||
       state_.setting_values["brightness"] != "78")
     return false;
+  if (!HandleSdlEvent(activate) || controller_editing_)
+    return false;
   resolution->Focus(true);
   if (!HandleSdlEvent(adjust_range) ||
-      state_.setting_values["resolution"] != "1920 × 1080")
+      state_.setting_values["resolution"] != "1280 × 720")
     return false;
 
   SelectToolScreen(13);
@@ -491,13 +498,14 @@ bool GubsyApp::RunSelfTest() {
   if (!look || !curve || !invert)
     return false;
   look->Focus(true);
+  if (!HandleSdlEvent(activate) || !controller_editing_)
+    return false;
   if (!HandleSdlEvent(adjust_range) ||
       state_.tuning_values["look-sensitivity"] != "46")
     return false;
+  if (!HandleSdlEvent(activate) || controller_editing_)
+    return false;
   curve->Focus(true);
-  SDL_Event activate{};
-  activate.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
-  activate.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
   if (!HandleSdlEvent(activate) || !curve->IsSelectBoxVisible())
     return false;
   SDL_Event choose_next{};
@@ -510,6 +518,59 @@ bool GubsyApp::RunSelfTest() {
     return false;
   invert->Focus(true);
   if (!HandleSdlEvent(activate) || state_.tuning_values["invert-y"] != "true")
+    return false;
+
+  SelectToolScreen(0);
+  Update();
+  context_->Update();
+  Rml::Element *activity_control =
+      document_->QuerySelector("[data-action='play-value-activity']");
+  if (!activity_control)
+    return false;
+  activity_control->Focus(true);
+  constexpr const char *lobby_down_sequence[]{
+      "play-quest", "play-value-access", "play-value-host", "play-rules",
+      "play-mods"};
+  for (const char *expected : lobby_down_sequence) {
+    NavigateFocus(0, 1);
+    if (!context_->GetFocusElement() ||
+        context_->GetFocusElement()->GetAttribute<Rml::String>(
+            "data-action", "") != expected)
+      return false;
+  }
+  Rml::Element *host_control =
+      document_->QuerySelector("[data-action='play-value-host']");
+  host_control->Focus(true);
+  SDL_Event controller_back{};
+  controller_back.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+  controller_back.gbutton.button = SDL_GAMEPAD_BUTTON_EAST;
+  if (!HandleSdlEvent(controller_back) ||
+      context_->GetFocusElement() != document_->GetElementById("nav-play"))
+    return false;
+
+  SelectToolScreen(2);
+  Update();
+  context_->Update();
+  Rml::Element *shared_lives =
+      document_->QuerySelector("[data-action='rule-value-shared-lives']");
+  if (!shared_lives)
+    return false;
+  shared_lives->Focus(true);
+  NavigateFocus(0, 1);
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "rule-value-starting-health")
+    return false;
+  NavigateFocus(0, -1);
+  if (context_->GetFocusElement() != shared_lives)
+    return false;
+  const std::string lives_before_cancel =
+      state_.rule_values["shared-lives"];
+  if (!HandleSdlEvent(activate) || !controller_editing_ ||
+      !HandleSdlEvent(adjust_range) ||
+      state_.rule_values["shared-lives"] == lives_before_cancel ||
+      !HandleSdlEvent(controller_back) || controller_editing_ ||
+      state_.rule_values["shared-lives"] != lives_before_cancel)
     return false;
 
   SelectToolScreen(0);
@@ -840,17 +901,20 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
           select->HideSelectBox();
         else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST)
           select->CancelSelectBox();
+        controller_editing_ = false;
+        select->SetClass("controller-editing", false);
         return true;
       }
     }
-    if ((event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
-         event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) &&
-        context_->GetFocusElement()) {
+    if (controller_editing_ && context_->GetFocusElement()) {
+      auto *input = dynamic_cast<Rml::ElementFormControlInput *>(
+          context_->GetFocusElement());
+      if (!input || input->GetAttribute<Rml::String>("type", "") != "range") {
+        controller_editing_ = false;
+      } else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
+                 event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
       const int direction =
           event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT ? 1 : -1;
-      if (auto *input = dynamic_cast<Rml::ElementFormControlInput *>(
-              context_->GetFocusElement());
-          input && input->GetAttribute<Rml::String>("type", "") == "range") {
         const float minimum = input->GetAttribute<float>("min", 0.0f);
         const float maximum = input->GetAttribute<float>("max", 100.0f);
         const float step = input->GetAttribute<float>("step", 1.0f);
@@ -860,17 +924,20 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
         input->SetValue(std::to_string(value));
         input->DispatchEvent(Rml::EventId::Change, {});
         return true;
-      }
-      if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(
-              context_->GetFocusElement())) {
-        const int count = select->GetNumOptions();
-        if (count > 0) {
-          const int next = (select->GetSelection() + direction + count) % count;
-          select->SetSelection(next);
-          select->DispatchEvent(Rml::EventId::Change, {});
-        }
+      } else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_SOUTH) {
+        controller_editing_ = false;
+        input->SetClass("controller-editing", false);
+        SetToast("Value accepted");
+        return true;
+      } else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST) {
+        input->SetValue(controller_edit_original_value_);
+        input->DispatchEvent(Rml::EventId::Change, {});
+        controller_editing_ = false;
+        input->SetClass("controller-editing", false);
+        SetToast("Edit cancelled");
         return true;
       }
+      return true;
     }
     switch (event.gbutton.button) {
     case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
@@ -889,7 +956,11 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
       ActivateFocus();
       return true;
     case SDL_GAMEPAD_BUTTON_EAST:
-      Back();
+      if (Rml::Element *main = document_->QuerySelector("main");
+          main && is_descendant_of(context_->GetFocusElement(), main))
+        FocusActiveNavigation();
+      else
+        Back();
       return true;
     case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
       HandleAction("local-tab-prev");
@@ -1099,6 +1170,35 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
                          return !is_visible_focus(element);
                        }),
         content.end());
+    if (dy != 0) {
+      Rml::Element *focus_group = ancestor_with_class(current, "scroll-body");
+      if (!focus_group)
+        focus_group = ancestor_with_class(current, "setup-pane");
+      if (!focus_group)
+        focus_group = ancestor_with_class(current, "party-pane");
+      if (!focus_group)
+        focus_group = ancestor_with_class(current, "detail");
+      if (!focus_group)
+        focus_group = ancestor_with_class(current, "master-list");
+      if (focus_group) {
+        Rml::ElementList ordered;
+        focus_group->QuerySelectorAll(ordered, "[data-focus]");
+        ordered.erase(
+            std::remove_if(ordered.begin(), ordered.end(),
+                           [](Rml::Element *element) {
+                             return !is_visible_focus(element);
+                           }),
+            ordered.end());
+        const auto it = std::find(ordered.begin(), ordered.end(), current);
+        if (it != ordered.end()) {
+          const int index = static_cast<int>(it - ordered.begin());
+          const int next = index + (dy > 0 ? 1 : -1);
+          if (next >= 0 && next < static_cast<int>(ordered.size()))
+            focus(ordered[next]);
+          return;
+        }
+      }
+    }
     if (Rml::Element *best = geometric_target(current, content))
       focus(best);
     else if ((!compact_horizontal_nav && dx < 0) ||
@@ -1115,21 +1215,64 @@ void GubsyApp::ActivateFocus() {
   if (!focus)
     return;
   if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(focus)) {
-    if (select->IsSelectBoxVisible())
+    if (select->IsSelectBoxVisible()) {
       select->HideSelectBox();
-    else
+      controller_editing_ = false;
+      select->SetClass("controller-editing", false);
+    } else {
+      controller_editing_ = true;
+      controller_edit_original_value_ = select->GetValue();
+      select->SetClass("controller-editing", true);
       select->ShowSelectBox();
+    }
     return;
   }
   if (auto *input = dynamic_cast<Rml::ElementFormControlInput *>(focus);
-      input && input->GetAttribute<Rml::String>("type", "") == "checkbox") {
-    if (input->HasAttribute("checked"))
-      input->RemoveAttribute("checked");
-    else
-      input->SetAttribute("checked", "checked");
-    return;
+      input) {
+    const Rml::String type = input->GetAttribute<Rml::String>("type", "");
+    if (type == "checkbox") {
+      if (input->HasAttribute("checked"))
+        input->RemoveAttribute("checked");
+      else
+        input->SetAttribute("checked", "checked");
+      return;
+    }
+    if (type == "range") {
+      controller_editing_ = true;
+      controller_edit_original_value_ = input->GetValue();
+      input->SetClass("controller-editing", true);
+      SetToast("Adjust with left / right · A accept · B cancel");
+      return;
+    }
   }
   focus->Click();
+}
+
+void GubsyApp::FocusActiveNavigation() {
+  const char *id = "nav-play";
+  switch (state_.destination) {
+  case Destination::Players:
+    id = "nav-players";
+    break;
+  case Destination::Settings:
+    id = "nav-settings";
+    break;
+  case Destination::Controls:
+    id = "nav-controls";
+    break;
+  case Destination::Progress:
+    id = "nav-progress";
+    break;
+  case Destination::Mods:
+    id = "nav-mods";
+    break;
+  case Destination::Play:
+    break;
+  }
+  if (Rml::Element *element = document_->GetElementById(id)) {
+    element->Focus(true);
+    element->ScrollIntoView(false);
+  }
 }
 
 void GubsyApp::Back() {

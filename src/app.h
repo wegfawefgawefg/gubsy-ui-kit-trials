@@ -115,6 +115,8 @@ private:
   double toast_until_ = 0.0;
   int controller_x_latch_ = 0;
   int controller_y_latch_ = 0;
+  bool controller_editing_ = false;
+  std::string controller_edit_original_value_;
   std::string pending_focus_action_;
 
   void MarkDirty();
@@ -123,6 +125,7 @@ private:
   void HandleAction(const std::string &action);
   void NavigateFocus(int dx, int dy);
   void ActivateFocus();
+  void FocusActiveNavigation();
   void Back();
   void SetToast(std::string message);
 
