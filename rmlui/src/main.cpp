@@ -1,6 +1,10 @@
 #include "RmlUi_Platform_SDL.h"
 #include "RmlUi_Renderer_SDL_GPU.h"
 #include "app.h"
+#include "benchmark.h"
+#include "gamepads.h"
+#include "native_assets.h"
+#include "trial_options.h"
 
 #include <RmlUi/Core.h>
 #include <SDL3/SDL.h>
@@ -9,232 +13,31 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlgpu3.h>
 
-#include <array>
-#include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
-#include <fstream>
 #include <memory>
-#include <numeric>
 #include <string>
-#include <string_view>
 #include <vector>
 
-namespace {
-
-using Clock = std::chrono::steady_clock;
-
-struct Timings {
-  double update_ms = 0.0;
-  double render_record_ms = 0.0;
-  double submit_ms = 0.0;
-  double gpu_complete_ms = 0.0;
-  double frame_ms = 0.0;
-};
-
-struct BenchmarkSamples {
-  std::vector<double> update;
-  std::vector<double> render_record;
-  std::vector<double> submit;
-  std::vector<double> gpu_complete;
-  std::vector<double> frame;
-
-  void Add(const Timings &value) {
-    update.push_back(value.update_ms);
-    render_record.push_back(value.render_record_ms);
-    submit.push_back(value.submit_ms);
-    gpu_complete.push_back(value.gpu_complete_ms);
-    frame.push_back(value.frame_ms);
-  }
-};
-
-struct Resolution {
-  const char *label;
-  int width;
-  int height;
-};
-
-constexpr std::array<Resolution, 6> kResolutions{{
-    {"1920 x 1080", 1920, 1080},
-    {"1280 x 720", 1280, 720},
-    {"Tablet 1024 x 768", 1024, 768},
-    {"Phone landscape 915 x 412", 915, 412},
-    {"Phone landscape 844 x 390", 844, 390},
-    {"Phone portrait 412 x 915", 412, 915},
-}};
-
-constexpr std::array<const char *, 17> kTargetScreens{{
-    "Play lobby",
-    "Quest picker",
-    "Session settings",
-    "Session mods",
-    "Players / Local",
-    "Players / Profiles",
-    "Players / Devices",
-    "Settings / Display",
-    "Settings / Audio",
-    "Settings / Accessibility",
-    "Settings / Gameplay",
-    "Controls / Bindings",
-    "Controls / Devices",
-    "Controls / Input tuning",
-    "Progress",
-    "Mods / Installed",
-    "Mods / Catalog",
-}};
-constexpr std::array<const char *, 4> kProviderStates{{
-    "Populated",
-    "Empty",
-    "Loading",
-    "Error",
-}};
-
-double milliseconds(Clock::time_point start, Clock::time_point end) {
-  return std::chrono::duration<double, std::milli>(end - start).count();
-}
-
-long read_rss_kib() {
-  std::ifstream status("/proc/self/status");
-  std::string key;
-  while (status >> key) {
-    if (key == "VmRSS:") {
-      long value = 0;
-      status >> value;
-      return value;
-    }
-    std::string ignored;
-    std::getline(status, ignored);
-  }
-  return -1;
-}
-
-void print_metric(const char *name, std::vector<double> values) {
-  if (values.empty())
-    return;
-  std::sort(values.begin(), values.end());
-  const double mean = std::accumulate(values.begin(), values.end(), 0.0) /
-                      static_cast<double>(values.size());
-  const size_t p50_index = static_cast<size_t>((values.size() - 1) * 0.50);
-  const size_t p95_index = static_cast<size_t>((values.size() - 1) * 0.95);
-  const size_t p99_index = static_cast<size_t>((values.size() - 1) * 0.99);
-  std::printf("  \"%s\": {\"mean_ms\": %.4f, \"p50_ms\": %.4f, \"p95_ms\": "
-              "%.4f, \"p99_ms\": %.4f, \"max_ms\": %.4f}",
-              name, mean, values[p50_index], values[p95_index],
-              values[p99_index], values.back());
-}
-
-void print_help(const char *executable) {
-  std::printf(
-      "Usage: %s [--resolution WIDTHxHEIGHT] [--hidden] [--frames N]\n"
-      "\n"
-      "F1 toggles the native experiment panel. Escape exits.\n"
-      "--screen N selects one of the 17 committed reference targets.\n"
-      "--no-tools starts without the ImGui experiment panel.\n"
-      "--benchmark N runs N uncapped frames and prints timing JSON.\n"
-      "--capture FILE renders offscreen and writes a PNG without showing a "
-      "window.\n"
-      "--frames is useful for automated smoke runs under a display server.\n",
-      executable);
-}
-
-bool parse_resolution(std::string_view value, int &width, int &height) {
-  const size_t split = value.find('x');
-  if (split == std::string_view::npos)
-    return false;
-  width = std::atoi(std::string(value.substr(0, split)).c_str());
-  height = std::atoi(std::string(value.substr(split + 1)).c_str());
-  return width > 0 && height > 0;
-}
-
-} // namespace
+// SDL, RmlUi, and ImGui share one explicit native frame loop.
 
 int main(int argc, char **argv) {
-  int window_width = 1280;
-  int window_height = 720;
-  int frame_limit = 0;
-  int initial_screen = 0;
-  int initial_provider_state = 0;
-  bool hidden = false;
-  bool tools_visible_at_start = true;
-  bool benchmark = false;
-  bool self_test = false;
-  std::string capture_path;
+  TrialOptions options;
+  const ParseResult parse_result = parse_trial_options(argc, argv, options);
+  if (parse_result != ParseResult::Run)
+    return parse_result == ParseResult::ExitSuccess ? 0 : 2;
 
-  for (int i = 1; i < argc; ++i) {
-    const std::string_view argument(argv[i]);
-    if (argument == "--help" || argument == "-h") {
-      print_help(argv[0]);
-      return 0;
-    }
-    if (argument == "--hidden") {
-      hidden = true;
-      continue;
-    }
-    if (argument == "--no-tools") {
-      tools_visible_at_start = false;
-      continue;
-    }
-    if (argument == "--benchmark" && i + 1 < argc) {
-      benchmark = true;
-      hidden = true;
-      tools_visible_at_start = false;
-      frame_limit = std::atoi(argv[++i]);
-      if (frame_limit <= 120) {
-        std::fprintf(stderr,
-                     "Benchmark needs more than 120 frames for warmup.\n");
-        return 2;
-      }
-      continue;
-    }
-    if (argument == "--capture" && i + 1 < argc) {
-      capture_path = argv[++i];
-      hidden = true;
-      tools_visible_at_start = false;
-      if (frame_limit == 0)
-        frame_limit = 5;
-      continue;
-    }
-    if (argument == "--self-test") {
-      self_test = true;
-      hidden = true;
-      tools_visible_at_start = false;
-      if (frame_limit == 0)
-        frame_limit = 5;
-      continue;
-    }
-    if (argument == "--screen" && i + 1 < argc) {
-      initial_screen = std::atoi(argv[++i]);
-      if (initial_screen < 0 ||
-          initial_screen >= static_cast<int>(kTargetScreens.size())) {
-        std::fprintf(stderr, "Invalid screen index. Expected 0 through 16.\n");
-        return 2;
-      }
-      continue;
-    }
-    if (argument == "--provider" && i + 1 < argc) {
-      initial_provider_state = std::atoi(argv[++i]);
-      if (initial_provider_state < 0 || initial_provider_state >= 4) {
-        std::fprintf(stderr, "Invalid provider state. Expected 0 through 3.\n");
-        return 2;
-      }
-      continue;
-    }
-    if (argument == "--resolution" && i + 1 < argc) {
-      if (!parse_resolution(argv[++i], window_width, window_height)) {
-        std::fprintf(stderr, "Invalid resolution. Expected WIDTHxHEIGHT.\n");
-        return 2;
-      }
-      continue;
-    }
-    if (argument == "--frames" && i + 1 < argc) {
-      frame_limit = std::atoi(argv[++i]);
-      continue;
-    }
-    std::fprintf(stderr, "Unknown argument: %s\n", argv[i]);
-    return 2;
-  }
+  const int window_width = options.window_width;
+  const int window_height = options.window_height;
+  const int frame_limit = options.frame_limit;
+  const int initial_screen = options.initial_screen;
+  const int initial_provider_state = options.initial_provider_state;
+  const bool hidden = options.hidden;
+  const bool benchmark = options.benchmark;
+  const bool self_test = options.self_test;
+  const std::string &capture_path = options.capture_path;
 
+  // Configure the native host.
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
     std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -273,6 +76,7 @@ int main(int argc, char **argv) {
                                 benchmark ? SDL_GPU_PRESENTMODE_IMMEDIATE
                                           : SDL_GPU_PRESENTMODE_VSYNC);
 
+  // Bind RmlUi to the shared SDL GPU host.
   SystemInterface_SDL system_interface;
   system_interface.SetWindow(window);
   RenderInterface_SDL_GPU render_interface(gpu, window);
@@ -283,19 +87,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  const std::string font_path =
-      std::string(GUBSY_UI_BUILD_ASSET_DIR) + "/LatoLatin-Regular.ttf";
-  if (!Rml::LoadFontFace(font_path))
-    std::fprintf(stderr, "Could not load font: %s\n", font_path.c_str());
-  const std::string bold_font_path =
-      std::string(GUBSY_UI_BUILD_ASSET_DIR) + "/LatoLatin-Bold.ttf";
-  if (!Rml::LoadFontFace(bold_font_path))
-    std::fprintf(stderr, "Could not load font: %s\n", bold_font_path.c_str());
-  const std::string fallback_font_path =
-      std::string(GUBSY_UI_BUILD_ASSET_DIR) + "/DejaVuSans.ttf";
-  if (!Rml::LoadFontFace(fallback_font_path, true))
-    std::fprintf(stderr, "Could not load fallback font: %s\n",
-                 fallback_font_path.c_str());
+  load_trial_fonts();
 
   int drawable_width = 0;
   int drawable_height = 0;
@@ -337,6 +129,7 @@ int main(int argc, char **argv) {
       }
     }
   }
+  // Create the retained document.
   Rml::Context *context = Rml::CreateContext(
       "gubsy-shell", Rml::Vector2i(render_width, render_height));
   if (!context) {
@@ -349,7 +142,7 @@ int main(int argc, char **argv) {
   const std::string document_path =
       std::string(GUBSY_UI_SOURCE_ASSET_DIR) + "/ui/shell.rml";
   const long rss_before_document = read_rss_kib();
-  const auto document_start = Clock::now();
+  const auto document_start = TrialClock::now();
   auto app = std::make_unique<GubsyApp>(context);
   if (!app->Initialize(document_path)) {
     std::fprintf(stderr, "Could not load document: %s\n",
@@ -365,24 +158,28 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Native route/input self-test failed.\n");
     return 1;
   }
-  const double document_build_ms = milliseconds(document_start, Clock::now());
+  const double document_build_ms =
+      milliseconds(document_start, TrialClock::now());
   std::vector<double> hide_samples;
   std::vector<double> show_samples;
   if (benchmark) {
     hide_samples.reserve(100);
     show_samples.reserve(100);
     for (int sample = 0; sample < 100; ++sample) {
-      auto transition_start = Clock::now();
+      auto transition_start = TrialClock::now();
       app->document()->Hide();
       context->Update();
-      hide_samples.push_back(milliseconds(transition_start, Clock::now()));
-      transition_start = Clock::now();
+      hide_samples.push_back(
+          milliseconds(transition_start, TrialClock::now()));
+      transition_start = TrialClock::now();
       app->document()->Show();
       context->Update();
-      show_samples.push_back(milliseconds(transition_start, Clock::now()));
+      show_samples.push_back(
+          milliseconds(transition_start, TrialClock::now()));
     }
   }
 
+  // Create optional experiment controls.
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
@@ -399,7 +196,7 @@ int main(int argc, char **argv) {
   ImGui_ImplSDLGPU3_Init(&imgui_info);
 
   bool running = true;
-  bool show_tools = tools_visible_at_start;
+  bool show_tools = options.tools_visible;
   int selected_resolution = 1;
   int selected_screen = initial_screen;
   int selected_provider_state = initial_provider_state;
@@ -408,66 +205,18 @@ int main(int argc, char **argv) {
   int completed_frames = 0;
   Timings timings;
   BenchmarkSamples benchmark_samples;
-  std::vector<SDL_Gamepad *> gamepads;
-  auto refresh_gamepad_status = [&]() {
-    const char *name =
-        gamepads.empty() ? "" : SDL_GetGamepadName(gamepads.front());
-    app->SetGamepadStatus(static_cast<int>(gamepads.size()),
-                          name ? name : "Gamepad");
-  };
-  int gamepad_count = 0;
-  if (SDL_JoystickID *ids = SDL_GetGamepads(&gamepad_count)) {
-    for (int i = 0; i < gamepad_count; ++i) {
-      if (std::any_of(gamepads.begin(), gamepads.end(), [&](SDL_Gamepad *pad) {
-            return SDL_GetGamepadID(pad) == ids[i];
-          }))
-        continue;
-      if (SDL_Gamepad *gamepad = SDL_OpenGamepad(ids[i])) {
-        gamepads.push_back(gamepad);
-        std::fprintf(stderr, "Opened gamepad %u: %s (%s)\n",
-                     SDL_GetGamepadID(gamepad), SDL_GetGamepadName(gamepad),
-                     SDL_GetGamepadPath(gamepad));
-      } else {
-        std::fprintf(stderr, "Could not open gamepad %u: %s\n", ids[i],
-                     SDL_GetError());
-      }
-    }
-    SDL_free(ids);
-  }
-  refresh_gamepad_status();
+  OpenGamepads gamepads;
+  open_connected_gamepads(gamepads, *app);
+
+  // Run the visible input and frame loop.
   while (running) {
-    const auto frame_start = Clock::now();
+    const auto frame_start = TrialClock::now();
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT)
         running = false;
-      if (event.type == SDL_EVENT_GAMEPAD_ADDED) {
-        const bool already_open = std::any_of(
-            gamepads.begin(), gamepads.end(), [&](SDL_Gamepad *pad) {
-              return SDL_GetGamepadID(pad) == event.gdevice.which;
-            });
-        if (!already_open) {
-          if (SDL_Gamepad *gamepad = SDL_OpenGamepad(event.gdevice.which)) {
-            gamepads.push_back(gamepad);
-            std::fprintf(stderr, "Opened gamepad %u: %s (%s)\n",
-                         SDL_GetGamepadID(gamepad), SDL_GetGamepadName(gamepad),
-                         SDL_GetGamepadPath(gamepad));
-            refresh_gamepad_status();
-          }
-        }
-      }
-      if (event.type == SDL_EVENT_GAMEPAD_REMOVED) {
-        auto it = std::find_if(
-            gamepads.begin(), gamepads.end(), [&](SDL_Gamepad *gamepad) {
-              return SDL_GetGamepadID(gamepad) == event.gdevice.which;
-            });
-        if (it != gamepads.end()) {
-          SDL_CloseGamepad(*it);
-          gamepads.erase(it);
-          refresh_gamepad_status();
-        }
-      }
+      handle_gamepad_connection(event, gamepads, *app);
       if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F1)
         show_tools = !show_tools;
       const bool app_consumed = app->HandleSdlEvent(event);
@@ -494,10 +243,10 @@ int main(int argc, char **argv) {
       app->SetViewport(drawable_width, drawable_height);
     }
 
-    const auto update_start = Clock::now();
+    const auto update_start = TrialClock::now();
     app->Update();
     context->Update();
-    const auto update_end = Clock::now();
+    const auto update_end = TrialClock::now();
     timings.update_ms = milliseconds(update_start, update_end);
 
     ImGui_ImplSDLGPU3_NewFrame();
@@ -539,6 +288,7 @@ int main(int argc, char **argv) {
     }
     ImGui::Render();
 
+    // Record RmlUi and ImGui into one native target.
     SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(gpu);
     if (!command_buffer) {
       std::fprintf(stderr, "Could not acquire command buffer: %s\n",
@@ -580,7 +330,7 @@ int main(int argc, char **argv) {
           SDL_BeginGPURenderPass(command_buffer, &clear_target, 1, nullptr);
       SDL_EndGPURenderPass(clear_pass);
 
-      const auto render_start = Clock::now();
+      const auto render_start = TrialClock::now();
       render_interface.BeginFrame(command_buffer, frame_target, frame_width,
                                   frame_height);
       context->Render();
@@ -595,7 +345,8 @@ int main(int argc, char **argv) {
           SDL_BeginGPURenderPass(command_buffer, &imgui_target, 1, nullptr);
       ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, imgui_pass);
       SDL_EndGPURenderPass(imgui_pass);
-      timings.render_record_ms = milliseconds(render_start, Clock::now());
+      timings.render_record_ms =
+          milliseconds(render_start, TrialClock::now());
 
       if (capture_transfer && frame_limit > 0 &&
           completed_frames + 1 >= frame_limit) {
@@ -614,15 +365,16 @@ int main(int argc, char **argv) {
       }
     }
 
-    const auto submit_start = Clock::now();
+    const auto submit_start = TrialClock::now();
     SDL_SubmitGPUCommandBuffer(command_buffer);
-    timings.submit_ms = milliseconds(submit_start, Clock::now());
+    timings.submit_ms = milliseconds(submit_start, TrialClock::now());
     if (benchmark) {
-      const auto gpu_wait_start = Clock::now();
+      const auto gpu_wait_start = TrialClock::now();
       SDL_WaitForGPUIdle(gpu);
-      timings.gpu_complete_ms = milliseconds(gpu_wait_start, Clock::now());
+      timings.gpu_complete_ms =
+          milliseconds(gpu_wait_start, TrialClock::now());
     }
-    timings.frame_ms = milliseconds(frame_start, Clock::now());
+    timings.frame_ms = milliseconds(frame_start, TrialClock::now());
 
     ++completed_frames;
     if (benchmark && completed_frames > 120)
@@ -631,6 +383,7 @@ int main(int argc, char **argv) {
       running = false;
   }
 
+  // Report measurements and release owned resources.
   SDL_WaitForGPUIdle(gpu);
   const long rss_with_document = read_rss_kib();
   if (capture_transfer) {
@@ -662,10 +415,10 @@ int main(int argc, char **argv) {
   ImGui_ImplSDLGPU3_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
-  const auto document_close_start = Clock::now();
+  const auto document_close_start = TrialClock::now();
   app.reset();
   const double document_close_ms =
-      milliseconds(document_close_start, Clock::now());
+      milliseconds(document_close_start, TrialClock::now());
   if (benchmark) {
     std::printf(
         "{\n  \"screen\": \"%s\",\n  \"viewport\": \"%dx%d\",\n  \"samples\": "
@@ -689,8 +442,7 @@ int main(int argc, char **argv) {
     print_metric("resident_show", show_samples);
     std::printf("\n}\n");
   }
-  for (SDL_Gamepad *gamepad : gamepads)
-    SDL_CloseGamepad(gamepad);
+  close_gamepads(gamepads);
   Rml::RemoveContext(context->GetName());
   Rml::Shutdown();
   render_interface.Shutdown();

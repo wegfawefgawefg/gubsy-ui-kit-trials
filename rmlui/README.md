@@ -4,7 +4,7 @@ Native FOSS feasibility experiment for reproducing the approved
 [`vue-reference`](../vue-reference) interaction and layout in a
 C++ game process.
 
-This repository deliberately starts as a direct SDL integration, not a general
+This trial deliberately starts as a direct SDL integration, not a general
 renderer-neutral Gubsy package. The immediate question is whether a manually
 authored RmlUi version can preserve the browser prototype's behavior and sane
 responsive layout while meeting game-loop performance targets.
@@ -22,6 +22,21 @@ host SDL3 is intentionally used so this experiment exercises the same SDL layer
 as Gubsy/Splonks; SDL3 3.2 or newer is required through `pkg-config`.
 Lato is the primary UI face and DejaVu Sans is bundled as the fallback for
 controller/navigation glyphs; their license files live beside the font assets.
+
+## Source layout
+
+- `ui_state.h` owns transparent mutable menu state.
+- `screen_*.cpp` owns markup for one menu domain; Play owns its related subviews.
+- `app_input.cpp`, `app_navigation.cpp`, and `app_actions.cpp` own interaction.
+- `app_lifecycle.cpp`, `app_render.cpp`, and `screen_router.cpp` own the retained
+  document lifecycle without hiding it behind a framework.
+- `focus_elements.*` and `ui_markup.*` contain only their named RmlUi concerns.
+- `trial_options.*`, `benchmark.*`, `gamepads.*`, and `native_assets.*` own native
+  host support while `main.cpp` keeps the shared SDL frame loop visible.
+- `app_*_self_test.cpp` owns the focused interaction regression paths.
+
+Source files stay below 500 lines and split at cohesive ownership boundaries.
+Comments label non-obvious paragraphs; function and type names carry the rest.
 
 ## Build and run
 

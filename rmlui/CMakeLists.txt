@@ -94,7 +94,26 @@ target_link_libraries(rmlui_sdlgpu_backend PUBLIC
 
 add_executable(gubsy-rmlui-demo
   src/main.cpp
-  src/app.cpp
+  src/app_actions.cpp
+  src/app_input.cpp
+  src/app_lifecycle.cpp
+  src/app_navigation.cpp
+  src/app_navigation_self_test.cpp
+  src/app_render.cpp
+  src/app_self_test.cpp
+  src/benchmark.cpp
+  src/focus_elements.cpp
+  src/gamepads.cpp
+  src/native_assets.cpp
+  src/screen_controls.cpp
+  src/screen_mods.cpp
+  src/screen_play.cpp
+  src/screen_players.cpp
+  src/screen_progress.cpp
+  src/screen_router.cpp
+  src/screen_settings.cpp
+  src/ui_markup.cpp
+  src/trial_options.cpp
 )
 target_link_libraries(gubsy-rmlui-demo PRIVATE
   RmlUi::RmlUi
