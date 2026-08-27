@@ -1,5 +1,9 @@
 # Initial native UI trial results
 
+The post-polish Play/Mods comparison and current recommendation are in
+[`CURRENT_COMPARISON.md`](CURRENT_COMPARISON.md). The tables below preserve the
+earlier baseline run.
+
 Measured on the same machine and GPU on 2026-08-27. Each application renders
 the populated Play lobby in a release build to a hidden/offscreen target for
 1,000 frames. These are native-process experiments, not browser measurements.
