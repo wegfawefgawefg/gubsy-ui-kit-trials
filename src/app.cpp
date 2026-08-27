@@ -233,6 +233,7 @@ void GubsyApp::SelectToolScreen(int index) {
     break;
   case 4:
     state_.destination = Destination::Players;
+    state_.player_tab = "Local players";
     break;
   case 5:
     state_.destination = Destination::Players;
@@ -659,6 +660,96 @@ bool GubsyApp::RunSelfTest() {
           "data-action", "") != remembered_player_action)
     return false;
 
+  SelectToolScreen(0);
+  Update();
+  context_->Update();
+  auto *transactional_activity =
+      dynamic_cast<Rml::ElementFormControlSelect *>(document_->QuerySelector(
+          "[data-action='play-value-activity']"));
+  if (!transactional_activity)
+    return false;
+  const std::string activity_before_preview = state_.activity;
+  transactional_activity->Focus(true);
+  if (!HandleSdlEvent(activate) ||
+      !transactional_activity->IsSelectBoxVisible())
+    return false;
+  HandleSdlEvent(choose_next);
+  if (state_.activity != activity_before_preview ||
+      !transactional_activity->IsSelectBoxVisible())
+    return false;
+  HandleSdlEvent(activate);
+  if (state_.activity == activity_before_preview)
+    return false;
+  Update();
+  context_->Update();
+
+  SelectToolScreen(1);
+  Update();
+  context_->Update();
+  Rml::Element *first_quest =
+      document_->QuerySelector("[data-action='quest-violet']");
+  if (!first_quest)
+    return false;
+  first_quest->Focus(true);
+  NavigateFocus(1, 0);
+  if (!context_->GetFocusElement() ||
+      !context_->GetFocusElement()->IsClassSet("detail"))
+    return false;
+  ActivateFocus();
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "play-lobby")
+    return false;
+  first_quest->Focus(true);
+  NavigateFocus(0, -1);
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "play-lobby")
+    return false;
+  first_quest->Focus(true);
+  if (!HandleSdlEvent(controller_back) || state_.play_view != PlayView::Lobby)
+    return false;
+
+  SelectToolScreen(5);
+  Update();
+  context_->Update();
+  constexpr const char *profile_actions[]{"profile-moss", "profile-vega",
+                                          "profile-guest"};
+  for (const char *profile_action : profile_actions) {
+    Rml::Element *profile = document_->QuerySelector(
+        (std::string("[data-action='") + profile_action + "']").c_str());
+    if (!profile)
+      return false;
+    profile->Focus(true);
+    NavigateFocus(0, -1);
+    if (!context_->GetFocusElement() ||
+        context_->GetFocusElement()->GetAttribute<Rml::String>(
+            "data-action", "") != "new-profile")
+      return false;
+  }
+  NavigateFocus(0, -1);
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "player-tab-Profiles")
+    return false;
+
+  SelectToolScreen(4);
+  Update();
+  context_->Update();
+  Rml::Element *assign_device =
+      document_->QuerySelector("[data-action='assign-device']");
+  if (!assign_device)
+    return false;
+  assign_device->Focus(true);
+  NavigateFocus(0, 1);
+  if (context_->GetFocusElement() != assign_device)
+    return false;
+  NavigateFocus(1, 0);
+  if (!context_->GetFocusElement() ||
+      context_->GetFocusElement()->GetAttribute<Rml::String>(
+          "data-action", "") != "toggle-ready")
+    return false;
+
   SelectToolScreen(7);
   Update();
   context_->Update();
@@ -722,6 +813,9 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
       element->GetAttribute<Rml::String>("data-action", "");
   if (event.GetId() == Rml::EventId::Change) {
     if (auto *control = dynamic_cast<Rml::ElementFormControl *>(element)) {
+      if (controller_editing_ && element == context_->GetFocusElement() &&
+          dynamic_cast<Rml::ElementFormControlSelect *>(element))
+        return;
       if (action == "filter-actions")
         state_.control_filter = control->GetValue();
       else if (action == "search-catalog")
@@ -945,12 +1039,16 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
       if (key != Rml::Input::KI_UNKNOWN) {
         context_->ProcessKeyDown(key, 0);
         context_->ProcessKeyUp(key, 0);
-        if (event.gbutton.button == SDL_GAMEPAD_BUTTON_SOUTH)
+        if (event.gbutton.button == SDL_GAMEPAD_BUTTON_SOUTH) {
           select->HideSelectBox();
-        else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST)
+          controller_editing_ = false;
+          select->SetClass("controller-editing", false);
+          select->DispatchEvent(Rml::EventId::Change, {});
+        } else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST) {
           select->CancelSelectBox();
-        controller_editing_ = false;
-        select->SetClass("controller-editing", false);
+          controller_editing_ = false;
+          select->SetClass("controller-editing", false);
+        }
         return true;
       }
     }
@@ -1004,8 +1102,11 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
       ActivateFocus();
       return true;
     case SDL_GAMEPAD_BUTTON_EAST:
-      if (Rml::Element *main = document_->QuerySelector("main");
-          main && is_descendant_of(context_->GetFocusElement(), main))
+      if (state_.destination == Destination::Play &&
+          state_.play_view != PlayView::Lobby)
+        Back();
+      else if (Rml::Element *main = document_->QuerySelector("main");
+               main && is_descendant_of(context_->GetFocusElement(), main))
         FocusActiveNavigation();
       else
         Back();
@@ -1065,7 +1166,9 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     Rml::Element *best = nullptr;
     float best_score = std::numeric_limits<float>::max();
     for (Rml::Element *candidate : pool) {
-      if (candidate == origin || !is_visible_focus(candidate))
+      if (candidate == origin || !is_visible_focus(candidate) ||
+          is_descendant_of(origin, candidate) ||
+          is_descendant_of(candidate, origin))
         continue;
       const Rml::Vector2f position =
           candidate->GetAbsoluteOffset(Rml::BoxArea::Border);
@@ -1232,16 +1335,55 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
                          return !is_visible_focus(element);
                        }),
         content.end());
+    Rml::Element *master_detail = ancestor_with_class(current, "master-detail");
+    Rml::Element *master_region = ancestor_with_class(current, "master-list");
+    Rml::Element *detail_region = ancestor_with_class(current, "detail");
+    if (current->IsClassSet("detail"))
+      detail_region = current;
+    if (dx > 0 && master_detail && master_region) {
+      focus(master_detail->QuerySelector(".detail"));
+      return;
+    }
+    if (current->HasAttribute("data-scroll-region") && dy != 0) {
+      const float before = current->GetScrollTop();
+      current->SetScrollTop(before + static_cast<float>(dy) * 72.0f);
+      if (std::abs(current->GetScrollTop() - before) > 0.5f)
+        return;
+    }
+    const std::string current_action =
+        current->GetAttribute<Rml::String>("data-action", "");
+    if (ancestor_with_class(current, "profile-cards") && dy < 0) {
+      focus(main->QuerySelector("[data-action='new-profile']"));
+      return;
+    }
+    if (current_action == "new-profile" && dy != 0) {
+      if (dy < 0)
+        focus(main->QuerySelector(".local-tabs button.selected"));
+      else {
+        Rml::Element *selected_profile =
+            main->QuerySelector(".profile-card.selected");
+        focus(selected_profile ? selected_profile
+                               : main->QuerySelector(".profile-card"));
+      }
+      return;
+    }
     if (dy != 0) {
-      Rml::Element *focus_group = ancestor_with_class(current, "scroll-body");
-      if (!focus_group)
-        focus_group = ancestor_with_class(current, "setup-pane");
-      if (!focus_group)
-        focus_group = ancestor_with_class(current, "party-pane");
-      if (!focus_group)
-        focus_group = ancestor_with_class(current, "detail");
-      if (!focus_group)
-        focus_group = ancestor_with_class(current, "master-list");
+      const bool horizontal_action_row =
+          ancestor_with_class(current, "actions") ||
+          ancestor_with_class(current, "pair") ||
+          ancestor_with_class(current, "detail-actions");
+      Rml::Element *focus_group = nullptr;
+      if (!horizontal_action_row) {
+        focus_group = ancestor_with_class(current, "scroll-body");
+        if (!focus_group)
+          focus_group = ancestor_with_class(current, "setup-pane");
+        if (!focus_group)
+          focus_group = ancestor_with_class(current, "party-pane");
+        if (!focus_group)
+          focus_group = ancestor_with_class(current, "detail");
+        if (!focus_group)
+          focus_group = ancestor_with_class(current, "master-list");
+      }
       if (focus_group) {
         Rml::ElementList ordered;
         focus_group->QuerySelectorAll(ordered, "[data-focus]");
@@ -1255,14 +1397,24 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
         if (it != ordered.end()) {
           const int index = static_cast<int>(it - ordered.begin());
           const int next = index + (dy > 0 ? 1 : -1);
-          if (next >= 0 && next < static_cast<int>(ordered.size()))
+          if (next >= 0 && next < static_cast<int>(ordered.size())) {
             focus(ordered[next]);
-          return;
+            return;
+          }
         }
       }
     }
-    if (Rml::Element *best = geometric_target(current, content))
+    if (Rml::Element *best = geometric_target(current, content)) {
       focus(best);
+      return;
+    }
+    if (dx < 0 && master_detail && detail_region) {
+      Rml::Element *selected =
+          master_detail->QuerySelector(".master-list .selected");
+      if (!selected)
+        selected = master_detail->QuerySelector(".master-list [data-focus]");
+      focus(selected);
+    }
     return;
   }
 
@@ -1281,6 +1433,18 @@ void GubsyApp::ActivateFocus() {
       NavigateFocus(0, -1);
     else
       NavigateFocus(1, 0);
+    return;
+  }
+  if (focus->HasAttribute("data-scroll-region")) {
+    Rml::ElementList controls;
+    focus->QuerySelectorAll(controls, "[data-focus]");
+    for (Rml::Element *control : controls) {
+      if (is_visible_focus(control)) {
+        control->Focus(true);
+        control->ScrollIntoView(false);
+        break;
+      }
+    }
     return;
   }
   if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(focus)) {
@@ -1668,8 +1832,16 @@ void GubsyApp::Render() {
     focused_action = pending_focus_action_;
   else if (Rml::Element *focused = action_element(context_->GetFocusElement()))
     focused_action = focused->GetAttribute<Rml::String>("data-action", "");
-  if (Rml::Element *content = document_->GetElementById("screen-content"))
+  if (Rml::Element *content = document_->GetElementById("screen-content")) {
     content->SetInnerRML(BuildCurrentScreen());
+    Rml::ElementList details;
+    content->QuerySelectorAll(details, ".detail");
+    for (Rml::Element *detail : details) {
+      detail->SetAttribute("data-focus", "");
+      detail->SetAttribute("data-scroll-region", "");
+      detail->SetAttribute("tabindex", "0");
+    }
+  }
   if (!focused_action.empty()) {
     Rml::ElementList candidates;
     document_->QuerySelectorAll(candidates, "[data-action]");
