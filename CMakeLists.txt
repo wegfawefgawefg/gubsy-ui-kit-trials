@@ -19,5 +19,6 @@ target_include_directories(gubsy-nuklear-trial PRIVATE
   ${nuklear_SOURCE_DIR} ${nuklear_SOURCE_DIR}/demo/sdl_opengl3)
 target_link_libraries(gubsy-nuklear-trial PRIVATE PkgConfig::SDL2 OpenGL::GL X11::X11 m)
 target_compile_definitions(gubsy-nuklear-trial PRIVATE
-  GUBSY_NUKLEAR_FONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/DejaVuSans.ttf")
+  GUBSY_NUKLEAR_FONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/DejaVuSans.ttf"
+  GUBSY_NUKLEAR_MOD_SHEET_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/mod-sheet-1.png")
 target_compile_options(gubsy-nuklear-trial PRIVATE -Wall -Wextra -Wpedantic)

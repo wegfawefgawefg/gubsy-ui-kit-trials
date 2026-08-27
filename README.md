@@ -13,3 +13,8 @@ layout ergonomics, content density, controls, binary/RSS cost, and frame cost.
 
 Nuklear is renderer neutral. A production choice would receive an SDL3/Gubsy
 renderer adapter after this UI-level trial, rather than during it.
+
+The trial window is marked as an X11 utility before it is shown and the run
+script places it centered on the left i3 output. Dense groups scroll locally,
+the game viewport does not. Play action rows are real buttons, and the mod list
+and detail pane use the same representative artwork as the other trials.

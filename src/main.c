@@ -16,6 +16,9 @@
 #include "nuklear.h"
 #include "nuklear_sdl_gl3.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +29,7 @@
 #define MAX_ELEMENT_MEMORY (128 * 1024)
 
 struct app {
-    int screen, play_activity, host_mode, join_mode;
+    int screen, play_activity, host_mode, join_mode, play_notice;
     int players_tab, settings_tab, controls_tab, mods_tab, selected;
     int fullscreen, subtitles, friendly_fire, compatible_only;
     float render_scale, brightness, master_volume, music_volume;
@@ -34,6 +37,9 @@ struct app {
 };
 
 struct args { int width, height, screen, benchmark; const char *capture; };
+static const struct nk_user_font *body_font;
+static const struct nk_user_font *heading_font;
+static GLuint mod_sheet_texture;
 
 static double now_ms(void) {
     struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
@@ -77,7 +83,7 @@ static void style(struct nk_context *ctx) {
 
 static void label(struct nk_context *ctx,const char *s){struct nk_color old=ctx->style.text.color;ctx->style.text.color=nk_rgba(151,239,116,255);nk_label(ctx,s,NK_TEXT_LEFT);ctx->style.text.color=old;}
 static void muted(struct nk_context *ctx,const char *s){struct nk_color old=ctx->style.text.color;ctx->style.text.color=nk_rgba(145,164,161,255);nk_label(ctx,s,NK_TEXT_LEFT);ctx->style.text.color=old;}
-static void heading(struct nk_context *ctx,const char *s){nk_layout_row_dynamic(ctx,36,1);nk_label(ctx,s,NK_TEXT_LEFT);}
+static void heading(struct nk_context *ctx,const char *s){const struct nk_user_font *old=ctx->style.font;if(heading_font)ctx->style.font=heading_font;nk_layout_row_dynamic(ctx,38,1);nk_label(ctx,s,NK_TEXT_LEFT);ctx->style.font=old;}
 
 static int combo(struct nk_context *ctx,const char *const *items,int count,int selected,float width){
     if(nk_combo_begin_label(ctx,items[selected],nk_vec2(width,160))){nk_layout_row_dynamic(ctx,30,1);for(int i=0;i<count;i++)if(nk_combo_item_label(ctx,items[i],NK_TEXT_LEFT))selected=i;nk_combo_end(ctx);}return selected;
@@ -85,7 +91,15 @@ static int combo(struct nk_context *ctx,const char *const *items,int count,int s
 
 static void card(struct nk_context *ctx,const char *id,const char *title,const char *sub,const char *value,int active){
     struct nk_color prev=ctx->style.window.fixed_background.data.color;if(active)ctx->style.window.fixed_background=nk_style_item_color(nk_rgba(20,52,38,255));
-    if(nk_group_begin(ctx,id,NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,20,1);nk_label(ctx,title,NK_TEXT_LEFT);nk_layout_row_dynamic(ctx,16,2);muted(ctx,sub);if(value)label(ctx,value);nk_group_end(ctx);}ctx->style.window.fixed_background=nk_style_item_color(prev);
+    if(nk_group_begin(ctx,id,NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,20,1);nk_label(ctx,title,NK_TEXT_LEFT);if(value){nk_layout_row_begin(ctx,NK_DYNAMIC,16,2);nk_layout_row_push(ctx,.76f);muted(ctx,sub);nk_layout_row_push(ctx,.24f);label(ctx,value);nk_layout_row_end(ctx);}else{nk_layout_row_dynamic(ctx,16,1);muted(ctx,sub);}nk_group_end(ctx);}ctx->style.window.fixed_background=nk_style_item_color(prev);
+}
+
+static int action_row(struct nk_context *ctx,const char *id,const char *title,const char *sub,const char *action){
+    int pressed;nk_layout_row_begin(ctx,NK_DYNAMIC,54,2);nk_layout_row_push(ctx,.72f);card(ctx,id,title,sub,NULL,0);nk_layout_row_push(ctx,.28f);pressed=nk_button_label(ctx,action);nk_layout_row_end(ctx);return pressed;
+}
+
+static GLuint load_texture(const char *path){
+    int w=0,h=0,n=0;unsigned char *pixels=stbi_load(path,&w,&h,&n,4);if(!pixels){fprintf(stderr,"texture %s: %s\n",path,stbi_failure_reason());return 0;}GLuint texture=0;glGenTextures(1,&texture);glBindTexture(GL_TEXTURE_2D,texture);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,w,h,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);glBindTexture(GL_TEXTURE_2D,0);stbi_image_free(pixels);return texture;
 }
 
 static void header(struct nk_context *ctx,int width){
@@ -93,22 +107,23 @@ static void header(struct nk_context *ctx,int width){
 }
 
 static void nav(struct nk_context *ctx,struct app *a,float width,float height){
-    if(nk_group_begin(ctx,"primary-nav",NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,50,1);nk_label(ctx,"VE   ACTIVE PROFILE\n     Vega",NK_TEXT_LEFT);const char *names[]={">  Play\n    Continue or start","+  Players\n    Profiles & devices","*  Settings\n    Game preferences","~  Controls\n    Bindings & input","#  Progress\n    Campaigns & saves","o  Mods\n    Installed content"};for(int i=0;i<6;i++){int selected=a->screen==i;if(nk_selectable_label(ctx,names[i],NK_TEXT_LEFT,&selected))a->screen=i;}nk_layout_space_begin(ctx,NK_STATIC,height-430,1);nk_layout_space_push(ctx,nk_rect(0,height-485,width-20,44));nk_label(ctx,"x  Quit\n   Return to desktop",NK_TEXT_LEFT);nk_layout_space_end(ctx);nk_group_end(ctx);}
+    if(nk_group_begin(ctx,"primary-nav",NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,22,1);nk_label(ctx,"VE   ACTIVE PROFILE",NK_TEXT_LEFT);nk_layout_row_dynamic(ctx,18,1);muted(ctx,"     Vega");const char *names[]={">  Play","+  Players","*  Settings","~  Controls","#  Progress","o  Mods"};const char *subs[]={"    Continue or start","    Profiles & devices","    Game preferences","    Bindings & input","    Campaigns & checkpoints","    Installed content"};for(int i=0;i<6;i++){nk_layout_row_dynamic(ctx,30,1);int selected=a->screen==i;if(nk_selectable_label(ctx,names[i],NK_TEXT_LEFT,&selected))a->screen=i;nk_layout_row_dynamic(ctx,17,1);muted(ctx,subs[i]);}nk_layout_space_begin(ctx,NK_STATIC,height-420,1);nk_layout_space_push(ctx,nk_rect(0,height-475,width-20,20));nk_label(ctx,"x  Quit",NK_TEXT_LEFT);nk_layout_space_push(ctx,nk_rect(0,height-452,width-20,18));muted(ctx,"   Return to desktop");nk_layout_space_end(ctx);nk_group_end(ctx);}
 }
 
 static void tabs(struct nk_context *ctx,const char *const *names,int count,int *active){nk_layout_row_dynamic(ctx,34,count);for(int i=0;i<count;i++){int on=*active==i;if(nk_selectable_label(ctx,names[i],NK_TEXT_CENTERED,&on))*active=i;}}
 
 static void play(struct nk_context *ctx,struct app *a){
     nk_layout_row_dynamic(ctx,18,1);label(ctx,"SPLONKS / PLAY");heading(ctx,"Play");nk_layout_row_begin(ctx,NK_DYNAMIC,520,2);nk_layout_row_push(ctx,.66f);
-    if(nk_group_begin(ctx,"play-setup",NK_WINDOW_BORDER)){nk_layout_row_dynamic(ctx,18,1);label(ctx,a->play_activity?"NEW EXPEDITION":"CONTINUE QUEST");heading(ctx,a->play_activity?"Choose a quest":"The Violet Reach");muted(ctx,a->play_activity?"Start a clean quest from stage one":"The Glass Caverns · Latest checkpoint · Vega");
-        nk_layout_row_begin(ctx,NK_DYNAMIC,52,2);nk_layout_row_push(ctx,.50f);card(ctx,"activity-label","Activity","Continue a checkpoint or start",NULL,0);nk_layout_row_push(ctx,.50f);const char *activities[]={"Continue expedition","New expedition"};a->play_activity=combo(ctx,activities,2,a->play_activity,220);nk_layout_row_end(ctx);
-        nk_layout_row_dynamic(ctx,52,1);card(ctx,"resume",a->play_activity?"Quest":"Resume point",a->play_activity?"The Violet Reach · 8 stages":"Latest checkpoint · The Violet Reach",a->play_activity?"CHOOSE QUEST >":"CHOOSE CHECKPOINT >",0);
-        nk_layout_row_begin(ctx,NK_DYNAMIC,52,2);nk_layout_row_push(ctx,.50f);card(ctx,"join-label","Play with","Who may occupy remaining slots",NULL,0);nk_layout_row_push(ctx,.50f);const char *joins[]={"Solo","Friends can join","Public"};a->join_mode=combo(ctx,joins,3,a->join_mode,220);nk_layout_row_end(ctx);
-        nk_layout_row_begin(ctx,NK_DYNAMIC,52,2);nk_layout_row_push(ctx,.50f);card(ctx,"host-label","Host using","Automatic, direct, or relay",NULL,0);nk_layout_row_push(ctx,.50f);const char *hosts[]={"Automatic","Direct","Relay"};a->host_mode=combo(ctx,hosts,3,a->host_mode,220);nk_layout_row_end(ctx);
-        nk_layout_row_dynamic(ctx,48,1);card(ctx,"rules","Expedition rules","Standard · 4 lives · ghost at 180s","EDIT ALL >",0);card(ctx,"session-mods","Session mods","7 active · dependency set valid","MANAGE >",0);
-        nk_layout_row_dynamic(ctx,38,2);nk_button_label(ctx,"Pause preview");if(nk_button_label(ctx,a->play_activity?"> Begin expedition":"> Resume latest checkpoint")){}
+    if(nk_group_begin(ctx,"play-setup",NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,18,1);label(ctx,a->play_activity?"NEW EXPEDITION":"CONTINUE QUEST");heading(ctx,a->play_activity?"Choose a quest":"The Violet Reach");nk_layout_row_dynamic(ctx,20,1);muted(ctx,a->play_notice==1?"Checkpoint picker opened - choose a resume point":a->play_notice==2?"Expedition rules editor opened for this lobby":a->play_activity?"Start a clean quest from stage one":"The Glass Caverns - latest checkpoint - Vega");
+        nk_layout_row_begin(ctx,NK_DYNAMIC,46,2);nk_layout_row_push(ctx,.50f);card(ctx,"activity-label","Activity","Continue or start",NULL,0);nk_layout_row_push(ctx,.50f);const char *activities[]={"Continue expedition","New expedition"};a->play_activity=combo(ctx,activities,2,a->play_activity,220);nk_layout_row_end(ctx);
+        if(action_row(ctx,"resume",a->play_activity?"Quest":"Resume point",a->play_activity?"The Violet Reach - 8 stages":"Latest checkpoint - The Violet Reach",a->play_activity?"CHOOSE QUEST >":"CHOOSE CHECKPOINT >"))a->play_notice=1;
+        nk_layout_row_begin(ctx,NK_DYNAMIC,46,2);nk_layout_row_push(ctx,.50f);card(ctx,"join-label","Play with","Remaining player access",NULL,0);nk_layout_row_push(ctx,.50f);const char *joins[]={"Solo","Friends can join","Public"};a->join_mode=combo(ctx,joins,3,a->join_mode,220);nk_layout_row_end(ctx);
+        nk_layout_row_begin(ctx,NK_DYNAMIC,46,2);nk_layout_row_push(ctx,.50f);card(ctx,"host-label","Host using","Direct, relay, or automatic",NULL,0);nk_layout_row_push(ctx,.50f);const char *hosts[]={"Automatic","Direct","Relay"};a->host_mode=combo(ctx,hosts,3,a->host_mode,220);nk_layout_row_end(ctx);
+        if(action_row(ctx,"rules","Expedition rules","Standard - 4 lives - ghost at 180s","EDIT ALL >"))a->play_notice=2;
+        if(action_row(ctx,"session-mods","Session mods","7 active - dependency set valid","MANAGE >"))a->screen=5;
+        nk_layout_row_dynamic(ctx,34,2);nk_button_label(ctx,"Pause preview");if(nk_button_label(ctx,a->play_activity?"> Begin expedition":"> Resume latest checkpoint")){}
         nk_group_end(ctx);}nk_layout_row_push(ctx,.34f);
-    if(nk_group_begin(ctx,"party",NK_WINDOW_BORDER)){nk_layout_row_dynamic(ctx,18,1);label(ctx,"PLAYERS");heading(ctx,a->join_mode?"Your party":"Solo player");nk_layout_row_dynamic(ctx,58,1);card(ctx,"p1","P1  Moss","Xbox Wireless Controller","READY",1);if(a->join_mode){card(ctx,"p2","+  Open slot","Invite friend or add locally",NULL,0);card(ctx,"p3","+  Open slot","Invite friend or add locally",NULL,0);}nk_layout_row_dynamic(ctx,34,1);nk_button_label(ctx,"Invite / copy link");muted(ctx,"CONTENT                         7 mods");muted(ctx,a->host_mode?"NETWORK                         Manual":"NETWORK                      Automatic");nk_group_end(ctx);}nk_layout_row_end(ctx);
+    if(nk_group_begin(ctx,"party",NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR)){nk_layout_row_dynamic(ctx,18,1);label(ctx,"PLAYERS");heading(ctx,a->join_mode?"Your party":"Solo player");nk_layout_row_dynamic(ctx,58,1);card(ctx,"p1","P1  Moss","Xbox Wireless Controller","READY",1);if(a->join_mode){card(ctx,"p2","+  Open slot","Invite friend or add locally",NULL,0);card(ctx,"p3","+  Open slot","Invite friend or add locally",NULL,0);}nk_layout_row_dynamic(ctx,34,1);nk_button_label(ctx,"Invite / copy link");muted(ctx,"CONTENT                         7 mods");muted(ctx,a->host_mode?"NETWORK                         Manual":"NETWORK                      Automatic");nk_group_end(ctx);}nk_layout_row_end(ctx);
 }
 
 static void players(struct nk_context *ctx,struct app *a){
@@ -143,7 +158,7 @@ static void progress_view(struct nk_context *ctx){
 
 static void mods(struct nk_context *ctx,struct app *a){
     nk_layout_row_dynamic(ctx,18,1);label(ctx,"SPLONKS / MODS");heading(ctx,"Mods");const char *t[]={"Installed","Browse catalog"};tabs(ctx,t,2,&a->mods_tab);nk_layout_row_begin(ctx,NK_DYNAMIC,36,3);nk_layout_row_push(ctx,.58f);static char search[96];static int len=0;nk_edit_string(ctx,NK_EDIT_FIELD,search,&len,95,nk_filter_default);nk_layout_row_push(ctx,.25f);nk_checkbox_label(ctx,"Compatible only",&a->compatible_only);nk_layout_row_push(ctx,.17f);nk_button_label(ctx,"Refresh");nk_layout_row_end(ctx);
-    const char *names[]={"Mycelium Below","Brassline Grapple Kit","Skybreak Caverns","Abyssal Tide","Old Lanterns","Pocket Expedition","Temple Weather","Mirror Depths","Clockwork Orchard","Lantern Cartography","Fungal Friends","Deep Relay","Cave Radio","Run History+","Accessible Traps","Quiet Ghost","Shared Wallet","Daily Seed Lab","Rope Physics","Vanilla Plus"};nk_layout_row_begin(ctx,NK_DYNAMIC,390,2);nk_layout_row_push(ctx,.5f);if(nk_group_begin(ctx,"mod-list",NK_WINDOW_BORDER)){nk_layout_row_dynamic(ctx,42,1);for(int i=0;i<20;i++){int on=a->selected==i;if(nk_selectable_label(ctx,names[i],NK_TEXT_LEFT,&on))a->selected=i;}nk_group_end(ctx);}nk_layout_row_push(ctx,.5f);if(nk_group_begin(ctx,"mod-detail",NK_WINDOW_BORDER)){nk_layout_row_dynamic(ctx,18,1);label(ctx,a->mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE");heading(ctx,names[a->selected]);nk_layout_row_dynamic(ctx,46,1);nk_label_wrap(ctx,"A substantial package with integrated rooms, mechanics, artwork, and co-op synchronization.");label(ctx,"COMPATIBILITY & DEPENDENCIES");nk_layout_row_dynamic(ctx,48,1);card(ctx,"dep-base","Base Content ≥ 1.4.0","Core dependency","INSTALLED",0);card(ctx,"dep-river","Underground Rivers ≥ 2.2.0","Automatic dependency","WILL INSTALL",0);label(ctx,"REQUIRED BY");card(ctx,"required-temple","Temple Weather","Dependent package","ACTIVE",0);card(ctx,"required-pocket","Pocket Expedition","Dependent package","ACTIVE",0);nk_layout_row_dynamic(ctx,36,2);nk_button_label(ctx,a->mods_tab?"Install & add to session":"Update");nk_button_label(ctx,a->mods_tab?"Install only":"Open files");nk_group_end(ctx);}nk_layout_row_end(ctx);
+    const char *names[]={"Mycelium Below","Brassline Grapple Kit","Skybreak Caverns","Abyssal Tide","Old Lanterns","Pocket Expedition","Temple Weather","Mirror Depths","Clockwork Orchard","Lantern Cartography","Fungal Friends","Deep Relay","Cave Radio","Run History+","Accessible Traps","Quiet Ghost","Shared Wallet","Daily Seed Lab","Rope Physics","Vanilla Plus"};nk_layout_row_begin(ctx,NK_DYNAMIC,390,2);nk_layout_row_push(ctx,.5f);if(nk_group_begin(ctx,"mod-list",NK_WINDOW_BORDER)){for(int i=0;i<20;i++){nk_layout_row_begin(ctx,NK_DYNAMIC,58,2);nk_layout_row_push(ctx,.14f);if(mod_sheet_texture){struct nk_image thumb=nk_subimage_id((int)mod_sheet_texture,2172,724,nk_rect((i%5)*434,0,434,724));nk_image(ctx,thumb);}else nk_label(ctx,"MOD",NK_TEXT_CENTERED);nk_layout_row_push(ctx,.86f);int on=a->selected==i;if(nk_selectable_label(ctx,names[i],NK_TEXT_LEFT,&on))a->selected=i;nk_layout_row_end(ctx);}nk_group_end(ctx);}nk_layout_row_push(ctx,.5f);if(nk_group_begin(ctx,"mod-detail",NK_WINDOW_BORDER)){if(mod_sheet_texture){nk_layout_row_dynamic(ctx,112,1);struct nk_image hero=nk_subimage_id((int)mod_sheet_texture,2172,724,nk_rect((a->selected%5)*434,70,434,580));nk_image(ctx,hero);}nk_layout_row_dynamic(ctx,18,1);label(ctx,a->mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE");heading(ctx,names[a->selected]);nk_layout_row_dynamic(ctx,46,1);nk_label_wrap(ctx,"A substantial package with integrated rooms, mechanics, artwork, and co-op synchronization.");label(ctx,"COMPATIBILITY & DEPENDENCIES");nk_layout_row_dynamic(ctx,48,1);card(ctx,"dep-base","Base Content >= 1.4.0","Core dependency","INSTALLED",0);card(ctx,"dep-river","Underground Rivers >= 2.2.0","Automatic dependency","WILL INSTALL",0);label(ctx,"REQUIRED BY");card(ctx,"required-temple","Temple Weather","Dependent package","ACTIVE",0);card(ctx,"required-pocket","Pocket Expedition","Dependent package","ACTIVE",0);nk_layout_row_dynamic(ctx,36,2);nk_button_label(ctx,a->mods_tab?"Install & add to session":"Update");nk_button_label(ctx,a->mods_tab?"Install only":"Open files");nk_group_end(ctx);}nk_layout_row_end(ctx);
 }
 
 static void draw_ui(struct nk_context *ctx,struct app *a,int w,int h){
@@ -162,11 +177,12 @@ static void save_capture(const char *path,int w,int h){
 int main(int argc,char **argv){
     struct args args=parse_args(argc,argv);int hidden=args.benchmark>0;SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED,"0");SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_GAMECONTROLLER);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_CORE);SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,3);SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-    Uint32 flags=SDL_WINDOW_OPENGL|SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_RESIZABLE|(hidden?SDL_WINDOW_HIDDEN:SDL_WINDOW_SHOWN);SDL_Window *win=SDL_CreateWindow("Gubsy Nuklear trial",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,args.width,args.height,flags);mark_utility(win);if(!hidden)SDL_ShowWindow(win);SDL_GLContext gl=SDL_GL_CreateContext(win);SDL_GL_SetSwapInterval(hidden?0:1);
-    struct nk_context *ctx=nk_sdl_init(win);struct nk_font_atlas *atlas;nk_sdl_font_stash_begin(&atlas);struct nk_font *font=nk_font_atlas_add_from_file(atlas,GUBSY_NUKLEAR_FONT_PATH,15,NULL);nk_sdl_font_stash_end();if(font)nk_style_set_font(ctx,&font->handle);style(ctx);
+    Uint32 flags=SDL_WINDOW_OPENGL|SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_RESIZABLE|SDL_WINDOW_HIDDEN;SDL_Window *win=SDL_CreateWindow("Gubsy Nuklear trial",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,args.width,args.height,flags);mark_utility(win);if(!hidden){SDL_Rect display_bounds;if(SDL_GetDisplayBounds(0,&display_bounds)==0)SDL_SetWindowPosition(win,display_bounds.x+(display_bounds.w-args.width)/2,display_bounds.y+(display_bounds.h-args.height)/2);SDL_ShowWindow(win);}SDL_GLContext gl=SDL_GL_CreateContext(win);SDL_GL_SetSwapInterval(hidden?0:1);
+    struct nk_context *ctx=nk_sdl_init(win);struct nk_font_atlas *atlas;nk_sdl_font_stash_begin(&atlas);struct nk_font *font=nk_font_atlas_add_from_file(atlas,GUBSY_NUKLEAR_FONT_PATH,16,NULL);struct nk_font *large=nk_font_atlas_add_from_file(atlas,GUBSY_NUKLEAR_FONT_PATH,27,NULL);nk_sdl_font_stash_end();if(font){nk_style_set_font(ctx,&font->handle);body_font=&font->handle;}if(large)heading_font=&large->handle;style(ctx);mod_sheet_texture=load_texture(GUBSY_NUKLEAR_MOD_SHEET_PATH);
     struct app app={0};app.screen=args.screen;app.join_mode=1;app.mods_tab=1;app.render_scale=100;app.brightness=64;app.master_volume=80;app.music_volume=72;app.sensitivity=45;app.deadzone=12;app.vibration=80;app.trigger_deadzone=5;
     int running=1,frame=0;double build_total=0,render_total=0,frame_total=0;
     while(running){double fs=now_ms();SDL_Event ev;nk_input_begin(ctx);while(SDL_PollEvent(&ev)){if(ev.type==SDL_QUIT)running=0;if(ev.type==SDL_KEYDOWN&&ev.key.keysym.sym>=SDLK_F1&&ev.key.keysym.sym<=SDLK_F6)app.screen=ev.key.keysym.sym-SDLK_F1;nk_sdl_handle_event(&ev);}nk_input_end(ctx);int w,h;SDL_GetWindowSize(win,&w,&h);double bs=now_ms();draw_ui(ctx,&app,w,h);build_total+=now_ms()-bs;glViewport(0,0,w,h);glClearColor(.008f,.025f,.03f,1);glClear(GL_COLOR_BUFFER_BIT);double rs=now_ms();nk_sdl_render(NK_ANTI_ALIASING_ON,MAX_VERTEX_MEMORY,MAX_ELEMENT_MEMORY);render_total+=now_ms()-rs;SDL_GL_SwapWindow(win);frame_total+=now_ms()-fs;frame++;if(args.capture&&frame==5){save_capture(args.capture,w,h);running=0;}if(args.benchmark>5&&frame>=args.benchmark)running=0;}
     if(args.benchmark>5)printf("backend=nuklear frames=%d viewport=%dx%d ui_build_ms=%.4f render_cpu_ms=%.4f frame_cpu_ms=%.4f rss_kib=%ld\n",frame,args.width,args.height,build_total/frame,render_total/frame,frame_total/frame,rss_kib());
+    if(mod_sheet_texture)glDeleteTextures(1,&mod_sheet_texture);
     nk_sdl_shutdown();SDL_GL_DeleteContext(gl);SDL_DestroyWindow(win);SDL_Quit();return 0;
 }
