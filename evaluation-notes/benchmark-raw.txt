@@ -1,0 +1,132 @@
+viewport=1280x720
+{
+  "screen": "Play lobby",
+  "viewport": "1280x720",
+  "samples": 880,
+  "ui_ready_ms": 10.2335,
+  "document_close_ms": 0.0124,
+  "process_rss_kib": 88428,
+  "document_rss_delta_kib": 6728,
+  "update": {"mean_ms": 0.0026, "p50_ms": 0.0026, "p95_ms": 0.0027, "p99_ms": 0.0032, "max_ms": 0.0059},
+  "render_record": {"mean_ms": 0.0908, "p50_ms": 0.0903, "p95_ms": 0.0933, "p99_ms": 0.0984, "max_ms": 0.1314},
+  "submit_cpu": {"mean_ms": 0.0056, "p50_ms": 0.0053, "p95_ms": 0.0073, "p99_ms": 0.0081, "max_ms": 0.0204},
+  "gpu_complete_wait": {"mean_ms": 0.1003, "p50_ms": 0.0925, "p95_ms": 0.1406, "p99_ms": 0.2142, "max_ms": 0.2810},
+  "cpu_frame": {"mean_ms": 0.2066, "p50_ms": 0.1982, "p95_ms": 0.2490, "p99_ms": 0.3220, "max_ms": 0.3890},
+  "resident_hide": {"mean_ms": 0.0048, "p50_ms": 0.0047, "p95_ms": 0.0047, "p99_ms": 0.0072, "max_ms": 0.0104},
+  "resident_show": {"mean_ms": 0.0065, "p50_ms": 0.0064, "p95_ms": 0.0065, "p99_ms": 0.0067, "max_ms": 0.0087}
+}
+backend=dear-imgui frames=1000 viewport=1280x720 ui_build_ms=0.0127 render_record_ms=0.0050 submit_ms=0.0068 gpu_wait_ms=0.0656 frame_cpu_ms=0.0956 rss_kib=79812
+INFO: Initializing raylib 5.5
+INFO: Platform backend: DESKTOP (GLFW)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 1920 x 1080
+INFO:     > Screen size:  1280 x 720
+INFO:     > Render size:  1280 x 720
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL extensions loaded successfully
+INFO: GL: Supported extensions count: 236
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   AMD
+INFO:     > Renderer: AMD Radeon RX 9070 XT (radeonsi, gfx1201, LLVM 20.1.2, DRM 3.64, 7.0.0-30-generic)
+INFO:     > Version:  4.6 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+INFO:     > GLSL:     4.60
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: DXT compressed textures supported
+INFO: GL: ETC2/EAC compressed textures supported
+INFO: PLATFORM: DESKTOP (GLFW - X11): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: /home/vega/Coding/GameDev/gubsy-ui-kit-trials
+INFO: TIMER: Target time per frame: 0.000 milliseconds
+backend=raygui frames=1000 viewport=1280x720 ui_and_render_cpu_ms=0.1212 fps_equivalent=8253.2 rss_kib=113052
+INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 3] Default shader unloaded successfully
+INFO: TEXTURE: [ID 1] Default texture unloaded successfully
+INFO: Window closed successfully
+backend=nuklear frames=1000 viewport=1280x720 ui_build_ms=0.0201 render_cpu_ms=0.1909 frame_cpu_ms=0.2322 rss_kib=116472
+viewport=1920x1080
+{
+  "screen": "Play lobby",
+  "viewport": "1920x1080",
+  "samples": 880,
+  "ui_ready_ms": 10.5845,
+  "document_close_ms": 0.0128,
+  "process_rss_kib": 88436,
+  "document_rss_delta_kib": 6344,
+  "update": {"mean_ms": 0.0027, "p50_ms": 0.0025, "p95_ms": 0.0044, "p99_ms": 0.0051, "max_ms": 0.0122},
+  "render_record": {"mean_ms": 0.0940, "p50_ms": 0.0910, "p95_ms": 0.1325, "p99_ms": 0.1390, "max_ms": 0.1429},
+  "submit_cpu": {"mean_ms": 0.0058, "p50_ms": 0.0055, "p95_ms": 0.0081, "p99_ms": 0.0098, "max_ms": 0.0189},
+  "gpu_complete_wait": {"mean_ms": 0.1300, "p50_ms": 0.1217, "p95_ms": 0.1626, "p99_ms": 0.2411, "max_ms": 0.3270},
+  "cpu_frame": {"mean_ms": 0.2401, "p50_ms": 0.2285, "p95_ms": 0.2974, "p99_ms": 0.3526, "max_ms": 0.4335},
+  "resident_hide": {"mean_ms": 0.0048, "p50_ms": 0.0047, "p95_ms": 0.0047, "p99_ms": 0.0096, "max_ms": 0.0100},
+  "resident_show": {"mean_ms": 0.0065, "p50_ms": 0.0065, "p95_ms": 0.0065, "p99_ms": 0.0068, "max_ms": 0.0091}
+}
+backend=dear-imgui frames=1000 viewport=1920x1080 ui_build_ms=0.0128 render_record_ms=0.0049 submit_ms=0.0056 gpu_wait_ms=0.0902 frame_cpu_ms=0.1189 rss_kib=79800
+INFO: Initializing raylib 5.5
+INFO: Platform backend: DESKTOP (GLFW)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 1920 x 1080
+INFO:     > Screen size:  1920 x 1080
+INFO:     > Render size:  1920 x 1080
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL extensions loaded successfully
+INFO: GL: Supported extensions count: 236
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   AMD
+INFO:     > Renderer: AMD Radeon RX 9070 XT (radeonsi, gfx1201, LLVM 20.1.2, DRM 3.64, 7.0.0-30-generic)
+INFO:     > Version:  4.6 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+INFO:     > GLSL:     4.60
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: DXT compressed textures supported
+INFO: GL: ETC2/EAC compressed textures supported
+INFO: PLATFORM: DESKTOP (GLFW - X11): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: /home/vega/Coding/GameDev/gubsy-ui-kit-trials
+INFO: TIMER: Target time per frame: 0.000 milliseconds
+backend=raygui frames=1000 viewport=1920x1080 ui_and_render_cpu_ms=0.1194 fps_equivalent=8378.4 rss_kib=113188
+INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 3] Default shader unloaded successfully
+INFO: TEXTURE: [ID 1] Default texture unloaded successfully
+INFO: Window closed successfully
+backend=nuklear frames=1000 viewport=1920x1080 ui_build_ms=0.0132 render_cpu_ms=0.1857 frame_cpu_ms=0.2185 rss_kib=116400
+binary=rmlui bytes=8562032
+binary=dear-imgui bytes=5041504
+binary=raygui bytes=1500552
+binary=nuklear bytes=496016
