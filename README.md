@@ -14,3 +14,8 @@ the trial measures layout authoring, utility, controls, and runtime cost.
 Keyboard shortcuts: `F1`–`F6` select the six destinations. The native widgets
 remain mouse/keyboard operable. Basic gamepad focus is provided by raygui/raylib;
 custom console-style spatial navigation is outside this comparison pass.
+
+Dense panes use independent wheel/scrollbar scrolling. Dropdowns open as real
+top-layer lists rather than cycling immediately. The trial loads the DejaVu Sans
+reference font and uses raygui's built-in icon atlas, so it does not depend on
+the low-resolution stock bitmap font or unsupported Unicode glyphs.

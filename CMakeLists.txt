@@ -22,3 +22,12 @@ add_executable(gubsy-raygui-trial src/main.cpp src/x11_utility.cpp)
 target_include_directories(gubsy-raygui-trial PRIVATE ${raygui_SOURCE_DIR}/src)
 target_link_libraries(gubsy-raygui-trial PRIVATE PkgConfig::RAYLIB X11::X11)
 target_compile_options(gubsy-raygui-trial PRIVATE -Wall -Wextra -Wpedantic)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/DejaVuSans.ttf
+  ${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf
+  COPYONLY
+)
+target_compile_definitions(gubsy-raygui-trial PRIVATE
+  GUBSY_RAYGUI_FONT_PATH="${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf"
+)
