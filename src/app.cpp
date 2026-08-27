@@ -589,6 +589,12 @@ bool GubsyApp::RunSelfTest() {
     return false;
   Update();
   context_->Update();
+  if (!HandleSdlEvent(activate) ||
+      context_->GetFocusElement() == document_->GetElementById("nav-players") ||
+      !is_descendant_of(context_->GetFocusElement(),
+                        document_->QuerySelector("main")))
+    return false;
+  FocusActiveNavigation();
 
   Rml::Element *players_main = document_->QuerySelector("main");
   Rml::ElementList player_controls;
@@ -1214,6 +1220,16 @@ void GubsyApp::ActivateFocus() {
   Rml::Element *focus = context_->GetFocusElement();
   if (!focus)
     return;
+  if (focus->GetAttribute<Rml::String>("id", "").rfind("nav-", 0) == 0) {
+    const bool compact_horizontal_nav =
+        viewport_width_ <= 700 ||
+        (viewport_height_ <= 500 && viewport_width_ <= 1000);
+    if (compact_horizontal_nav)
+      NavigateFocus(0, -1);
+    else
+      NavigateFocus(1, 0);
+    return;
+  }
   if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(focus)) {
     if (select->IsSelectBoxVisible()) {
       select->HideSelectBox();
