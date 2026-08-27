@@ -1,17 +1,24 @@
 #pragma once
 
 #include <array>
+#include "imgui.h"
+
+struct UiAssets {
+  ImTextureID mod_sheet = ImTextureID_Invalid;
+};
 
 struct UiState {
   int screen = 0;
   int play_activity = 0;
+  int play_notice = 0;
   int host_mode = 0;
   int join_mode = 1;
   int players_tab = 0;
   int settings_tab = 0;
   int controls_tab = 0;
   int mods_tab = 1;
-  int selected_row = 0;
+  int selected_action = 0;
+  int selected_mod = 0;
   bool fullscreen = false;
   bool subtitles = true;
   bool friendly_fire = false;
@@ -27,4 +34,5 @@ struct UiState {
 };
 
 void ConfigureUiStyle(float density);
+void SetUiAssets(UiAssets assets);
 void DrawGubsyUi(UiState& state, int width, int height);

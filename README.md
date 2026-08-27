@@ -13,3 +13,6 @@ tool window.
 
 Dear ImGui's keyboard and gamepad navigation are enabled. Real combo boxes,
 sliders, checkboxes, tabs, child scrolling regions, and local state are used.
+The fixed game viewport never scrolls as a whole; only intentionally dense list
+and detail panes scroll. Catalog rows and detail views use the reference mod
+artwork, while navigation icons are drawn as resolution-independent geometry.

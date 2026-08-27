@@ -10,6 +10,8 @@ namespace {
 constexpr ImVec4 Accent{0.59f, 0.94f, 0.45f, 1.0f};
 constexpr ImVec4 Muted{0.56f, 0.65f, 0.63f, 1.0f};
 constexpr ImVec4 Cyan{0.36f, 0.83f, 0.88f, 1.0f};
+UiAssets Assets{};
+int RowId=0;
 
 void Label(const char* text) { ImGui::TextColored(Accent, "%s", text); }
 
@@ -39,7 +41,13 @@ bool NavItem(int index, int& current, const char* icon, const char* title, const
   if (active) ImGui::PopStyleColor();
   auto* dl = ImGui::GetWindowDrawList();
   if (active) dl->AddRectFilled(start, {start.x + 3, start.y + 52}, ImGui::ColorConvertFloat4ToU32(Accent));
-  dl->AddText({start.x + 14, start.y + 12}, ImGui::ColorConvertFloat4ToU32(active ? Accent : Cyan), icon);
+  (void)icon;const ImU32 icon_color=ImGui::ColorConvertFloat4ToU32(active?Accent:Cyan);const ImVec2 c{start.x+20,start.y+22};
+  if(index==0)dl->AddTriangleFilled({c.x-5,c.y-6},{c.x-5,c.y+6},{c.x+6,c.y},icon_color);
+  else if(index==1)dl->AddQuadFilled({c.x,c.y-6},{c.x+6,c.y},{c.x,c.y+6},{c.x-6,c.y},icon_color);
+  else if(index==2){dl->AddCircle(c,6,icon_color,8,2);dl->AddCircleFilled(c,2,icon_color);}
+  else if(index==3){dl->AddLine({c.x-6,c.y-2},{c.x+6,c.y+2},icon_color,2);dl->AddLine({c.x-3,c.y-5},{c.x+3,c.y+5},icon_color,1);}
+  else if(index==4){dl->AddRect({c.x-6,c.y-6},{c.x+6,c.y+6},icon_color,0,0,2);dl->AddRectFilled({c.x-2,c.y-2},{c.x+2,c.y+2},icon_color);}
+  else dl->AddNgon(c,6,icon_color,6,2);
   dl->AddText({start.x + 42, start.y + 7}, IM_COL32(224,234,232,255), title);
   dl->AddText({start.x + 42, start.y + 29}, IM_COL32(145,164,161,255), subtitle);
   if (pressed) current = index;
@@ -47,9 +55,11 @@ bool NavItem(int index, int& current, const char* icon, const char* title, const
   return pressed;
 }
 
-void Row(const char* title, const char* sub, const char* value = nullptr, bool selected = false, float height = 54) {
-  ImGui::PushID(title);
+bool Row(const char* title, const char* sub, const char* value = nullptr, bool selected = false, float height = 52) {
+  ImGui::PushID(RowId++);
   if (selected) ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4{0.08f,0.22f,0.16f,1});
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{12,5});
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,{8,1});
   ImGui::BeginChild("row", {0,height}, ImGuiChildFlags_Borders,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::TextUnformatted(title); Sub(sub);
@@ -58,9 +68,12 @@ void Row(const char* title, const char* sub, const char* value = nullptr, bool s
     ImGui::SetCursorPos({ImGui::GetWindowWidth()-size.x-12,13});
     ImGui::TextColored(Accent,"%s",value);
   }
+  const bool pressed=ImGui::IsWindowHovered()&&ImGui::IsMouseReleased(ImGuiMouseButton_Left);
   ImGui::EndChild();
+  ImGui::PopStyleVar(2);
   if (selected) ImGui::PopStyleColor();
   ImGui::PopID();
+  return pressed;
 }
 
 void Tabs(const char* id, const std::array<const char*,4>& names, int count, int& active) {
@@ -74,29 +87,29 @@ void Tabs(const char* id, const std::array<const char*,4>& names, int count, int
 }
 
 void SettingRow(const char* title, const char* sub, auto widget) {
-  ImGui::PushID(title); ImGui::BeginChild("setting",{0,66},ImGuiChildFlags_Borders,
+  ImGui::PushID(title);ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{12,6});ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,{8,2}); ImGui::BeginChild("setting",{0,58},ImGuiChildFlags_Borders,
                                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::BeginGroup();ImGui::TextUnformatted(title);Sub(sub);ImGui::EndGroup();
   ImGui::SameLine(ImGui::GetWindowWidth()*0.52f);ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-12);widget();
-  ImGui::EndChild();ImGui::PopID();
+  ImGui::EndChild();ImGui::PopStyleVar(2);ImGui::PopID();
 }
 
 void Play(UiState& s) {
   Label("SPLONKS / PLAY");Title("Play");
   const float right=320, gap=12;
-  ImGui::BeginChild("setup",{ImGui::GetContentRegionAvail().x-right-gap,0},ImGuiChildFlags_Borders);
+  ImGui::BeginChild("setup",{ImGui::GetContentRegionAvail().x-right-gap,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
   Label(s.play_activity==0?"CONTINUE QUEST":"NEW EXPEDITION");
   ImGui::Text("%s",s.play_activity==0?"The Violet Reach":"Choose a quest");
-  Sub(s.play_activity==0?"The Glass Caverns · Latest checkpoint · Vega":"Start a clean quest from stage one");ImGui::Separator();
+  Sub(s.play_notice==1?"Checkpoint picker opened — select a recorded resume point":s.play_notice==2?"Expedition rules editor opened — changes apply to this lobby":s.play_activity==0?"The Glass Caverns · Latest checkpoint · Vega":"Start a clean quest from stage one");ImGui::Separator();
   SettingRow("Activity","Continue a checkpoint or start another quest",[&]{const char* v[]={"Continue expedition","New expedition"};ImGui::Combo("##activity",&s.play_activity,v,2);});
-  Row(s.play_activity==0?"Resume point":"Quest",s.play_activity==0?"Latest checkpoint · The Violet Reach":"The Violet Reach · 8 stages",s.play_activity==0?"CHOOSE CHECKPOINT >":"CHOOSE QUEST >");
+  if(Row(s.play_activity==0?"Resume point":"Quest",s.play_activity==0?"Latest checkpoint · The Violet Reach":"The Violet Reach · 8 stages",s.play_activity==0?"CHOOSE CHECKPOINT >":"CHOOSE QUEST >"))s.play_notice=1;
   SettingRow("Play with","Who may occupy the remaining slots",[&]{const char* v[]={"Solo","Friends can join","Public"};ImGui::Combo("##join",&s.join_mode,v,3);});
   SettingRow("Host using","Automatic chooses direct or relay hosting",[&]{const char* v[]={"Automatic","Direct","Relay"};ImGui::Combo("##host",&s.host_mode,v,3);});
-  Row("Expedition rules","Standard · 4 lives · ghost at 180s","EDIT ALL >");
-  Row("Session mods","7 active · dependency set valid","MANAGE >");
+  if(Row("Expedition rules","Standard · 4 lives · ghost at 180s","EDIT ALL >"))s.play_notice=2;
+  if(Row("Session mods","7 active · dependency set valid","MANAGE >"))s.screen=5;
   ImGui::SetCursorPosY(ImGui::GetWindowHeight()-52);ImGui::Button("Pause preview",{150,36});ImGui::SameLine(ImGui::GetWindowWidth()-280);PrimaryButton(s.play_activity==0?"Resume latest checkpoint":"Begin expedition",{264,36});
   ImGui::EndChild();ImGui::SameLine();
-  ImGui::BeginChild("party",{right,0},ImGuiChildFlags_Borders);Label("PLAYERS");ImGui::TextUnformatted(s.join_mode==0?"Solo player":"Your party");
+  ImGui::BeginChild("party",{right,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);Label("PLAYERS");ImGui::TextUnformatted(s.join_mode==0?"Solo player":"Your party");
   Row("P1   Moss","Xbox Wireless Controller","READY");if(s.join_mode!=0){Row("+   Open slot","Invite a friend or add locally");Row("+   Open slot","Invite a friend or add locally");}
   ImGui::SetCursorPosY(ImGui::GetWindowHeight()-90);ImGui::Button("Invite / copy link",{-1,34});Sub("CONTENT                         7 mods");Sub(s.host_mode==0?"NETWORK                       Automatic":s.host_mode==1?"NETWORK                       Direct":"NETWORK                       Relay");
   ImGui::EndChild();
@@ -124,11 +137,11 @@ void Settings(UiState& s) {
 void Controls(UiState& s) {
   Label("SPLONKS / CONTROLS");Title("Controls");std::array<const char*,4> tabs{"Bindings","Devices","Input tuning",nullptr};Tabs("controls-tabs",tabs,3,s.controls_tab);
   ImGui::BeginChild("controls-left",{ImGui::GetContentRegionAvail().x*.5f,0},ImGuiChildFlags_Borders);
-  if(s.controls_tab==0){static char filter[80]{};ImGui::InputTextWithHint("##filter","Filter actions...",filter,sizeof filter);const char* a[]={"Menu Up","Menu Down","Menu Left","Menu Right","Activate","Cancel","Move","Look"};const char* b[]={"D-Pad Up","D-Pad Down","D-Pad Left","D-Pad Right","Gamepad A","Gamepad B","Left Stick","Right Stick"};for(int i=0;i<8;i++){if(ImGui::Selectable(a[i],s.selected_row==i,0,{0,44}))s.selected_row=i;ImGui::SameLine(ImGui::GetWindowWidth()-100);ImGui::TextColored(Accent,"%s",b[i]);}}
+  if(s.controls_tab==0){static char filter[80]{};ImGui::InputTextWithHint("##filter","Filter actions...",filter,sizeof filter);const char* a[]={"Menu Up","Menu Down","Menu Left","Menu Right","Activate","Cancel","Move","Look"};const char* b[]={"D-Pad Up","D-Pad Down","D-Pad Left","D-Pad Right","Gamepad A","Gamepad B","Left Stick","Right Stick"};for(int i=0;i<8;i++){if(ImGui::Selectable(a[i],s.selected_action==i,0,{0,44}))s.selected_action=i;ImGui::SameLine(ImGui::GetWindowWidth()-100);ImGui::TextColored(Accent,"%s",b[i]);}}
   else if(s.controls_tab==1){Label("DEVICE ASSIGNMENT");Row("Xbox Wireless Controller","Gamepad 0 · connected","MOSS",true,66);Row("Keyboard + mouse","Desktop aggregate","AVAILABLE",false,66);Row("T.16000M Joystick","14 axes · 32 buttons","MOSS",false,66);}
   else {Label("INPUT PROFILE");Sub("Standard · Xbox Wireless Controller");SettingRow("Look sensitivity","Camera speed",[&]{ImGui::SliderFloat("##sense",&s.sensitivity,0,100,"%.0f%%");});SettingRow("Stick deadzone","Ignore center noise",[&]{ImGui::SliderFloat("##dead",&s.deadzone,0,40,"%.0f%%");});SettingRow("Vibration strength","Rumble output",[&]{ImGui::SliderFloat("##vibe",&s.vibration,0,100,"%.0f%%");});SettingRow("Trigger deadzone","Minimum travel",[&]{ImGui::SliderFloat("##trigger",&s.trigger_deadzone,0,30,"%.0f%%");});}
   ImGui::EndChild();ImGui::SameLine();ImGui::BeginChild("controls-detail",{0,0},ImGuiChildFlags_Borders);
-  if(s.controls_tab==0){const char* a[]={"Menu Up","Menu Down","Menu Left","Menu Right","Activate","Cancel","Move","Look"};Label("SELECTED ACTION");ImGui::TextUnformatted(a[s.selected_row]);Sub("Multiple device bindings and transformed axes are supported.");Row("1   Gamepad binding","D-pad / face / analog input","REPLACE");Row("2   Keyboard binding","Keyboard key","REPLACE");PrimaryButton("Listen for input",{140,36});ImGui::SameLine();ImGui::Button("Browse controls",{140,36});ImGui::TextWrapped("Manual browse supports trigger-to-button, wheel pedals, joysticks, and macro pads.");}
+  if(s.controls_tab==0){const char* a[]={"Menu Up","Menu Down","Menu Left","Menu Right","Activate","Cancel","Move","Look"};Label("SELECTED ACTION");ImGui::TextUnformatted(a[s.selected_action]);Sub("Multiple device bindings and transformed axes are supported.");Row("1   Gamepad binding","D-pad / face / analog input","REPLACE");Row("2   Keyboard binding","Keyboard key","REPLACE");PrimaryButton("Listen for input",{140,36});ImGui::SameLine();ImGui::Button("Browse controls",{140,36});ImGui::TextWrapped("Manual browse supports trigger-to-button, wheel pedals, joysticks, and macro pads.");}
   else if(s.controls_tab==1){Label("INPUT EXPLORER");ImGui::TextUnformatted("Press controls to identify Gubsy input IDs");Row("Button South","idle");Row("Axis Left X","+0.04");Row("Axis Right Trigger","0.00");}
   else {Label("DEVICE RESPONSE");ImGui::TextUnformatted("Live response");ImGui::ProgressBar(s.sensitivity/100,{ImGui::GetContentRegionAvail().x,30},"qualified stick magnitude");Row("Device","Xbox Wireless Controller");Row("Curve","Smooth");}
   ImGui::EndChild();
@@ -142,7 +155,7 @@ void Progress(UiState&) {
 void Mods(UiState& s) {
   Label("SPLONKS / MODS");Title("Mods");std::array<const char*,4> tabs{"Installed","Browse catalog",nullptr,nullptr};Tabs("mods-tabs",tabs,2,s.mods_tab);
   static char search[100]{};ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x*.62f);ImGui::InputTextWithHint("##search","Search the Gubsy mod catalog...",search,sizeof search);ImGui::SameLine();ImGui::Checkbox("Compatible only",&s.compatible_only);ImGui::SameLine();ImGui::Button("Refresh");
-  ImGui::BeginChild("mods-list",{ImGui::GetContentRegionAvail().x*.5f,0},ImGuiChildFlags_Borders);const char* names[]={"Mycelium Below","Brassline Grapple Kit","Skybreak Caverns","Abyssal Tide","Old Lanterns","Pocket Expedition","Temple Weather","Mirror Depths","Clockwork Orchard","Lantern Cartography","Fungal Friends","Deep Relay","Cave Radio","Run History+","Accessible Traps","Quiet Ghost","Shared Wallet","Daily Seed Lab","Rope Physics","Vanilla Plus"};const char* deps[]={"Requires Base Content","Requires Cartographer's Desk","Requires game 1.4","Requires Underground Rivers","Update available","2 dependencies","Required by 2 mods","Requires Gubsy Mod API 0.2"};for(int i=0;i<20;i++){ImGui::PushID(i);if(ImGui::Selectable(names[i],s.selected_row==i,0,{0,44}))s.selected_row=i;ImGui::SameLine(ImGui::GetWindowWidth()-110);ImGui::TextColored(i==7?ImVec4{1,.4f,.4f,1}:Accent,"%s",i==7?"INCOMPATIBLE":i==4?"UPDATE":"93%%");if(i<8){ImGui::SetCursorPosY(ImGui::GetCursorPosY()-18);ImGui::TextColored(Muted,"   %s",deps[i]);}ImGui::PopID();}ImGui::EndChild();ImGui::SameLine();ImGui::BeginChild("mod-detail",{0,0},ImGuiChildFlags_Borders);Label(s.mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE");ImGui::TextUnformatted(names[s.selected_row]);ImGui::TextWrapped("A substantial content package with carefully integrated rooms, mechanics, artwork, and native co-op synchronization.");Label("COMPATIBILITY & DEPENDENCIES");Row("Base Content ≥ 1.4.0","Core dependency","INSTALLED");Row("Underground Rivers ≥ 2.2.0","Automatic dependency","WILL INSTALL");Label("REQUIRED BY");Row("Temple Weather","Dependent package","ACTIVE");Row("Pocket Expedition","Dependent package","ACTIVE");ImGui::TextColored(s.selected_row==7?ImVec4{1,.4f,.4f,1}:Muted,"%s",s.selected_row==7?"This mod cannot be installed on the current API version.":"The full dependency change plan is shown before mutation.");PrimaryButton(s.mods_tab?"Install & add to session":"Update",{210,36});ImGui::SameLine();ImGui::Button(s.mods_tab?"Install only":"Open files",{110,36});ImGui::EndChild();
+  ImGui::BeginChild("mods-list",{ImGui::GetContentRegionAvail().x*.5f,0},ImGuiChildFlags_Borders);const char* names[]={"Mycelium Below","Brassline Grapple Kit","Skybreak Caverns","Abyssal Tide","Old Lanterns","Pocket Expedition","Temple Weather","Mirror Depths","Clockwork Orchard","Lantern Cartography","Fungal Friends","Deep Relay","Cave Radio","Run History+","Accessible Traps","Quiet Ghost","Shared Wallet","Daily Seed Lab","Rope Physics","Vanilla Plus"};const char* deps[]={"Requires Base Content","Requires Cartographer's Desk","Requires game 1.4","Requires Underground Rivers","Update available","2 dependencies","Required by 2 mods","Requires Gubsy Mod API 0.2"};for(int i=0;i<20;i++){ImGui::PushID(i);const ImVec2 start=ImGui::GetCursorScreenPos();if(ImGui::Selectable("##mod",s.selected_mod==i,0,{0,62}))s.selected_mod=i;auto* dl=ImGui::GetWindowDrawList();if(Assets.mod_sheet!=ImTextureID_Invalid){const float u0=float(i%5)/5.0f,u1=float(i%5+1)/5.0f;dl->AddImage(Assets.mod_sheet,{start.x+8,start.y+7},{start.x+56,start.y+55},{u0,0},{u1,1});}else dl->AddRectFilled({start.x+8,start.y+7},{start.x+56,start.y+55},IM_COL32(20,55,60,255));dl->AddText({start.x+66,start.y+9},IM_COL32(224,234,232,255),names[i]);dl->AddText({start.x+66,start.y+33},IM_COL32(145,164,161,255),i<8?deps[i]:"Catalog content package");const char* status=i==7?"INCOMPATIBLE":i==4?"UPDATE":"93%";const ImVec2 status_size=ImGui::CalcTextSize(status);dl->AddText({start.x+ImGui::GetContentRegionAvail().x-status_size.x-10,start.y+19},ImGui::ColorConvertFloat4ToU32(i==7?ImVec4{1,.4f,.4f,1}:Accent),status);ImGui::PopID();}ImGui::EndChild();ImGui::SameLine();ImGui::BeginChild("mod-detail",{0,0},ImGuiChildFlags_Borders);if(Assets.mod_sheet!=ImTextureID_Invalid){const float u0=float(s.selected_mod%5)/5.0f,u1=float(s.selected_mod%5+1)/5.0f;ImGui::Image(Assets.mod_sheet,{ImGui::GetContentRegionAvail().x,118},{u0,.12f},{u1,.88f});}Label(s.mods_tab?"CATALOG ENTRY":"INSTALLED PACKAGE");ImGui::TextUnformatted(names[s.selected_mod]);ImGui::TextWrapped("A substantial content package with carefully integrated rooms, mechanics, artwork, and native co-op synchronization.");Label("COMPATIBILITY & DEPENDENCIES");Row("Base Content >= 1.4.0","Core dependency","INSTALLED");Row("Underground Rivers >= 2.2.0","Automatic dependency","WILL INSTALL");Label("REQUIRED BY");Row("Temple Weather","Dependent package","ACTIVE");Row("Pocket Expedition","Dependent package","ACTIVE");ImGui::TextColored(s.selected_mod==7?ImVec4{1,.4f,.4f,1}:Muted,"%s",s.selected_mod==7?"This mod cannot be installed on the current API version.":"The full dependency change plan is shown before mutation.");PrimaryButton(s.mods_tab?"Install & add to session":"Update",{210,36});ImGui::SameLine();ImGui::Button(s.mods_tab?"Install only":"Open files",{110,36});ImGui::EndChild();
 }
 
 } // namespace
@@ -152,13 +165,17 @@ void ConfigureUiStyle(float density) {
   st.Colors[ImGuiCol_WindowBg]={.025f,.065f,.075f,1};st.Colors[ImGuiCol_ChildBg]={.04f,.11f,.12f,1};st.Colors[ImGuiCol_Border]={.18f,.31f,.31f,1};st.Colors[ImGuiCol_FrameBg]={.045f,.12f,.13f,1};st.Colors[ImGuiCol_Header]={.08f,.20f,.17f,1};st.Colors[ImGuiCol_HeaderHovered]={.11f,.28f,.21f,1};st.Colors[ImGuiCol_HeaderActive]={.15f,.36f,.25f,1};st.Colors[ImGuiCol_CheckMark]=Accent;st.Colors[ImGuiCol_SliderGrab]=Accent;st.Colors[ImGuiCol_NavHighlight]=Cyan;st.Colors[ImGuiCol_TabSelected]={.10f,.27f,.18f,1};
 }
 
+void SetUiAssets(UiAssets assets) { Assets=assets; }
+
 void DrawGubsyUi(UiState& s, int width, int height) {
+  RowId=0;
   ImGui::SetNextWindowPos({0,0});ImGui::SetNextWindowSize({float(width),float(height)});
-  ImGui::Begin("Gubsy shell",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoBringToFrontOnFocus);
+  ImGui::Begin("Gubsy shell",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoBringToFrontOnFocus|ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
   const float header=48;ImGui::BeginChild("header",{0,header},ImGuiChildFlags_Borders);ImGui::TextColored(Accent,"G");ImGui::SameLine();ImGui::TextUnformatted("G U B S Y   S H E L L");ImGui::SameLine(ImGui::GetWindowWidth()*.58f);ImGui::TextUnformatted("●  OFFLINE     |     VEGA");ImGui::SameLine(ImGui::GetWindowWidth()-125);ImGui::TextColored(Cyan,"%d x %d",width,height);ImGui::EndChild();
   const bool compact=width<900||height<620;const float footer=compact?52:0;const float nav=compact?0:230;
-  if(!compact){ImGui::BeginChild("nav",{nav,height-header},ImGuiChildFlags_Borders);ImGui::TextUnformatted("VE   ACTIVE PROFILE");Sub("     Vega");ImGui::Separator();const char* t[]={"Play","Players","Settings","Controls","Progress","Mods"};const char* u[]={"Continue or start","Profiles & devices","Game preferences","Bindings & input","Campaigns & checkpoints","Installed content"};const char* i[]={">","◆","*","~","#","o"};for(int n=0;n<6;n++)NavItem(n,s.screen,i[n],t[n],u[n],nav-16);ImGui::SetCursorPosY(ImGui::GetWindowHeight()-52);ImGui::TextUnformatted("×   Quit");Sub("     Return to desktop");ImGui::EndChild();ImGui::SameLine();}
-  ImGui::BeginChild("content",{0,compact?height-header-footer:height-header},ImGuiChildFlags_None);ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{22,18});switch(s.screen){case 0:Play(s);break;case 1:Players(s);break;case 2:Settings(s);break;case 3:Controls(s);break;case 4:Progress(s);break;case 5:Mods(s);break;}ImGui::PopStyleVar();ImGui::EndChild();
+  const float remaining=ImGui::GetContentRegionAvail().y;
+  if(!compact){ImGui::BeginChild("nav",{nav,remaining},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);ImGui::TextUnformatted("VE   ACTIVE PROFILE");Sub("     Vega");ImGui::Separator();const char* t[]={"Play","Players","Settings","Controls","Progress","Mods"};const char* u[]={"Continue or start","Profiles & devices","Game preferences","Bindings & input","Campaigns & checkpoints","Installed content"};const char* i[]={">","◆","*","~","#","o"};for(int n=0;n<6;n++)NavItem(n,s.screen,i[n],t[n],u[n],nav-16);ImGui::SetCursorPosY(ImGui::GetWindowHeight()-52);ImGui::TextUnformatted("×   Quit");Sub("     Return to desktop");ImGui::EndChild();ImGui::SameLine();}
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{22,12});ImGui::BeginChild("content",{0,compact?remaining-footer:remaining},ImGuiChildFlags_AlwaysUseWindowPadding,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);switch(s.screen){case 0:Play(s);break;case 1:Players(s);break;case 2:Settings(s);break;case 3:Controls(s);break;case 4:Progress(s);break;case 5:Mods(s);break;}ImGui::EndChild();ImGui::PopStyleVar();
   if(compact){ImGui::BeginChild("bottom-nav",{0,footer},ImGuiChildFlags_Borders);const char* n[]={"Play","Players","Settings","Controls","Progress","Mods"};for(int i=0;i<6;i++){if(i)ImGui::SameLine();if(ImGui::Selectable(n[i],s.screen==i,0,{(ImGui::GetContentRegionAvail().x-(5-i)*8)/(6-i),footer-8}))s.screen=i;}ImGui::EndChild();}
   ImGui::End();
 }

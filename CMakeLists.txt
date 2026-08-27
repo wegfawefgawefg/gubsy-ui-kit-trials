@@ -25,5 +25,6 @@ target_link_libraries(gubsy-dear-imgui-trial PRIVATE imgui_sdlgpu PkgConfig::SDL
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/DejaVuSans.ttf
   ${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf COPYONLY)
 target_compile_definitions(gubsy-dear-imgui-trial PRIVATE
-  GUBSY_IMGUI_FONT_PATH="${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf")
+  GUBSY_IMGUI_FONT_PATH="${CMAKE_CURRENT_BINARY_DIR}/DejaVuSans.ttf"
+  GUBSY_IMGUI_MOD_SHEET_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../vue-reference/public/mod-sheet-1.png")
 target_compile_options(gubsy-dear-imgui-trial PRIVATE -Wall -Wextra -Wpedantic)
