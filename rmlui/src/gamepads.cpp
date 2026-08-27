@@ -8,6 +8,7 @@
 namespace {
 
 void report_gamepad_status(const OpenGamepads &gamepads, GubsyApp &app) {
+  // report first active controller to shell
   const char *name =
       gamepads.empty() ? "" : SDL_GetGamepadName(gamepads.front());
   app.SetGamepadStatus(static_cast<int>(gamepads.size()),
@@ -22,6 +23,7 @@ bool has_gamepad(const OpenGamepads &gamepads, SDL_JoystickID id) {
 }
 
 void open_gamepad(SDL_JoystickID id, OpenGamepads &gamepads) {
+  // open one untracked controller
   if (has_gamepad(gamepads, id))
     return;
   if (SDL_Gamepad *gamepad = SDL_OpenGamepad(id)) {
@@ -38,6 +40,7 @@ void open_gamepad(SDL_JoystickID id, OpenGamepads &gamepads) {
 } // namespace
 
 void open_connected_gamepads(OpenGamepads &gamepads, GubsyApp &app) {
+  // open controllers present at startup
   int count = 0;
   if (SDL_JoystickID *ids = SDL_GetGamepads(&count)) {
     for (int index = 0; index < count; ++index)
@@ -49,6 +52,7 @@ void open_connected_gamepads(OpenGamepads &gamepads, GubsyApp &app) {
 
 void handle_gamepad_connection(const SDL_Event &event, OpenGamepads &gamepads,
                                GubsyApp &app) {
+  // track controller hotplug lifetime
   if (event.type == SDL_EVENT_GAMEPAD_ADDED) {
     open_gamepad(event.gdevice.which, gamepads);
     report_gamepad_status(gamepads, app);
@@ -68,6 +72,7 @@ void handle_gamepad_connection(const SDL_Event &event, OpenGamepads &gamepads,
 }
 
 void close_gamepads(OpenGamepads &gamepads) {
+  // close owned controller handles
   for (SDL_Gamepad *gamepad : gamepads)
     SDL_CloseGamepad(gamepad);
   gamepads.clear();

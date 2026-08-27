@@ -3,9 +3,8 @@
 
 #include <sstream>
 
-// Campaign ownership, package manifests, and checkpoints.
-
 std::string GubsyApp::BuildProgress() const {
+  // define game-provided campaigns
   struct Campaign {
     const char *id;
     const char *name;
@@ -20,6 +19,7 @@ std::string GubsyApp::BuildProgress() const {
        "3h 06m", "READY"},
       {"Old Expedition", "Old Expedition", "Moss · Version 0.7 data", "8h 19m",
        "INCOMPATIBLE"}};
+  // build campaign selector and checkpoint detail
   std::ostringstream out;
   out << R"(<div class="toolbar"><span class="toolbar-title"><small>GAME-PROVIDED PROGRESSION</small>3 campaigns · automatic checkpoints</span><button data-focus data-action="new-campaign" class="button primary">+ Choose a new quest</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body"><small>CAMPAIGNS</small>)";
   for (const Campaign &campaign : campaigns)

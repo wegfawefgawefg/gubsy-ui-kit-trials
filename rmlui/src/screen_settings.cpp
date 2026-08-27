@@ -4,9 +4,8 @@
 #include <sstream>
 #include <vector>
 
-// Schema-like game and system settings surfaces.
-
 std::string GubsyApp::BuildSettings() const {
+  // build game-provided category tabs
   std::ostringstream out;
   const char *tabs[]{"Display", "Audio", "Accessibility", "Gameplay"};
   out << R"(<div class="local-tabs">)";
@@ -16,6 +15,7 @@ std::string GubsyApp::BuildSettings() const {
         << R"(">)" << tab << R"(</button>)";
   out << R"(<span>LB / RB change category</span></div><div class="master-detail settings-workspace"><section class="panel master-list scroll-list"><div class="scroll-body"><div class="section-title"><span><small>)"
       << state_.settings_tab << R"(</small><strong>)";
+  // define active setting schema
   struct Setting {
     const char *id;
     const char *name;
@@ -108,6 +108,7 @@ std::string GubsyApp::BuildSettings() const {
       return {"Off", "Smart", "Always"};
     return {};
   };
+  // build native setting controls
   std::string selected_id = "fullscreen";
   for (const Setting &setting : settings) {
     const std::string id = setting.id;
@@ -151,6 +152,7 @@ std::string GubsyApp::BuildSettings() const {
     }
     out << R"(</div></div>)";
   }
+  // build selected setting detail
   const std::string selected_value = value_for(selected_id);
   out << R"(</div></section><aside class="panel detail setting-detail"><small>SELECTED SETTING</small><h2 id="setting-detail-title">)"
       << state_.selected_setting

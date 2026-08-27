@@ -5,17 +5,17 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 
-// Rebuild the active document surface while preserving focus.
-
 void GubsyApp::Render() {
   if (!document_)
     return;
   RenderChrome();
+  // remember authored focus action
   Rml::String focused_action;
   if (!pending_focus_action_.empty())
     focused_action = pending_focus_action_;
   else if (Rml::Element *focused = focus_tree::action_element(context_->GetFocusElement()))
     focused_action = focused->GetAttribute<Rml::String>("data-action", "");
+  // rebuild active screen markup
   if (Rml::Element *content = document_->GetElementById("screen-content")) {
     content->SetInnerRML(BuildCurrentScreen());
     Rml::ElementList details;
@@ -26,6 +26,7 @@ void GubsyApp::Render() {
       detail->SetAttribute("tabindex", "0");
     }
   }
+  // restore focus after document replacement
   if (!focused_action.empty()) {
     Rml::ElementList candidates;
     document_->QuerySelectorAll(candidates, "[data-action]");
@@ -38,6 +39,7 @@ void GubsyApp::Render() {
     }
   }
   pending_focus_action_.clear();
+  // rebuild guarded modal layer
   if (Rml::Element *modal = document_->GetElementById("modal-root")) {
     if (state_.modal.empty()) {
       modal->SetInnerRML("");
@@ -62,6 +64,7 @@ void GubsyApp::Render() {
 }
 
 void GubsyApp::RenderChrome() {
+  // update fixed shell chrome
   if (!document_)
     return;
   if (Rml::Element *viewport = document_->GetElementById("viewport-size"))

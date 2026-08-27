@@ -11,12 +11,11 @@
 #include <cmath>
 #include <limits>
 
-// Local directional relationships and remembered content focus.
-
 void GubsyApp::NavigateFocus(int dx, int dy) {
   if (!document_)
     return;
 
+  // collect visible focus targets
   Rml::ElementList candidates;
   document_->QuerySelectorAll(candidates, state_.modal.empty()
                                               ? "[data-focus]"
@@ -30,6 +29,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
   if (candidates.empty())
     return;
 
+  // define local focus move
   Rml::Element *current = context_->GetFocusElement();
   auto focus = [](Rml::Element *element, bool activate = false) {
     if (!element)
@@ -40,6 +40,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
       element->Click();
   };
 
+  // find nearest target in one direction
   auto geometric_target = [&](Rml::Element *origin,
                               const Rml::ElementList &pool) {
     if (!origin)
@@ -94,6 +95,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return best;
   };
 
+  // contain modal navigation
   if (!state_.modal.empty()) {
     if (!current || std::find(candidates.begin(), candidates.end(), current) ==
                         candidates.end())
@@ -103,6 +105,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return;
   }
 
+  // resolve active primary tab
   const char *active_nav_id = "nav-play";
   switch (state_.destination) {
   case Destination::Players:
@@ -153,6 +156,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return;
   }
 
+  // move primary tabs and activate on focus
   if (is_primary_nav(current)) {
     const int movement = compact_horizontal_nav ? dx : dy;
     const int index = primary_index(current);
@@ -172,6 +176,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return;
   }
 
+  // keep quit outside normal content flow
   if (is_quit(current)) {
     if (!compact_horizontal_nav && dy < 0)
       focus(document_->GetElementById("nav-mods"), true);
@@ -183,6 +188,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return;
   }
 
+  // move local tabs and activate on focus
   Rml::Element *tab_bar = focus_tree::ancestor_with_class(current, "local-tabs");
   if (!tab_bar)
     tab_bar = focus_tree::ancestor_with_class(current, "mobile-local-tabs");
@@ -215,6 +221,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
     return;
   }
 
+  // contain navigation inside active content
   if (main && focus_tree::is_descendant_of(current, main)) {
     Rml::ElementList content;
     main->QuerySelectorAll(content, "[data-focus]");
@@ -233,6 +240,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
       focus(master_detail->QuerySelector(".detail"));
       return;
     }
+    // scroll detail regions before leaving them
     if (current->HasAttribute("data-scroll-region") && dy != 0) {
       const float before = current->GetScrollTop();
       current->SetScrollTop(before + static_cast<float>(dy) * 72.0f);
@@ -256,6 +264,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
       }
       return;
     }
+    // prefer document order inside vertical groups
     if (dy != 0) {
       const bool horizontal_action_row =
           focus_tree::ancestor_with_class(current, "actions") ||
@@ -311,7 +320,7 @@ void GubsyApp::NavigateFocus(int dx, int dy) {
 }
 
 void GubsyApp::ActivateFocus() {
-  // Native controls enter an explicit transactional edit mode.
+  // enter explicit native control editing
   Rml::Element *focus = context_->GetFocusElement();
   if (!focus)
     return;
@@ -372,7 +381,7 @@ void GubsyApp::ActivateFocus() {
 }
 
 void GubsyApp::FocusActiveNavigation() {
-  // Back returns to the active primary destination.
+  // return to active primary tab
   int memory_index = 0;
   const char *id = "nav-play";
   switch (state_.destination) {
@@ -412,7 +421,7 @@ void GubsyApp::FocusActiveNavigation() {
 }
 
 void GubsyApp::FocusRememberedContent() {
-  // Re-enter the last meaningful control for this destination.
+  // restore last content focus
   int memory_index = 0;
   switch (state_.destination) {
   case Destination::Players:

@@ -7,6 +7,7 @@
 #include <string>
 
 void BenchmarkSamples::Add(const Timings &value) {
+  // collect one frame sample
   update.push_back(value.update_ms);
   render_record.push_back(value.render_record_ms);
   submit.push_back(value.submit_ms);
@@ -19,6 +20,7 @@ double milliseconds(TrialClock::time_point start, TrialClock::time_point end) {
 }
 
 long read_rss_kib() {
+  // read resident process memory
   std::ifstream status("/proc/self/status");
   std::string key;
   while (status >> key) {
@@ -34,6 +36,7 @@ long read_rss_kib() {
 }
 
 void print_metric(const char *name, std::vector<double> values) {
+  // summarize sorted frame samples
   if (values.empty())
     return;
   std::sort(values.begin(), values.end());

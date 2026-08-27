@@ -3,9 +3,8 @@
 
 #include <sstream>
 
-// Local roster, profile, and device ownership surfaces.
-
 std::string GubsyApp::BuildPlayers() const {
+  // build local section tabs
   std::ostringstream out;
   out << R"(<div class="local-tabs"><button data-focus data-action="player-tab-Local players" class=")"
       << markup::selected_class(state_.player_tab == "Local players")
@@ -14,6 +13,7 @@ std::string GubsyApp::BuildPlayers() const {
       << R"(">Profiles</button><button data-focus data-action="player-tab-Devices" class=")"
       << markup::selected_class(state_.player_tab == "Devices")
       << R"(">Devices</button><span>LB / RB change section</span></div>)";
+  // build active player domain
   if (state_.player_tab == "Local players") {
     out << R"(<div class="master-detail"><section class="panel master-list"><div class="section-title"><span><small>LOCAL ROSTER</small><strong>2 / 4 players</strong></span><button data-focus data-action="add-player" class="button primary">+</button></div><button data-focus data-action="profile-moss" class="list-row selected"><em>P1</em><span><strong>Moss</strong><small>Xbox Wireless Controller</small></span><b>)"
         << (state_.player_ready ? "READY" : "NOT READY")

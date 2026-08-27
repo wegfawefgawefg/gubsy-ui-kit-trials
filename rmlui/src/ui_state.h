@@ -7,6 +7,7 @@ enum class Destination { Play, Players, Settings, Controls, Progress, Mods };
 enum class PlayView { Lobby, Quest, Rules, SessionMods };
 
 struct UiState {
+  // active route and local section
   Destination destination = Destination::Play;
   PlayView play_view = PlayView::Lobby;
 
@@ -15,6 +16,7 @@ struct UiState {
   std::string controls_tab = "Bindings";
   std::string mods_tab = "Installed";
 
+  // selected authored records
   std::string activity = "Continue expedition";
   std::string access = "Friends can join";
   std::string host = "Automatic";
@@ -32,6 +34,7 @@ struct UiState {
   std::string mod_filter;
   std::string modal;
 
+  // mutable native control values
   std::unordered_map<std::string, std::string> setting_values{
       {"fullscreen", "true"},      {"resolution", "1920 × 1080"},
       {"render-scale", "100"},     {"frame-cap", "144 FPS"},
@@ -65,6 +68,7 @@ struct UiState {
       {"binding-threshold", "0.62 · Rising"},
       {"mod-version", "v1.4.0"}};
 
+  // local workflow flags
   bool party_pane = false;
   bool session_running = false;
   bool shortcuts = true;
@@ -75,6 +79,7 @@ struct UiState {
   bool capture_mode = false;
   bool player_ready = true;
 
+  // live preview values
   int shared_lives = 4;
   int health = 4;
   int ghost_seconds = 180;

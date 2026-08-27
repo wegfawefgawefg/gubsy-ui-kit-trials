@@ -8,6 +8,7 @@
 namespace {
 
 void load_font(const char *filename, bool fallback = false) {
+  // load one bundled font face
   const std::string path =
       std::string(GUBSY_UI_BUILD_ASSET_DIR) + "/" + filename;
   if (!Rml::LoadFontFace(path, fallback))
@@ -17,6 +18,7 @@ void load_font(const char *filename, bool fallback = false) {
 } // namespace
 
 void load_trial_fonts() {
+  // register primary and fallback faces
   load_font("LatoLatin-Regular.ttf");
   load_font("LatoLatin-Bold.ttf");
   load_font("DejaVuSans.ttf", true);

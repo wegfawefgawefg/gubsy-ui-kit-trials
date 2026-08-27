@@ -3,9 +3,8 @@
 
 #include <sstream>
 
-// Lobby, quest, rule, and session-package surfaces.
-
 std::string GubsyApp::BuildPlayLobby() const {
+  // resolve activity-specific lobby state
   std::ostringstream out;
   const bool continuing = state_.activity == "Continue expedition";
   const bool arena = state_.activity == "Arena run";
@@ -15,6 +14,7 @@ std::string GubsyApp::BuildPlayLobby() const {
   const char *action_label =
       continuing ? "▶ Resume latest checkpoint"
                  : (arena ? "▶ Enter arena lobby" : "▶ Begin expedition");
+  // build fixed setup and party panes
   out << R"(<div class="mobile-local-tabs"><button data-focus data-action="show-setup" class=")"
       << (state_.party_pane ? "" : "selected")
       << R"(">Setup</button><button data-focus data-action="show-party" class=")"
@@ -70,6 +70,7 @@ std::string GubsyApp::BuildPlayLobby() const {
 }
 
 std::string GubsyApp::BuildQuestPicker() const {
+  // define game-provided quests
   const bool continuing = state_.activity == "Continue expedition";
   const bool arena = state_.activity == "Arena run";
   struct Quest {
@@ -84,6 +85,7 @@ std::string GubsyApp::BuildQuestPicker() const {
       {"quest-green", "A Green Beginning", "Valley underworks · Welcoming",
        "4"},
       {"quest-glass", "The Glass Pilgrim", "Crystal descent · Severe", "7"}};
+  // build quest selector
   std::ostringstream out;
   out << R"(<div class="subview-header panel"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>SPLONKS QUEST PROVIDER</small><h2>)"
       << (continuing ? "Choose a resume point"
@@ -109,6 +111,7 @@ std::string GubsyApp::BuildQuestPicker() const {
   out << R"(</section><article class="panel detail"><button data-focus data-action="play-lobby" class="mobile-back">‹ Quest choices</button><small>TEMPLE FRONTIER</small><h2>)"
       << state_.selected_quest
       << R"(</h2><p>Follow a fractured relay signal through flooded archives, fungal crossings, and a temple complex waking beneath the mountain.</p><div class="tag-row"><span>6 stages</span><span>Moderate</span><span>Latest checkpoint</span></div><h3>QUEST ROUTE</h3><div class="route">)";
+  // build selected quest route
   constexpr const char *stages[]{"North Pass",      "Mushroom Crossing",
                                  "Flooded Archive", "Temple Gate",
                                  "The Relay",       "Violet Core"};
@@ -134,6 +137,7 @@ std::string GubsyApp::BuildQuestPicker() const {
 }
 
 std::string GubsyApp::BuildRules() const {
+  // define game and mod-provided rules
   struct Rule {
     const char *id;
     const char *name;
@@ -161,6 +165,7 @@ std::string GubsyApp::BuildRules() const {
        "toggle", ""},
       {"lantern-fuel", "Lantern fuel",
        "Duration of carried expedition lanterns.", "select", "Old Lanterns"}};
+  // build rule editor
   std::ostringstream out;
   out << R"(<div class="subview-header panel"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>SPLONKS SESSION RULES</small><h2>Expedition settings</h2><p>10 settings · 1 contributed by active mods.</p></div><button data-focus data-action="reset-rules" class="button">Reset mode defaults</button></div><div class="master-detail rules"><section class="panel master-list scroll-list"><div class="scroll-body">)";
   for (const Rule &rule : rules) {
@@ -217,6 +222,7 @@ std::string GubsyApp::BuildRules() const {
     }
     out << R"(</div></div>)";
   }
+  // build selected rule detail
   std::string selected_value = "Configured";
   std::string selected_description =
       "This game-provided rule is serialized into the session manifest and "
@@ -261,6 +267,7 @@ std::string GubsyApp::BuildRules() const {
 }
 
 std::string GubsyApp::BuildSessionMods() const {
+  // define current session package set
   struct Mod {
     const char *name;
     const char *version;
@@ -275,6 +282,7 @@ std::string GubsyApp::BuildSessionMods() const {
       {"Brassline Grapple Kit", "0.8.4", "Applies next stage", true},
       {"Echoing Markets", "1.0.2", "2 required dependencies", true},
       {"Temple Weather", "3.0.0", "New-session recommended", true}};
+  // build current and browse tabs
   std::ostringstream out;
   const bool continuing = state_.activity == "Continue expedition";
   out << R"(<div class="subview-header panel session-mod-head"><button data-focus data-action="play-lobby" class="button">‹ Back to lobby</button><div><small>CURRENT LOBBY / CONTENT</small><h2>Session mods</h2><p>)"
@@ -286,6 +294,7 @@ std::string GubsyApp::BuildSessionMods() const {
       << R"(">Current set</button><button data-focus data-action="session-browse" class=")"
       << markup::selected_class(state_.session_mod_browse)
       << R"(">Browse &amp; add</button></div></div>)";
+  // build active package collection
   if (state_.session_mod_browse) {
     struct Candidate {
       const char *name;
@@ -356,6 +365,7 @@ std::string GubsyApp::BuildSessionMods() const {
   out << R"(</div></section><aside class="panel detail mod-detail"><button data-focus data-action="play-lobby" class="mobile-back">‹ All session mods</button><div class="hero-art"></div><small>SESSION CONTENT</small><h2>)"
       << state_.selected_mod
       << R"(</h2><p>Review this package's version, runtime policy, dependencies, and dependents without leaving the session.</p>)";
+  // build selected package detail
   if (state_.selected_mod == "Old Lanterns")
     out << R"(<div class="warning-box"><strong>Update required before use</strong><small>Installed v1.3.1 → compatible v1.4.0</small><button data-focus data-action="update-enable" class="button primary">Update &amp; enable</button></div>)";
   else

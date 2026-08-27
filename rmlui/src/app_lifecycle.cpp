@@ -6,11 +6,10 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/SystemInterface.h>
 
-// Document lifetime and externally selected demo state.
-
 GubsyApp::GubsyApp(Rml::Context *context) : context_(context) {}
 
 GubsyApp::~GubsyApp() {
+  // release retained document listeners
   if (!document_)
     return;
   document_->RemoveEventListener(Rml::EventId::Click, this);
@@ -19,6 +18,7 @@ GubsyApp::~GubsyApp() {
 }
 
 bool GubsyApp::Initialize(const std::string &document_path) {
+  // load authored shell document
   if (!context_)
     return false;
   document_ = context_->LoadDocument(document_path);
@@ -34,6 +34,7 @@ bool GubsyApp::Initialize(const std::string &document_path) {
 void GubsyApp::MarkDirty() { dirty_ = true; }
 
 void GubsyApp::Update() {
+  // rebuild dirty content and expire toast
   if (dirty_)
     Render();
   if (!toast_.empty() &&
@@ -52,6 +53,7 @@ void GubsyApp::SetViewport(int width, int height) {
 }
 
 const char *GubsyApp::current_screen_name() const {
+  // map active route to shell title
   if (state_.destination == Destination::Play) {
     switch (state_.play_view) {
     case PlayView::Lobby:
@@ -82,6 +84,7 @@ const char *GubsyApp::current_screen_name() const {
 }
 
 void GubsyApp::SelectToolScreen(int index) {
+  // select committed debug target
   switch (index) {
   case 0:
     state_.destination = Destination::Play;
@@ -163,6 +166,7 @@ void GubsyApp::SelectToolScreen(int index) {
 }
 
 void GubsyApp::SetProviderState(int index) {
+  // select simulated provider state
   constexpr const char *states[]{"Populated", "Empty", "Loading", "Error"};
   if (index < 0 || index > 3)
     return;
@@ -171,6 +175,7 @@ void GubsyApp::SetProviderState(int index) {
 }
 
 void GubsyApp::SetGamepadStatus(int count, const std::string &name) {
+  // update fixed controller status
   if (!document_)
     return;
   if (Rml::Element *status = document_->GetElementById("controller-status")) {

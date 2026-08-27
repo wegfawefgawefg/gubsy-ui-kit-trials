@@ -14,9 +14,8 @@
 #include <cmath>
 #include <unordered_map>
 
-// Native control changes and SDL keyboard/gamepad dispatch.
-
 void GubsyApp::ProcessEvent(Rml::Event &event) {
+  // resolve authored action target
   if (event.GetId() != Rml::EventId::Click &&
       event.GetId() != Rml::EventId::Change)
     return;
@@ -25,6 +24,7 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
     return;
   const std::string action =
       element->GetAttribute<Rml::String>("data-action", "");
+  // apply native form changes in place
   if (event.GetId() == Rml::EventId::Change) {
     if (auto *control = dynamic_cast<Rml::ElementFormControl *>(element)) {
       if (controller_editing_ && element == context_->GetFocusElement() &&
@@ -45,6 +45,7 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
         MarkDirty();
         return;
       } else if (action.rfind("rule-value-", 0) == 0) {
+        // apply session rule value
         const std::string id = action.substr(11);
         std::string value = control->GetValue();
         if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
@@ -90,6 +91,7 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
           current->SetInnerRML(formatted);
         return;
       } else if (action.rfind("tuning-value-", 0) == 0) {
+        // apply device tuning value
         const std::string id = action.substr(13);
         std::string value = control->GetValue();
         if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
@@ -123,6 +125,7 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
         }
         return;
       } else if (action.rfind("setting-value-", 0) == 0) {
+        // apply game setting value
         const std::string id = action.substr(14);
         std::string value = control->GetValue();
         if (element->GetAttribute<Rml::String>("type", "") == "checkbox")
@@ -167,6 +170,7 @@ void GubsyApp::ProcessEvent(Rml::Event &event) {
 }
 
 bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
+  // capture raw binding input
   if (state_.capture_mode && event.type == SDL_EVENT_KEY_DOWN &&
       !event.key.repeat) {
     state_.capture_mode = false;
@@ -181,6 +185,7 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
     MarkDirty();
     return true;
   }
+  // update raw axis display and nav latch
   if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
     state_.raw_input_name =
         "Axis " + std::to_string(event.gaxis.axis) + " · live gamepad input";
@@ -209,6 +214,7 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
       return direction != 0;
     }
   }
+  // map keyboard navigation
   if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
     if (dynamic_cast<Rml::ElementFormControl *>(context_->GetFocusElement()) &&
         event.key.key != SDLK_ESCAPE)
@@ -237,6 +243,7 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
       break;
     }
   }
+  // map gamepad navigation and edits
   if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
     if (auto *select = dynamic_cast<Rml::ElementFormControlSelect *>(
             context_->GetFocusElement());
@@ -266,6 +273,7 @@ bool GubsyApp::HandleSdlEvent(const SDL_Event &event) {
         return true;
       }
     }
+    // adjust transactional range control
     if (controller_editing_ && context_->GetFocusElement()) {
       auto *input = dynamic_cast<Rml::ElementFormControlInput *>(
           context_->GetFocusElement());

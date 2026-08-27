@@ -22,6 +22,7 @@ void print_help(const char *executable) {
 }
 
 bool parse_resolution(std::string_view value, int &width, int &height) {
+  // parse WIDTHxHEIGHT
   const size_t split = value.find('x');
   if (split == std::string_view::npos)
     return false;
@@ -33,6 +34,7 @@ bool parse_resolution(std::string_view value, int &width, int &height) {
 } // namespace
 
 ParseResult parse_trial_options(int argc, char **argv, TrialOptions &options) {
+  // apply explicit trial options
   for (int i = 1; i < argc; ++i) {
     const std::string_view argument(argv[i]);
     if (argument == "--help" || argument == "-h") {

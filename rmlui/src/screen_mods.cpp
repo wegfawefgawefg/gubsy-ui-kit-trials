@@ -3,9 +3,8 @@
 
 #include <sstream>
 
-// Installed packages, catalog browsing, and dependency details.
-
 std::string GubsyApp::BuildMods() const {
+  // build package section tabs
   std::ostringstream out;
   out << R"(<div class="local-tabs"><button data-focus data-action="mods-tab-Installed" class=")"
       << markup::selected_class(state_.mods_tab == "Installed")
@@ -13,6 +12,7 @@ std::string GubsyApp::BuildMods() const {
       << markup::selected_class(state_.mods_tab == "Browse catalog")
       << R"(">Browse catalog</button><span>LB / RB change section</span></div>)";
   if (state_.mods_tab == "Installed") {
+    // define installed package graph
     struct Mod {
       const char *action;
       const char *name;
@@ -32,6 +32,7 @@ std::string GubsyApp::BuildMods() const {
          "COMPATIBLE"},
         {"mod-weather", "Temple Weather", "Northglass", "v3.0.0",
          "COMPATIBLE"}};
+    // build installed package list and detail
     out << R"(<div class="toolbar"><span class="toolbar-title"><small>ON THIS DEVICE</small>7 installed · game build 1.4</span><button data-focus data-action="refresh-mods" class="button">↻ Refresh</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
     for (const Mod &mod : mods) {
       const size_t image_index = static_cast<size_t>(&mod - mods);
@@ -54,6 +55,7 @@ std::string GubsyApp::BuildMods() const {
                   {"v1.2.0", "v1.3.1", "v1.4.0", "Latest compatible"});
     out << R"(</div><div class="dependency"><h3>REQUIRES</h3><div><span>↳ Base Content ≥ 1.4</span><b>INSTALLED</b></div><div><span>↳ Underground Rivers ≥ 2.0</span><b>INSTALLED</b></div><h3>REQUIRED BY</h3><div><span>↑ Temple Weather</span><b>ACTIVE</b></div><div><span>↑ Pocket Expedition</span><b>ACTIVE</b></div></div><div class="warning-box"><strong>Cascading uninstall is guarded</strong><small>Removing this package also affects two installed dependents. Gubsy computes and presents the full change plan before mutation.</small></div><div class="actions mod-actions"><button data-focus data-action="update-mod" class="button primary">Update</button><button data-focus data-action="open-mod-folder" class="button">Open files</button><button data-focus data-action="uninstall-plan" class="button danger">Uninstall…</button></div></aside></div>)";
   } else {
+    // define catalog package records
     struct Catalog {
       const char *action;
       const char *name;
@@ -107,6 +109,7 @@ std::string GubsyApp::BuildMods() const {
          "90%", "Requires networking 1.2", true},
         {"mod-legacy", "Legacy Room Pack", "Old Stone", "Rooms · Archive",
          "4.2k", "73%", "Built for game 0.9 only", false}};
+    // build filtered catalog and install detail
     out << R"(<div class="catalog-tools"><input data-focus data-action="search-catalog" class="search-field" type="text" value=")"
         << markup::escape_attribute(state_.mod_filter)
         << R"(" placeholder="Search the Gubsy mod catalog…"/><label class="check-control"><input data-focus data-action="compatible-value" class="native-toggle" type="checkbox" value="true")";

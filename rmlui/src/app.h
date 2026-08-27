@@ -33,8 +33,10 @@ public:
   const char *current_screen_name() const;
 
 private:
+  // mutable authored UI state
   UiState state_;
 
+  // retained document lifecycle
   Rml::Context *context_ = nullptr;
   Rml::ElementDocument *document_ = nullptr;
   int viewport_width_ = 1280;
@@ -42,13 +44,18 @@ private:
   bool dirty_ = true;
   std::string toast_;
   double toast_until_ = 0.0;
+
+  // controller edit transaction
   int controller_x_latch_ = 0;
   int controller_y_latch_ = 0;
   bool controller_editing_ = false;
   std::string controller_edit_original_value_;
+
+  // remembered local focus
   std::string pending_focus_action_;
   std::array<std::string, 6> content_focus_memory_;
 
+  // document and interaction flow
   void MarkDirty();
   void Render();
   void RenderChrome();
@@ -61,6 +68,7 @@ private:
   void SetToast(std::string message);
   bool RunNavigationSelfTest();
 
+  // routed screen markup
   std::string BuildCurrentScreen() const;
   std::string BuildPlayLobby() const;
   std::string BuildQuestPicker() const;

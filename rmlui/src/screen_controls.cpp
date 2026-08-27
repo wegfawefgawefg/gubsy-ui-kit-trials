@@ -4,9 +4,8 @@
 #include <iomanip>
 #include <sstream>
 
-// Bindings, device inspection, and response tuning surfaces.
-
 std::string GubsyApp::BuildControls() const {
+  // build control section tabs
   std::ostringstream out;
   const char *tabs[]{"Bindings", "Devices", "Input tuning"};
   out << R"(<div class="local-tabs">)";
@@ -16,6 +15,7 @@ std::string GubsyApp::BuildControls() const {
         << R"(">)" << tab << R"(</button>)";
   out << R"(<span>LB / RB change section</span></div>)";
   if (state_.controls_tab == "Bindings") {
+    // define game action schema
     struct Action {
       const char *name;
       const char *type;
@@ -32,6 +32,7 @@ std::string GubsyApp::BuildControls() const {
         {"Look", "Vector2 action · Player", "Right Stick"},
         {"Accelerate", "Scalar action · Vehicle", "Right Trigger"},
         {"Brake", "Scalar action · Vehicle", "Left Trigger"}};
+    // build binding action list and editor
     out << R"(<div class="toolbar"><input data-focus data-action="filter-actions" class="search-field" type="text" value=")"
         << markup::escape_attribute(state_.control_filter)
         << R"(" placeholder="Filter actions…"/>)";
@@ -77,6 +78,7 @@ std::string GubsyApp::BuildControls() const {
         {"0.25 · Rising", "0.50 · Rising", "0.62 · Rising", "0.75 · Falling"});
     out << R"(</div></div></aside></div>)";
   } else if (state_.controls_tab == "Devices") {
+    // define recognized device records
     struct Device {
       const char *action;
       const char *name;
@@ -93,6 +95,7 @@ std::string GubsyApp::BuildControls() const {
         {"device-flight", "T.16000M Flight Stick",
          "Joystick · USB · 16 buttons", "UNASSIGNED"},
         {"device-pedals", "T-LCM Pedals", "Pedals · USB · 3 axes", "Moss"}};
+    // build device ownership and raw input views
     out << R"(<div class="toolbar"><span class="toolbar-title"><small>RECOGNIZED DEVICES</small>5 connected · one player may own many</span><button data-focus data-action="refresh-devices" class="button">↻ Rescan</button></div><div class="master-detail"><section class="panel master-list scroll-list"><div class="scroll-body">)";
     for (const Device &device : devices)
       out << R"(<button data-focus data-action=")" << device.action
@@ -111,6 +114,7 @@ std::string GubsyApp::BuildControls() const {
         << static_cast<int>(state_.raw_input_value * 100.0f)
         << R"(%;"></i></em></div><div class="raw-control"><span>Button 1 · South</span><b>UP</b><em><i style="width:0%;"></i></em></div><div class="raw-control"><span>Hat 0 · D-Pad</span><b>UP-RIGHT</b><em><i style="width:66%;"></i></em></div><p>This raw view reveals names and ranges exactly as Gubsy recognizes unusual hardware.</p></div></aside></div>)";
   } else {
+    // build device tuning controls
     out << R"(<div class="master-detail tuning-workspace"><section class="panel master-list scroll-list"><div class="scroll-body"><div class="section-title"><span><small>INPUT PROFILE</small><strong>Standard</strong></span><b>Xbox Wireless Controller</b></div>)";
     auto tuning_range = [&](const char *id, const char *name,
                             const char *note) {

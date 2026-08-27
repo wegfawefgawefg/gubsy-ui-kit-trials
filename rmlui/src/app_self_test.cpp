@@ -9,8 +9,8 @@
 #include <RmlUi/Core/Event.h>
 #include <cmath>
 
-// Interaction regression path used by the hidden validation run.
 bool GubsyApp::RunSelfTest() {
+  // drive authored actions through the retained document
   auto click = [&](const char *action) {
     Rml::ElementList candidates;
     document_->QuerySelectorAll(candidates, "[data-action]");
@@ -25,7 +25,7 @@ bool GubsyApp::RunSelfTest() {
     return false;
   };
 
-  // Routes, providers, and guarded mutations.
+  // test routes, providers, and guarded mutations
   if (!click("nav-controls") || state_.destination != Destination::Controls)
     return false;
   if (!click("controls-tab-Devices") || state_.controls_tab != "Devices")
@@ -81,7 +81,7 @@ bool GubsyApp::RunSelfTest() {
   if (!click("cancel-modal") || !state_.modal.empty())
     return false;
 
-  // Binding capture and local tabs.
+  // test binding capture and local tabs
   SelectToolScreen(11);
   Update();
   context_->Update();
@@ -103,7 +103,7 @@ bool GubsyApp::RunSelfTest() {
   if (!HandleSdlEvent(synthetic) || state_.capture_mode)
     return false;
 
-  // Session and catalog package state.
+  // test session and catalog package state
   SelectToolScreen(3);
   Update();
   context_->Update();
@@ -132,7 +132,7 @@ bool GubsyApp::RunSelfTest() {
     return false;
   }
 
-  // Native setting controls retain scroll and edit state.
+  // test native setting scroll and edit state
   SelectToolScreen(7);
   Update();
   context_->Update();
@@ -187,7 +187,7 @@ bool GubsyApp::RunSelfTest() {
       state_.setting_values["resolution"] != "1280 × 720")
     return false;
 
-  // Tuning controls support controller transactions.
+  // test controller tuning transactions
   SelectToolScreen(13);
   Update();
   context_->Update();

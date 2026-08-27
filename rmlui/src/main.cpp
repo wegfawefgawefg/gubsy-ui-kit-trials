@@ -19,8 +19,6 @@
 #include <string>
 #include <vector>
 
-// SDL, RmlUi, and ImGui share one explicit native frame loop.
-
 int main(int argc, char **argv) {
   TrialOptions options;
   const ParseResult parse_result = parse_trial_options(argc, argv, options);
@@ -37,7 +35,7 @@ int main(int argc, char **argv) {
   const bool self_test = options.self_test;
   const std::string &capture_path = options.capture_path;
 
-  // Configure the native host.
+  // init SDL and window
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
     std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -60,6 +58,7 @@ int main(int argc, char **argv) {
   SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED_DISPLAY(primary_display),
                         SDL_WINDOWPOS_CENTERED_DISPLAY(primary_display));
 
+  // init GPU device
   SDL_GPUDevice *gpu = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
                                                SDL_GPU_SHADERFORMAT_DXIL |
                                                SDL_GPU_SHADERFORMAT_MSL,
@@ -76,7 +75,7 @@ int main(int argc, char **argv) {
                                 benchmark ? SDL_GPU_PRESENTMODE_IMMEDIATE
                                           : SDL_GPU_PRESENTMODE_VSYNC);
 
-  // Bind RmlUi to the shared SDL GPU host.
+  // init RmlUi backend
   SystemInterface_SDL system_interface;
   system_interface.SetWindow(window);
   RenderInterface_SDL_GPU render_interface(gpu, window);
@@ -100,6 +99,7 @@ int main(int argc, char **argv) {
   SDL_GPUTexture *offscreen_texture = nullptr;
   SDL_GPUTransferBuffer *capture_transfer = nullptr;
   const bool use_offscreen = benchmark || !capture_path.empty();
+  // init hidden render target
   if (use_offscreen) {
     SDL_GPUTextureCreateInfo texture_info{};
     texture_info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -129,15 +129,14 @@ int main(int argc, char **argv) {
       }
     }
   }
-  // Create the retained document.
+  // load retained document
   Rml::Context *context = Rml::CreateContext(
       "gubsy-shell", Rml::Vector2i(render_width, render_height));
   if (!context) {
     std::fprintf(stderr, "Could not create RmlUi context.\n");
     return 1;
   }
-  // RmlUi lays out in logical game coordinates while its SDL_GPU geometry is
-  // recorded into the high-density swapchain.
+  // map logical layout into the high-density swapchain
   context->SetDensityIndependentPixelRatio(display_density);
   const std::string document_path =
       std::string(GUBSY_UI_SOURCE_ASSET_DIR) + "/ui/shell.rml";
@@ -179,7 +178,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  // Create optional experiment controls.
+  // init dev tools
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
@@ -196,6 +195,7 @@ int main(int argc, char **argv) {
   ImGui_ImplSDLGPU3_Init(&imgui_info);
 
   bool running = true;
+  // init frame state
   bool show_tools = options.tools_visible;
   int selected_resolution = 1;
   int selected_screen = initial_screen;
@@ -208,9 +208,9 @@ int main(int argc, char **argv) {
   OpenGamepads gamepads;
   open_connected_gamepads(gamepads, *app);
 
-  // Run the visible input and frame loop.
   while (running) {
     const auto frame_start = TrialClock::now();
+    // pump input
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL3_ProcessEvent(&event);
@@ -224,6 +224,7 @@ int main(int argc, char **argv) {
         RmlSDL::InputEventHandler(context, window, event);
     }
 
+    // match drawable size
     int next_width = 0;
     int next_height = 0;
     SDL_GetWindowSizeInPixels(window, &next_width, &next_height);
@@ -243,12 +244,14 @@ int main(int argc, char **argv) {
       app->SetViewport(drawable_width, drawable_height);
     }
 
+    // update retained document
     const auto update_start = TrialClock::now();
     app->Update();
     context->Update();
     const auto update_end = TrialClock::now();
     timings.update_ms = milliseconds(update_start, update_end);
 
+    // draw dev tools
     ImGui_ImplSDLGPU3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
@@ -288,7 +291,7 @@ int main(int argc, char **argv) {
     }
     ImGui::Render();
 
-    // Record RmlUi and ImGui into one native target.
+    // draw shared GPU frame
     SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(gpu);
     if (!command_buffer) {
       std::fprintf(stderr, "Could not acquire command buffer: %s\n",
@@ -348,6 +351,7 @@ int main(int argc, char **argv) {
       timings.render_record_ms =
           milliseconds(render_start, TrialClock::now());
 
+      // capture final frame
       if (capture_transfer && frame_limit > 0 &&
           completed_frames + 1 >= frame_limit) {
         SDL_GPUTextureRegion source{};
@@ -365,6 +369,7 @@ int main(int argc, char **argv) {
       }
     }
 
+    // submit frame
     const auto submit_start = TrialClock::now();
     SDL_SubmitGPUCommandBuffer(command_buffer);
     timings.submit_ms = milliseconds(submit_start, TrialClock::now());
@@ -383,7 +388,7 @@ int main(int argc, char **argv) {
       running = false;
   }
 
-  // Report measurements and release owned resources.
+  // report measurements and free resources
   SDL_WaitForGPUIdle(gpu);
   const long rss_with_document = read_rss_kib();
   if (capture_transfer) {

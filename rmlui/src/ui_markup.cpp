@@ -19,6 +19,7 @@ std::string selected_class(bool selected, const std::string &base) {
 std::string on_off(bool value) { return value ? "ON" : "OFF"; }
 
 bool contains_ci(const std::string &text, const std::string &query) {
+  // match authored catalog text without case
   if (query.empty())
     return true;
   const auto fold = [](unsigned char character) {
@@ -32,6 +33,7 @@ bool contains_ci(const std::string &text, const std::string &query) {
 }
 
 std::string escape_attribute(const std::string &value) {
+  // escape dynamic RML attribute text
   std::string result;
   result.reserve(value.size());
   for (const char character : value) {
@@ -58,6 +60,7 @@ std::string escape_attribute(const std::string &value) {
 
 std::string format_setting_value(const std::string &id,
                                  const std::string &value) {
+  // format stored value for shell copy
   if (value == "true")
     return "ON";
   if (value == "false" || value.empty())
@@ -72,6 +75,7 @@ void append_select(std::ostringstream &out, const std::string &action,
                    const std::string &value,
                    std::initializer_list<const char *> options,
                    const char *class_name) {
+  // append native select control
   out << R"(<select data-focus data-action=")" << action << R"(" class=")"
       << class_name << R"(">)";
   for (const char *option : options) {

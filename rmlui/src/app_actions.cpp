@@ -8,9 +8,8 @@
 #include <utility>
 #include <vector>
 
-// Route mutations and local demo actions.
-
 void GubsyApp::Back() {
+  // close modal or return one route level
   if (!state_.modal.empty()) {
     state_.modal.clear();
     MarkDirty();
@@ -30,6 +29,7 @@ void GubsyApp::Back() {
 }
 
 void GubsyApp::SetToast(std::string message) {
+  // show transient local feedback
   toast_ = std::move(message);
   toast_until_ = Rml::GetSystemInterface()->GetElapsedTime() + 2.5;
   if (Rml::Element *toast = document_->GetElementById("toast")) {
@@ -39,6 +39,7 @@ void GubsyApp::SetToast(std::string message) {
 }
 
 void GubsyApp::HandleAction(const std::string &action) {
+  // switch primary route
   if (action.rfind("nav-", 0) == 0) {
     const std::string name = action.substr(4);
     if (name == "play")
@@ -61,6 +62,7 @@ void GubsyApp::HandleAction(const std::string &action) {
     Back();
     return;
   }
+  // mutate active screen state
   if (action == "play-quest")
     state_.play_view = PlayView::Quest;
   else if (action == "play-rules")
@@ -105,6 +107,7 @@ void GubsyApp::HandleAction(const std::string &action) {
       state_.host = "Dedicated relay";
     else
       state_.host = "Automatic";
+  // select authored records
   } else if (action == "quest-violet")
     state_.selected_quest = "The Violet Reach";
   else if (action == "quest-sunken")
@@ -153,6 +156,7 @@ void GubsyApp::HandleAction(const std::string &action) {
     state_.selected_campaign = action.substr(9);
   else if (action.rfind("setting-", 0) == 0)
     state_.selected_setting = action.substr(8);
+  // mutate mod and session state
   else if (action == "toggle-compatible")
     state_.compatible_only = !state_.compatible_only;
   else if (action == "session-current")
@@ -169,6 +173,7 @@ void GubsyApp::HandleAction(const std::string &action) {
              " to this session");
   } else if (action == "toggle-ready")
     state_.player_ready = !state_.player_ready;
+  // control binding workflow
   else if (action == "capture-binding") {
     state_.capture_mode = !state_.capture_mode;
     SetToast(state_.capture_mode
@@ -182,6 +187,7 @@ void GubsyApp::HandleAction(const std::string &action) {
     }
     SetToast("Explicit binding editor focused");
     return;
+  // guard destructive local mutations
   } else if (action == "uninstall-plan" || action == "delete-campaign" ||
              action == "delete-binds" || action == "quit") {
     state_.modal = action;
@@ -195,6 +201,7 @@ void GubsyApp::HandleAction(const std::string &action) {
   } else if (action == "start-session") {
     state_.session_running = true;
     SetToast("Session started from native lobby state");
+  // switch local sections
   } else if (action.rfind("player-tab-", 0) == 0) {
     state_.player_tab = action.substr(11);
   } else if (action.rfind("settings-tab-", 0) == 0) {
@@ -214,6 +221,7 @@ void GubsyApp::HandleAction(const std::string &action) {
     state_.selected_mod =
         state_.mods_tab == "Browse catalog" ? "Mycelium Below" : "Old Lanterns";
   } else if (action == "local-tab-prev" || action == "local-tab-next") {
+    // cycle active local section
     const int step = action == "local-tab-next" ? 1 : -1;
     auto cycle = [step](std::string &value,
                         const std::vector<std::string> &choices) {

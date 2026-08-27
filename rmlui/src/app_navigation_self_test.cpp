@@ -8,9 +8,8 @@
 
 #include <string>
 
-// Directional focus, local memory, and transactional controls.
-
 bool GubsyApp::RunNavigationSelfTest() {
+  // define synthetic controller actions
   SDL_Event activate{};
   activate.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
   activate.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
@@ -21,7 +20,7 @@ bool GubsyApp::RunNavigationSelfTest() {
   choose_next.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
   choose_next.gbutton.button = SDL_GAMEPAD_BUTTON_DPAD_DOWN;
 
-  // Lobby relationships stay within their local pane.
+  // test local lobby relationships
   SelectToolScreen(0);
   Update();
   context_->Update();
@@ -83,7 +82,7 @@ bool GubsyApp::RunNavigationSelfTest() {
       context_->GetFocusElement() != document_->GetElementById("nav-play"))
     return false;
 
-  // Range edits are reversible with controller back.
+  // test reversible range edits
   SelectToolScreen(2);
   Update();
   context_->Update();
@@ -109,7 +108,7 @@ bool GubsyApp::RunNavigationSelfTest() {
       state_.rule_values["shared-lives"] != lives_before_cancel)
     return false;
 
-  // Primary navigation remembers local content focus.
+  // test primary navigation memory
   SelectToolScreen(0);
   Update();
   context_->Update();
@@ -163,7 +162,7 @@ bool GubsyApp::RunNavigationSelfTest() {
           "data-action", "") != remembered_player_action)
     return false;
 
-  // Select controls preview before committing a value.
+  // test transactional select controls
   SelectToolScreen(0);
   Update();
   context_->Update();
@@ -187,7 +186,7 @@ bool GubsyApp::RunNavigationSelfTest() {
   Update();
   context_->Update();
 
-  // Detail panes and tabs expose deliberate return paths.
+  // test detail and tab return paths
   SelectToolScreen(1);
   Update();
   context_->Update();
@@ -272,7 +271,7 @@ bool GubsyApp::RunNavigationSelfTest() {
   Update();
   context_->Update();
 
-  // Analog navigation and native select boxes remain reachable.
+  // test analog navigation and native select reachability
   SelectToolScreen(0);
   Update();
   context_->Update();
