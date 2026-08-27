@@ -104,6 +104,8 @@ long RssKiB() {
     return resident * long(sysconf(_SC_PAGESIZE)) / 1024;
 }
 
+void MarkWindowUtility(const char* title);
+
 Rectangle Inset(Rectangle r, float v) { return {r.x + v, r.y + v, r.width - v * 2, r.height - v * 2}; }
 
 void Text(const char* text, float x, float y, int size = 16, Color color = kText) {
@@ -378,11 +380,12 @@ void DrawApp(App& app) {
 
 int main(int argc, char** argv) {
     const Args args=ParseArgs(argc,argv);
-    unsigned int window_flags = FLAG_WINDOW_RESIZABLE;
-    if (args.benchmark > 0 || !args.capture.empty()) window_flags |= FLAG_WINDOW_HIDDEN;
-    else window_flags |= FLAG_VSYNC_HINT;
+    unsigned int window_flags = FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIDDEN;
+    if (args.benchmark == 0 && args.capture.empty()) window_flags |= FLAG_VSYNC_HINT;
     SetConfigFlags(window_flags);
     InitWindow(args.width,args.height,"Gubsy raygui trial");
+    MarkWindowUtility("Gubsy raygui trial");
+    if (args.benchmark == 0 && args.capture.empty()) ClearWindowState(FLAG_WINDOW_HIDDEN);
     SetWindowMinSize(720,480);
     SetTargetFPS(args.benchmark > 0 ? 0 : 144);
     GuiSetStyle(DEFAULT,TEXT_SIZE,args.height>=900?16:13);

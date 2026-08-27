@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(FetchContent)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=5.0)
+find_package(X11 REQUIRED)
 
 FetchContent_Declare(
   raygui
@@ -17,7 +18,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raygui)
 
-add_executable(gubsy-raygui-trial src/main.cpp)
+add_executable(gubsy-raygui-trial src/main.cpp src/x11_utility.cpp)
 target_include_directories(gubsy-raygui-trial PRIVATE ${raygui_SOURCE_DIR}/src)
-target_link_libraries(gubsy-raygui-trial PRIVATE PkgConfig::RAYLIB)
+target_link_libraries(gubsy-raygui-trial PRIVATE PkgConfig::RAYLIB X11::X11)
 target_compile_options(gubsy-raygui-trial PRIVATE -Wall -Wextra -Wpedantic)
