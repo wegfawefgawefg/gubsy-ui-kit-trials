@@ -32,8 +32,10 @@ class ViewBuilder {
     void text_input(std::string_view parent, std::string id, std::string placeholder,
                     std::string binding, std::string group, float height = 48.0f);
     void image(std::string_view parent, std::string id, std::string asset, float height);
+    void surface(std::string_view parent, std::string id, std::string asset);
     void focus_group(std::string id, std::string entry, std::string owner = {});
     void edge(std::string from, gview::NavAction action, std::string to);
+    void scrolling(std::string_view id);
 
   private:
     gview::NodeSpec base_spec(std::string id) const;
@@ -45,6 +47,7 @@ class ViewBuilder {
 };
 
 gview::View build_shell_view(const TrialModel& model, int width, int height);
+gview::View build_game_ui_view(const TrialModel& model, int width, int height);
 void build_play(ViewBuilder& ui, const TrialModel& model, std::string_view content);
 void build_players(ViewBuilder& ui, const TrialModel& model, std::string_view content);
 void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view content);

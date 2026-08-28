@@ -1,5 +1,19 @@
 # GView trial contract
 
+## Milestone status
+
+The first complete trial is implemented. All 18 states above render with real
+controls and assets; the hidden controller self-test traverses every route and
+checks group memory, explicit dropdown commit/cancel, a real slider, text input,
+and the inventory action scope. Fresh 720p and 1080p visual sweeps, compact
+landscape/portrait captures, strict builds, and benchmark scenarios have been
+inspected. Measured results and the updated recommendation live in
+`evaluation-notes/GVIEW_RESULTS.md` and `CURRENT_COMPARISON.md`.
+
+This milestone is the reference implementation for the libraries, not the end
+of UI design evaluation. A diverse game-UI suite and final Splonks migration
+remain deliberate later work after user review.
+
 ## Purpose
 
 Add a complete GView implementation to the shared native UI comparison. The

@@ -22,6 +22,7 @@ struct TrialModel {
     std::string toast;
     std::string modal;
     std::string pending_focus;
+    bool game_ui = false;
     bool rebuild = true;
     std::uint64_t revision = 1;
 

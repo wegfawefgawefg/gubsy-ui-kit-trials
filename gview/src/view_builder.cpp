@@ -15,7 +15,8 @@ gview::BoxStyle box(gview::Color fill, gview::Color border, gview::Color text) {
 
 } // namespace
 
-// Builds one resolution-aware view through public GLayout/GView authoring structs.
+// Builds one resolution-aware view through public GLayout/GView authoring
+// structs.
 ViewBuilder::ViewBuilder(std::string id, int width, int height) {
     width_ = width;
     scale_ = std::clamp(static_cast<float>(height) / 720.0f, 1.0f, 1.5f);
@@ -29,7 +30,7 @@ ViewBuilder::ViewBuilder(std::string id, int width, int height) {
 }
 
 float ViewBuilder::scale() const { return scale_; }
-bool ViewBuilder::compact() const { return width_ < 900; }
+bool ViewBuilder::compact() const { return width_ < 1000 || view_.layout.height < 600; }
 bool ViewBuilder::phone() const { return width_ < 600; }
 glayout::ContainerKind ViewBuilder::split() const {
     return phone() ? glayout::ContainerKind::Column : glayout::ContainerKind::Row;
@@ -41,8 +42,9 @@ glayout::GraphNode& ViewBuilder::layout(std::string_view id) {
 }
 
 gview::NodeSpec& ViewBuilder::spec(std::string_view id) {
-    const auto found = std::find_if(view_.nodes.begin(), view_.nodes.end(),
-                                    [&](const gview::NodeSpec& item) { return item.layout_id == id; });
+    const auto found =
+        std::find_if(view_.nodes.begin(), view_.nodes.end(),
+                     [&](const gview::NodeSpec& item) { return item.layout_id == id; });
     return *found;
 }
 
@@ -168,10 +170,25 @@ void ViewBuilder::image(std::string_view parent, std::string id, std::string ass
     view_.nodes.back().asset = std::move(asset);
 }
 
+void ViewBuilder::surface(std::string_view parent, std::string id, std::string asset) {
+    container(parent, id, glayout::ContainerKind::Absolute, {glayout::LengthKind::Fill, 1.0f},
+              {glayout::LengthKind::Fill, 1.0f});
+    gview::NodeSpec& item = spec(id);
+    item.content = gview::ContentKind::CustomSurface;
+    item.asset = std::move(asset);
+    item.style.normal.fill = {0, 0, 0, 0};
+    item.style.normal.border = {0, 0, 0, 0};
+}
+
 void ViewBuilder::focus_group(std::string id, std::string entry, std::string owner) {
     view_.focus_groups.push_back({std::move(id), std::move(entry), std::move(owner), true, true});
 }
 
 void ViewBuilder::edge(std::string from, gview::NavAction action, std::string to) {
     view_.focus_edges.push_back({std::move(from), action, std::move(to)});
+}
+
+void ViewBuilder::scrolling(std::string_view id) {
+    layout(id).clip = true;
+    spec(id).control = gview::ControlKind::ScrollArea;
 }

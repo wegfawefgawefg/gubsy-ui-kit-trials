@@ -16,6 +16,8 @@ coherent comparison suite.
 - `dear-imgui/` — immediate-mode implementation on SDL3 + SDL_GPU.
 - `raygui/` — immediate-mode implementation on raylib.
 - `nuklear/` — immediate-mode implementation using Nuklear.
+- `gview/` — Gubsy-owned lightweight composition/runtime built on GLayout,
+  including the reusable live authoring suite and a non-menu inventory proof.
 
 Clay is deliberately excluded from this round. A Clay trial would require a
 Gubsy-owned interaction/widget layer and belongs with a possible Arbor rewrite.
@@ -31,6 +33,7 @@ centered 1280x720 utility window by default:
 ./scripts/run.sh dear-imgui
 ./scripts/run.sh raygui
 ./scripts/run.sh nuklear
+./scripts/run.sh gview
 ```
 
 Pass extra arguments after the implementation name, for example:

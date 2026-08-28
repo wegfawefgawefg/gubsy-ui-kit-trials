@@ -4,13 +4,13 @@ set -euo pipefail
 workspace_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 trial=${1:-}
 if [[ -z "$trial" ]]; then
-  printf 'usage: %s {rmlui|arbor|dear-imgui|raygui|nuklear|vue-reference} [arguments...]\n' "$0" >&2
+  printf 'usage: %s {rmlui|arbor|dear-imgui|raygui|nuklear|gview|vue-reference} [arguments...]\n' "$0" >&2
   exit 2
 fi
 shift
 
 case "$trial" in
-  rmlui|arbor|dear-imgui|raygui|nuklear)
+  rmlui|arbor|dear-imgui|raygui|nuklear|gview)
     exec "$workspace_dir/$trial/scripts/run.sh" "$@"
     ;;
   vue-reference)

@@ -1,6 +1,7 @@
 # Current native UI comparison
 
-Measured on 2026-08-27 after the expanded interaction parity pass. Release
+Measured on 2026-08-27, with GView added on 2026-08-28 after its full production
+proof. Release
 builds rendered 1,200 uncapped hidden frames on the same machine. `Play` is the
 normal lobby workload. `Mods` is the denser workload with 20 packages, artwork,
 independent scrolling regions, compatibility state, and dependency details.
@@ -13,6 +14,7 @@ not a claim that all five rendering APIs expose identical timing boundaries.
 
 | Backend | 720p Play | 720p Mods | 1080p Play | 1080p Mods |
 |---|---:|---:|---:|---:|
+| GView + SDL3 | 0.2454 ms | 0.2692 ms | 0.2321 ms | 0.2932 ms |
 | RmlUi + SDL_GPU | 0.2312 ms | 0.2940 ms | 0.2334 ms | 0.3465 ms |
 | Arbor + SDL_GPU | 0.4506 ms | 0.6708 ms | 0.5338 ms | 0.8119 ms |
 | Dear ImGui + SDL_GPU | 0.0878 ms | 0.0980 ms | 0.1127 ms | 0.1215 ms |
@@ -33,6 +35,13 @@ Play and 0.5444 ms for Mods at 720p; complete-frame p95 was 0.7693 ms and
 2.93 ms. SDL_GPU submission timing currently reports zero in Arbor, so the
 complete host render call is the useful end-to-end figure.
 
+GView's Mods row is deliberately active rather than stable: it changes and
+rebuilds the catalog's clipped paint commands every sampled frame while
+scrolling. Its dense 1080p update was 0.0083 ms, renderer recording 0.1667 ms,
+full-frame p99 0.3429 ms, and maximum 1.1148 ms. Stable Play built layout and
+paint once across 2,000 frames. The complete scenario table is in
+[`GVIEW_RESULTS.md`](GVIEW_RESULTS.md).
+
 RmlUi separately measured retained-document update at 0.0033 ms for Play and
 0.0044 ms for Mods at 720p. Initial document readiness was 13.5 ms and 34.2 ms,
 respectively, but hiding/showing an already resident document took about
@@ -43,6 +52,7 @@ documents rather than parse the catalog on the frame it is first requested.
 
 | Backend | Play RSS | Mods RSS | Release executable |
 |---|---:|---:|---:|
+| GView + SDL3 | 135,752 KiB | 137,456 KiB | 6,248,200 bytes |
 | RmlUi + SDL_GPU | 88,160 KiB | 90,028 KiB | 8,562,032 bytes |
 | Arbor + SDL_GPU | 100,608 KiB | 101,100 KiB | 3,930,080 bytes |
 | Dear ImGui + SDL_GPU | 80,120 KiB | 80,016 KiB | 5,218,008 bytes |
@@ -53,8 +63,28 @@ RSS is the complete process: Vulkan/OpenGL userspace drivers, SDL/raylib,
 swapchain or render targets, texture/font atlases, allocators, and UI state. It
 must not be interpreted as the memory occupied by one UI tree. RmlUi's measured
 resident document delta was about 6.1 MiB for Play and 7.9 MiB for Mods at 720p.
+GView separately estimates 96,016 bytes owned by its Play runtime and 197,472
+bytes for the dense catalog. Its higher process RSS includes the SDL renderer,
+driver state, textures, SDL_image, and the optional ImGui authoring suite linked
+into this comparison executable; it is not a 135 MiB UI object.
 
 ## Authoring and integration assessment
+
+### GView
+
+Best fit for the intended long-term Gubsy ecosystem if we are willing to own a
+focused game-UI layer. It reproduces the full Vue/RmlUi target without importing
+a DOM/CSS runtime, while retaining S-expression and direct C++ authoring, native
+custom surfaces, lightweight stable frames, semantic Gubsy input, and an editor
+designed around resolution simulation and controller focus graphs. GLayout
+stays independently useful for games that only need geometry.
+
+The cost is ownership: GView has a narrower style/layout language than the web,
+and future unusual interfaces must prove reusable primitives rather than grow
+one-off widgets. The current mitigation is important: RmlUi/Vue remain visual
+and behavioral references, the trial is comprehensive, reusable gaps are added
+to GLayout/GView rather than screen code, and a diverse game-UI suite precedes
+Splonks migration.
 
 ### RmlUi
 
@@ -117,13 +147,18 @@ still looks more utilitarian and is the least attractive default ecosystem base.
 
 ## Recommendation
 
-Proceed with RmlUi as the leading ready-now Gubsy menu backend and keep Dear
-ImGui as the fallback/reference implementation. Keep Arbor in the comparison
-as the Gubsy-shaped retained alternative: performance is sufficient, but image
-rendering, responsive layout, font fallback, and focus navigation must become
-real framework capabilities before selection. Use resident/preloaded documents
-for complex screens and build the Gubsy event, asset, focus, and
-layout-provider adapters around that boundary.
+Proceed with GView as the leading Gubsy-owned candidate and use the new
+multi-game UI suite as its next selection gate. Keep RmlUi as the strongest
+ready-made retained reference and a credible fallback; it remains valuable for
+checking browser-derived composition and interaction. Keep Dear ImGui as the
+debug/reference implementation. Keep Arbor in the comparison as Kyle's
+ergonomic/AXL experiment, but do not grow it into a second overlapping runtime;
+an eventual AXL frontend can target GView if that authoring path remains useful.
+
+Do not migrate Splonks yet. First prove GView on materially different HUD,
+inventory, stylized menu, settings, and overlay compositions, adding only
+general capabilities. Then integrate the reviewed result through Gubsy's typed
+events, mapped input, assets, and optional authoring adapters.
 Do not select raygui or Nuklear for the default ecosystem solely because their
 executables are smaller; their missing framework behavior moves complexity into
 Gubsy and game code.

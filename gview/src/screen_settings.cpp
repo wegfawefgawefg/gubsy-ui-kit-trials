@@ -22,8 +22,8 @@ void display(ViewBuilder& ui) {
               "settings-content", 0.5, 2.0, 0.01);
     ui.select("setting-list", "setting-frame-cap", "Frame cap", "frame-cap",
               {"60 FPS", "120 FPS", "144 FPS", "Unlimited"}, "settings-content");
-    ui.slider("setting-list", "setting-brightness", "Brightness", "brightness",
-              "settings-content", 0.0, 1.0, 0.01);
+    ui.slider("setting-list", "setting-brightness", "Brightness", "brightness", "settings-content",
+              0.0, 1.0, 0.01);
     ui.select("setting-list", "setting-vsync", "Vertical synchronization", "vsync",
               {"Off", "On", "Adaptive"}, "settings-content");
 }
@@ -31,8 +31,8 @@ void display(ViewBuilder& ui) {
 void audio(ViewBuilder& ui) {
     ui.slider("setting-list", "setting-master", "Master volume", "master-volume",
               "settings-content", 0, 1, 0.01);
-    ui.slider("setting-list", "setting-music", "Music volume", "music-volume",
-              "settings-content", 0, 1, 0.01);
+    ui.slider("setting-list", "setting-music", "Music volume", "music-volume", "settings-content",
+              0, 1, 0.01);
     ui.slider("setting-list", "setting-effects", "Effects volume", "effects-volume",
               "settings-content", 0, 1, 0.01);
     ui.slider("setting-list", "setting-dialogue", "Dialogue volume", "dialogue-volume",
@@ -53,7 +53,8 @@ void accessibility(ViewBuilder& ui) {
     ui.select("setting-list", "setting-filter", "Color filter", "color-filter",
               {"Off", "Deuteranopia", "Protanopia", "Tritanopia"}, "settings-content");
     ui.toggle("setting-list", "setting-hold", "Hold assists", "hold-assists", "settings-content");
-    ui.toggle("setting-list", "setting-narration", "Menu narration", "narration", "settings-content");
+    ui.toggle("setting-list", "setting-narration", "Menu narration", "narration",
+              "settings-content");
 }
 
 void gameplay(ViewBuilder& ui) {
@@ -75,8 +76,8 @@ void gameplay(ViewBuilder& ui) {
 
 void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     setting_tabs(ui, content, model);
-    ui.container(content, "settings-workspace", ui.split(),
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.container(content, "settings-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     ui.container("settings-workspace", "setting-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 6.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -89,23 +90,28 @@ void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view c
     ui.container("settings-workspace", "setting-detail", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 430.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});
+    ui.scrolling("setting-detail");
     ui.label("setting-detail", "setting-detail-kicker", "SELECTED SETTING", 24.0f, 11.0f);
-    ui.label("setting-detail", "setting-detail-title", model.settings_tab + " settings", 52.0f, 28.0f);
+    ui.label("setting-detail", "setting-detail-title", model.settings_tab + " settings", 52.0f,
+             28.0f);
     ui.label("setting-detail", "setting-detail-copy",
-             "Changes use typed game-provided schemas. Previewable values apply immediately; guarded display changes commit explicitly.",
+             "Changes use typed game-provided schemas. Previewable values apply "
+             "immediately; guarded display changes commit explicitly.",
              92.0f, 14.0f);
     ui.label("setting-detail", "setting-context",
-             "SETTING CONTEXT\nScope        Current machine\nProfile      Vega\nRestart      Not required",
+             "SETTING CONTEXT\nScope        Current machine\nProfile      "
+             "Vega\nRestart      Not required",
              120.0f, 13.0f);
     ui.button("setting-detail", "apply-settings", "Apply settings", "toast:Settings applied",
               "settings-content");
     ui.button("setting-detail", "reset-category", "Reset category", "toast:Category reset",
               "settings-content");
-    const std::string first = model.settings_tab == "Audio" ? "setting-master"
+    const std::string first = model.settings_tab == "Audio"           ? "setting-master"
                               : model.settings_tab == "Accessibility" ? "setting-text-scale"
-                              : model.settings_tab == "Gameplay" ? "setting-tutorials"
-                                                                 : "setting-fullscreen";
+                              : model.settings_tab == "Gameplay"      ? "setting-tutorials"
+                                                                      : "setting-fullscreen";
     ui.focus_group("settings-content", first, std::string("setting-tab-") + model.settings_tab);
-    ui.edge("nav-Settings", gview::NavAction::Right, std::string("setting-tab-") + model.settings_tab);
+    ui.edge("nav-Settings", gview::NavAction::Right,
+            std::string("setting-tab-") + model.settings_tab);
     ui.edge(std::string("setting-tab-") + model.settings_tab, gview::NavAction::Down, first);
 }

@@ -17,9 +17,20 @@ void step(TrialApp& app, gview::NavAction action) {
 
 } // namespace
 
-// Exercises controller semantics and real widgets without moving the user's devices.
+// Exercises controller semantics and real widgets without moving the user's
+// devices.
 bool run_self_test(TrialApp& app) {
     bool ok = true;
+    for (int screen = 0; screen <= 17; ++screen) {
+        app.select_screen(screen);
+        app.update();
+        ok &= expect(!app.focus_id().empty(), "every authored state has an initial focus target");
+        if (screen < 17) {
+            const std::string owner = app.focus_id();
+            step(app, gview::NavAction::Right);
+            ok &= expect(app.focus_id() != owner, "every shell state enters its local focus group");
+        }
+    }
     app.select_screen(0);
     app.update();
     ok &= expect(app.focus_id() == "nav-Play", "Play owns initial focus");
@@ -34,6 +45,8 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Back);
     step(app, gview::NavAction::Down);
     ok &= expect(app.focus_id() == "nav-Players", "rail navigation activates destination");
+    app.select_screen(4);
+    app.update();
     step(app, gview::NavAction::Right);
     step(app, gview::NavAction::Down);
     ok &= expect(app.focus_id() == "roster-moss", "Players tab enters its local content");
@@ -71,6 +84,13 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Confirm);
     ok &= expect(std::get<std::string>(app.value("catalog-search")) == "cavern",
                  "text input commits typed state");
+    app.select_screen(17);
+    app.update();
+    ok &= expect(app.focus_id() == "inventory-item-8", "non-menu inventory has stable grid focus");
+    step(app, gview::NavAction::Right);
+    ok &= expect(app.focus_id() == "item-use", "inventory enters its local action group");
+    step(app, gview::NavAction::Back);
+    ok &= expect(app.focus_id() == "inventory-item-8", "inventory back returns to owning item");
     if (ok) std::puts("gview trial self-test passed");
     return ok;
 }
