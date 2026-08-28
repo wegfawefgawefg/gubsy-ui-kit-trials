@@ -75,6 +75,7 @@ add_executable(gubsy-gview-trial
   src/screen_settings.cpp
   src/self_test.cpp
   src/shell.cpp
+  src/theme.cpp
   src/view_builder.cpp)
 target_link_libraries(gubsy-gview-trial PRIVATE gview::sdl3 gview::imgui trial_imgui SDL3_image-static)
 target_compile_definitions(gubsy-gview-trial PRIVATE

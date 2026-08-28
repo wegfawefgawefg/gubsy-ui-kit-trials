@@ -14,6 +14,13 @@ This milestone is the reference implementation for the libraries, not the end
 of UI design evaluation. A diverse game-UI suite and final Splonks migration
 remain deliberate later work after user review.
 
+The authoring/presentation recovery pass is implemented and awaiting hands-on
+user acceptance. It adds native-canvas editing, compiled asset presentation
+recipes, corrected density-aware text, safe group focus editing, all 36 legacy
+display presets with logical/physical output separation, and a real
+Gubsy-runtime host service. The durable implementation and acceptance record is
+`../../gview/docs/AUTHORING_PRESENTATION_PLAN.md`.
+
 ## Purpose
 
 Add a complete GView implementation to the shared native UI comparison. The
@@ -58,6 +65,12 @@ or GView and documented before the trial is considered complete.
 The trial may use a neutral theme. Exact colors are less important than layout,
 content, responsiveness, assets, interaction feedback, and legibility.
 
+Regression coverage includes the former bottom-clipped text, overlapping
+slider parts, unclear select/destination affordances, unpadded transparent
+popups, full-screen `Player added` toast, and weak panel hierarchy. These were
+fixed in shared metrics, compound-widget, portal, overlay, and theme models
+rather than with per-screen offsets.
+
 ## Reusable-boundary rule
 
 - Geometry generally useful to HUD/settings/inventory belongs to GLayout.
@@ -77,6 +90,18 @@ The running trial must expose the optional authoring suite:
 - Create, edit, reparent, undo/redo, save, and reload.
 - Directed focus-graph inspection/editing and immediate controller testing.
 - Performance/allocation inspection.
+
+This evidence must operate over the actual native rendering. The author can
+freeze normal input, directly drag/resize/reparent real nodes, toggle clean,
+layout, navigation, and combined overlays, and safely author group-level focus
+entry/exit and remembered-member policy. Detached ImGui diagrams alone do not
+satisfy this requirement.
+
+The standalone trial remains the complete visual and clean performance path.
+`gubsy::ui::ViewRuntime` supplies the second path inside a real `GubsyRuntime`
+using normal events, mapped input, devices, typed model behavior, asset domains,
+and display services. The engine-lifecycle smoke validates the host boundary
+without copying the reference shell into another executable.
 
 ## Benchmarks
 

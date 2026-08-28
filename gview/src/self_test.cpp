@@ -88,9 +88,15 @@ bool run_self_test(TrialApp& app) {
     app.update();
     ok &= expect(app.focus_id() == "inventory-item-8", "non-menu inventory has stable grid focus");
     step(app, gview::NavAction::Right);
-    ok &= expect(app.focus_id() == "item-use", "inventory enters its local action group");
+    ok &= expect(app.focus_id() == "inventory-item-9",
+                 "inventory keeps local grid movement before a scope exit");
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Right);
+    ok &= expect(app.focus_id() == "item-use", "grid edge enters its local action group");
     step(app, gview::NavAction::Back);
-    ok &= expect(app.focus_id() == "inventory-item-8", "inventory back returns to owning item");
+    ok &= expect(app.focus_id() == "inventory-item-11",
+                 "inventory back restores the exact item left behind");
     if (ok) std::puts("gview trial self-test passed");
     return ok;
 }

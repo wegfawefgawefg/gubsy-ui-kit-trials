@@ -22,6 +22,15 @@ TrialOptions parse_options(int argc, char** argv) {
         };
         if (argument == "--width") integer(options.width);
         else if (argument == "--height") integer(options.height);
+        else if (argument == "--resolution" && index + 1 < argc) {
+            int width = 0;
+            int height = 0;
+            if (std::sscanf(argv[++index], "%dx%d", &width, &height) == 2 && width > 0 &&
+                height > 0) {
+                options.width = width;
+                options.height = height;
+            }
+        }
         else if (argument == "--screen") integer(options.screen);
         else if (argument == "--frames") integer(options.frames);
         else if (argument == "--hidden") options.hidden = true;

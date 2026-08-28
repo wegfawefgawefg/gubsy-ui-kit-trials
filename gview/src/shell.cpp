@@ -69,6 +69,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
              ui.compact() ? 28.0f : 42.0f);
     ui.container("main", "content", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f);
+    ui.spec("content").style_class = "panel";
     if (ui.phone()) ui.scrolling("content");
 
     if (model.provider_state != "Populated") {
@@ -152,7 +153,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.focus_group("modal", "modal-cancel");
     }
     if (!model.toast.empty()) {
-        ui.container("root", "toast-layer", glayout::ContainerKind::Overlay,
+        ui.container("root", "toast-layer", glayout::ContainerKind::Absolute,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
         ui.spec("toast-layer").style.normal.fill = {0, 0, 0, 0};
         ui.button("toast-layer", "toast-message", model.toast + "    ×", "toast:clear", "toast",

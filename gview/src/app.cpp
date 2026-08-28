@@ -49,6 +49,8 @@ TrialApp::TrialApp(SDL_Renderer* renderer, int width, int height)
     : renderer_(renderer), width_(width), height_(height) {
     authoring_ui_.preview.width = width;
     authoring_ui_.preview.height = height;
+    authoring_ui_.preview.output_width = width;
+    authoring_ui_.preview.output_height = height;
     painter_ = std::make_unique<gview::Sdl3Renderer>(renderer_, asset_path("DejaVuSans.ttf"));
     painter_->register_surface("world-preview", draw_world_preview);
     int gamepad_count = 0;
@@ -103,6 +105,27 @@ void TrialApp::resize(int width, int height) {
     model_.rebuild = true;
 }
 
+void TrialApp::resize_output(int width, int height) {
+    output_width_ = std::max(160, width);
+    output_height_ = std::max(144, height);
+    if (SDL_Window* window = SDL_GetRenderWindow(renderer_))
+        SDL_SetWindowSize(window, output_width_, output_height_);
+}
+
+void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
+    resize(preview.width, preview.height);
+    SDL_RendererLogicalPresentation presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
+    if (preview.presentation == gview::PreviewPresentation::Stretch)
+        presentation = SDL_LOGICAL_PRESENTATION_STRETCH;
+    else if (preview.presentation == gview::PreviewPresentation::Overscan)
+        presentation = SDL_LOGICAL_PRESENTATION_OVERSCAN;
+    else if (preview.presentation == gview::PreviewPresentation::IntegerScale)
+        presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
+    SDL_SetRenderLogicalPresentation(renderer_, preview.width, preview.height, presentation);
+    painter_->set_device_pixel_ratio(preview.device_pixel_ratio);
+    painter_->set_nearest_sampling(preview.sampling == gview::PreviewSampling::Nearest);
+}
+
 void TrialApp::load_assets() {
     const auto load = [&](std::string id, const std::string& path) {
         SDL_Texture* texture = IMG_LoadTexture(renderer_, path.c_str());
@@ -114,6 +137,11 @@ void TrialApp::load_assets() {
         }
     };
     load("splonks-title", asset_path("splonks-title.png"));
+    load("ui-panel-grid", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/panel-grid.svg");
+    load("ui-control-frame", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/control-frame.svg");
+    load("ui-slider-track", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-track.svg");
+    load("ui-slider-fill", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-fill.svg");
+    load("ui-slider-thumb", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-thumb.svg");
     for (int index = 0; index < 20; ++index) {
         const int sheet = index / 5 + 1;
         const int cell = index % 5;
@@ -136,8 +164,13 @@ void TrialApp::compile_view(gview::View source, bool reopen_authoring) {
     std::string retained_focus;
     if (runtime_.focus() != gview::invalid_node && runtime_.focus() < runtime_.view().nodes.size())
         retained_focus = runtime_.view().nodes[runtime_.focus()].source.layout_id;
-    if (reopen_authoring)
+    if (reopen_authoring) {
+        glayout::graph_canvas_clear(authoring_ui_.canvas);
+        authoring_ui_.transaction.reset();
+        authoring_ui_.edge_source.clear();
+        authoring_ui_.edge_target.clear();
         authoring_.open(source, std::string(GVIEW_TRIAL_SOURCE_DIR) + "/authoring/live-view.sexp");
+    }
     const auto compile_begin = Clock::now();
     gview::CompileResult compiled = gview::compile_view(std::move(source));
     compile_ms_ = milliseconds(compile_begin, Clock::now());
@@ -304,9 +337,8 @@ void TrialApp::draw_authoring() {
         model_.provider_state = hooks.scenarios[static_cast<std::size_t>(active_scenario_)];
         model_.rebuild = true;
     };
-    hooks.apply_preview = [&](const gview::PreviewConfig& preview) {
-        resize(preview.width, preview.height);
-    };
+    hooks.apply_preview = [&](const gview::PreviewConfig& preview) { apply_preview(preview); };
+    hooks.resize_output = [&](int width, int height) { resize_output(width, height); };
     hooks.rebuild = [&] { authored_rebuild_ = true; };
     hooks.metrics = [&] {
         char text[256]{};

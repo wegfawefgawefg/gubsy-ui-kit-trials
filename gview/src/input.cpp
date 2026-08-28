@@ -18,13 +18,20 @@ void TrialApp::process(const SDL_Event& source) {
         authoring_enabled_ = !authoring_enabled_;
         return;
     }
+    if (authoring_enabled_ && gview::authoring_captures_runtime(authoring_ui_) &&
+        event.type != SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+        return;
     if (authoring_enabled_ &&
         ((ImGui::GetIO().WantCaptureKeyboard && event.type == SDL_EVENT_KEY_DOWN) ||
          (ImGui::GetIO().WantCaptureMouse && event.type >= SDL_EVENT_MOUSE_MOTION &&
           event.type <= SDL_EVENT_MOUSE_WHEEL)))
         return;
-    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
-        resize(event.window.data1, event.window.data2);
+    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+        output_width_ = event.window.data1;
+        output_height_ = event.window.data2;
+        authoring_ui_.preview.output_width = output_width_;
+        authoring_ui_.preview.output_height = output_height_;
+    }
     else if (event.type == SDL_EVENT_MOUSE_MOTION) {
         input_.pointer.x = event.motion.x;
         input_.pointer.y = event.motion.y;

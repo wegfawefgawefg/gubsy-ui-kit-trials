@@ -120,11 +120,9 @@ void build_players(ViewBuilder& ui, const TrialModel& model, std::string_view co
     if (model.players_tab == "Profiles") profiles(ui, content);
     else if (model.players_tab == "Devices") devices(ui, content);
     else local_players(ui, content);
-    const std::string entry = model.players_tab == "Profiles"  ? "profile-moss"
-                              : model.players_tab == "Devices" ? "device-Keyboard + Mouse"
-                                                               : "roster-moss";
     ui.focus_group("player-tabs", std::string("player-tab-") + model.players_tab, "nav-Players");
-    ui.focus_group("players-content", entry, std::string("player-tab-") + model.players_tab);
+    ui.focus_group("players-content", {}, std::string("player-tab-") + model.players_tab);
     ui.edge("nav-Players", gview::NavAction::Right, std::string("player-tab-") + model.players_tab);
-    ui.edge(std::string("player-tab-") + model.players_tab, gview::NavAction::Down, entry);
+    ui.group_edge("player-tabs", gview::NavAction::Down, "players-content");
+    ui.group_edge("players-content", gview::NavAction::Up, "player-tabs");
 }

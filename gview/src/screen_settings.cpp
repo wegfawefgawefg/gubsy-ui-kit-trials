@@ -106,12 +106,9 @@ void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view c
               "settings-content");
     ui.button("setting-detail", "reset-category", "Reset category", "toast:Category reset",
               "settings-content");
-    const std::string first = model.settings_tab == "Audio"           ? "setting-master"
-                              : model.settings_tab == "Accessibility" ? "setting-text-scale"
-                              : model.settings_tab == "Gameplay"      ? "setting-tutorials"
-                                                                      : "setting-fullscreen";
-    ui.focus_group("settings-content", first, std::string("setting-tab-") + model.settings_tab);
+    ui.focus_group("settings-content", {}, std::string("setting-tab-") + model.settings_tab);
     ui.edge("nav-Settings", gview::NavAction::Right,
             std::string("setting-tab-") + model.settings_tab);
-    ui.edge(std::string("setting-tab-") + model.settings_tab, gview::NavAction::Down, first);
+    ui.group_edge("setting-tabs", gview::NavAction::Down, "settings-content");
+    ui.group_edge("settings-content", gview::NavAction::Up, "setting-tabs");
 }

@@ -35,6 +35,7 @@ class ViewBuilder {
     void surface(std::string_view parent, std::string id, std::string asset);
     void focus_group(std::string id, std::string entry, std::string owner = {});
     void edge(std::string from, gview::NavAction action, std::string to);
+    void group_edge(std::string from, gview::NavAction action, std::string to);
     void scrolling(std::string_view id);
 
   private:
@@ -44,6 +45,7 @@ class ViewBuilder {
     gview::View view_;
     float scale_ = 1.0f;
     int width_ = 1280;
+    int height_ = 720;
 };
 
 gview::View build_shell_view(const TrialModel& model, int width, int height);

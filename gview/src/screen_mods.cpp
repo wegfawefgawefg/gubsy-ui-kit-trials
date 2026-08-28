@@ -153,9 +153,8 @@ void build_mods(ViewBuilder& ui, const TrialModel& model, std::string_view conte
     tabs(ui, content, model);
     if (model.mods_tab == "Browse catalog") browse(ui, content);
     else installed(ui, content);
-    const std::string entry =
-        model.mods_tab == "Browse catalog" ? "catalog-search" : "refresh-installed";
-    ui.focus_group("mods-content", entry, std::string("mod-tab-") + model.mods_tab);
+    ui.focus_group("mods-content", {}, std::string("mod-tab-") + model.mods_tab);
     ui.edge("nav-Mods", gview::NavAction::Right, std::string("mod-tab-") + model.mods_tab);
-    ui.edge(std::string("mod-tab-") + model.mods_tab, gview::NavAction::Down, entry);
+    ui.group_edge("mod-tabs", gview::NavAction::Down, "mods-content");
+    ui.group_edge("mods-content", gview::NavAction::Up, "mod-tabs");
 }

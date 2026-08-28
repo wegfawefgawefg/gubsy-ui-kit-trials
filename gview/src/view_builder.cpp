@@ -1,5 +1,7 @@
 #include "view_builder.hpp"
 
+#include "theme.hpp"
+
 #include <algorithm>
 
 namespace {
@@ -19,7 +21,10 @@ gview::BoxStyle box(gview::Color fill, gview::Color border, gview::Color text) {
 // structs.
 ViewBuilder::ViewBuilder(std::string id, int width, int height) {
     width_ = width;
-    scale_ = std::clamp(static_cast<float>(height) / 720.0f, 1.0f, 1.5f);
+    height_ = height;
+    scale_ = std::clamp(std::min(static_cast<float>(width) / 1280.0f,
+                                 static_cast<float>(height) / 720.0f),
+                        0.75f, 1.5f);
     view_.id = std::move(id);
     view_.label = view_.id;
     view_.layout.id = view_.id + "_layout";
@@ -27,11 +32,15 @@ ViewBuilder::ViewBuilder(std::string id, int width, int height) {
     view_.layout.height = height;
     view_.layout.root.id = "root";
     view_.layout.root.container = glayout::ContainerKind::Stack;
+    view_.themes = trial_themes();
+    view_.active_theme = "splonks";
 }
 
 float ViewBuilder::scale() const { return scale_; }
 bool ViewBuilder::compact() const { return width_ < 1000 || view_.layout.height < 600; }
-bool ViewBuilder::phone() const { return width_ < 600; }
+bool ViewBuilder::phone() const {
+    return width_ < 600 || static_cast<float>(height_) > static_cast<float>(width_) * 1.25f;
+}
 glayout::ContainerKind ViewBuilder::split() const {
     return phone() ? glayout::ContainerKind::Column : glayout::ContainerKind::Row;
 }
@@ -186,6 +195,10 @@ void ViewBuilder::focus_group(std::string id, std::string entry, std::string own
 
 void ViewBuilder::edge(std::string from, gview::NavAction action, std::string to) {
     view_.focus_edges.push_back({std::move(from), action, std::move(to)});
+}
+
+void ViewBuilder::group_edge(std::string from, gview::NavAction action, std::string to) {
+    view_.focus_group_edges.push_back({std::move(from), action, std::move(to)});
 }
 
 void ViewBuilder::scrolling(std::string_view id) {

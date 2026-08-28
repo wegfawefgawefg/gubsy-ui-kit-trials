@@ -139,11 +139,9 @@ void build_controls(ViewBuilder& ui, const TrialModel& model, std::string_view c
     if (model.controls_tab == "Devices") devices(ui, content);
     else if (model.controls_tab == "Input tuning") tuning(ui, content);
     else bindings(ui, content);
-    const std::string entry = model.controls_tab == "Devices" ? "input-device-Keyboard + Mouse"
-                              : model.controls_tab == "Input tuning" ? "look-sensitivity"
-                                                                     : "binding-filter";
-    ui.focus_group("controls-content", entry, std::string("control-tab-") + model.controls_tab);
+    ui.focus_group("controls-content", {}, std::string("control-tab-") + model.controls_tab);
     ui.edge("nav-Controls", gview::NavAction::Right,
             std::string("control-tab-") + model.controls_tab);
-    ui.edge(std::string("control-tab-") + model.controls_tab, gview::NavAction::Down, entry);
+    ui.group_edge("control-tabs", gview::NavAction::Down, "controls-content");
+    ui.group_edge("controls-content", gview::NavAction::Up, "control-tabs");
 }

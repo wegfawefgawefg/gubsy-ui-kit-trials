@@ -75,10 +75,13 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
              "LB / RB  Category     D-pad  Select     A  Actions     B  Close     Y  Sort", 30.0f,
              12.0f, gview::TextAlign::Center);
     ui.focus_group("inventory-tabs", "inventory-tab-2");
-    ui.focus_group("inventory", "inventory-item-8", "inventory-tab-2");
-    ui.focus_group("inventory-actions", "item-use", "inventory-item-8");
-    ui.edge("inventory-tab-2", gview::NavAction::Down, "inventory-item-8");
-    ui.edge("inventory-item-8", gview::NavAction::Right, "item-use");
+    ui.focus_group("inventory", {}, "inventory-tab-2");
+    ui.focus_group("inventory-actions", "item-use");
+    ui.group_edge("inventory-tabs", gview::NavAction::Down, "inventory");
+    ui.group_edge("inventory", gview::NavAction::Up, "inventory-tabs");
+    ui.group_edge("inventory", gview::NavAction::Right, "inventory-actions");
+    ui.group_edge("inventory-actions", gview::NavAction::Left, "inventory");
+    ui.group_edge("inventory-actions", gview::NavAction::Back, "inventory");
     if (!model.toast.empty()) {
         ui.container("root", "toast-layer", glayout::ContainerKind::Overlay,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
