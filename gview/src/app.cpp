@@ -100,8 +100,8 @@ void TrialApp::resize(int width, int height) {
     if (width == width_ && height == height_) return;
     width_ = width;
     height_ = height;
-    SDL_SetRenderLogicalPresentation(renderer_, width_, height_,
-                                     SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    authoring_ui_.preview.width = width;
+    authoring_ui_.preview.height = height;
     model_.rebuild = true;
 }
 
@@ -114,6 +114,13 @@ void TrialApp::resize_host_window(int width, int height) {
 
 void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
     resize(preview.width, preview.height);
+    painter_->set_device_pixel_ratio(preview.device_pixel_ratio);
+    painter_->set_nearest_sampling(preview.sampling == gview::PreviewSampling::Nearest);
+}
+
+// Selects the simulated game's coordinate space for input conversion and paint.
+void TrialApp::prepare_game_canvas() {
+    const gview::PreviewConfig& preview = authoring_ui_.preview;
     SDL_RendererLogicalPresentation presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
     if (preview.presentation == gview::PreviewPresentation::Stretch)
         presentation = SDL_LOGICAL_PRESENTATION_STRETCH;
@@ -122,8 +129,11 @@ void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
     else if (preview.presentation == gview::PreviewPresentation::IntegerScale)
         presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
     SDL_SetRenderLogicalPresentation(renderer_, preview.width, preview.height, presentation);
-    painter_->set_device_pixel_ratio(preview.device_pixel_ratio);
-    painter_->set_nearest_sampling(preview.sampling == gview::PreviewSampling::Nearest);
+}
+
+// Restores host pixels so authoring tools never inherit game resolution scaling.
+void TrialApp::prepare_tool_layer() {
+    SDL_SetRenderLogicalPresentation(renderer_, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
 }
 
 void TrialApp::load_assets() {
@@ -300,6 +310,7 @@ void TrialApp::update() {
 
 void TrialApp::render() {
     const auto begin = Clock::now();
+    prepare_game_canvas();
     SDL_SetRenderDrawColor(renderer_, 4, 15, 18, 255);
     SDL_RenderClear(renderer_);
     painter_->render(runtime_.paint());
@@ -338,6 +349,13 @@ void TrialApp::draw_authoring() {
         model_.rebuild = true;
     };
     hooks.apply_preview = [&](const gview::PreviewConfig& preview) { apply_preview(preview); };
+    hooks.host_window_size = [&] {
+        int width = 0;
+        int height = 0;
+        if (SDL_Window* window = SDL_GetRenderWindow(renderer_))
+            SDL_GetWindowSize(window, &width, &height);
+        return std::pair{width, height};
+    };
     hooks.resize_host_window = [&](int width, int height) { resize_host_window(width, height); };
     hooks.rebuild = [&] { authored_rebuild_ = true; };
     hooks.metrics = [&] {

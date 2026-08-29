@@ -31,6 +31,15 @@ TrialOptions parse_options(int argc, char** argv) {
                 options.height = height;
             }
         }
+        else if (argument == "--logical-resolution" && index + 1 < argc) {
+            int width = 0;
+            int height = 0;
+            if (std::sscanf(argv[++index], "%dx%d", &width, &height) == 2 && width > 0 &&
+                height > 0) {
+                options.logical_width = width;
+                options.logical_height = height;
+            }
+        }
         else if (argument == "--screen") integer(options.screen);
         else if (argument == "--frames") integer(options.frames);
         else if (argument == "--hidden") options.hidden = true;
@@ -95,6 +104,8 @@ int main(int argc, char** argv) {
     int exit_code = 0;
     {
         TrialApp app(renderer, options.width, options.height);
+        if (options.logical_width > 0 && options.logical_height > 0)
+            app.resize(options.logical_width, options.logical_height);
         app.select_screen(options.screen);
         app.set_authoring_enabled(options.editor);
         if (!app.ready()) {
@@ -113,6 +124,7 @@ int main(int argc, char** argv) {
         int frames = 0;
         while (app.running()) {
             const auto frame_begin = std::chrono::steady_clock::now();
+            app.prepare_game_canvas();
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL3_ProcessEvent(&event);
@@ -120,12 +132,14 @@ int main(int argc, char** argv) {
             }
             if (options.benchmark) app.benchmark_step(options.scenario, frames);
             app.update();
+            app.prepare_tool_layer();
             ImGui_ImplSDLRenderer3_NewFrame();
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             app.draw_authoring();
             ImGui::Render();
             app.render();
+            app.prepare_tool_layer();
             ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
             SDL_RenderPresent(renderer);
             const double frame_ms = std::chrono::duration<double, std::milli>(

@@ -52,7 +52,12 @@ select state/provider data, edit properties/groups/themes, inspect timings, and
 run the 36-preset display simulator with independent logical/physical size,
 device pixel ratio, UI scale, safe area, fit mode, sampling, zoom, and pan.
 Device presets remain fitted inside the current desktop window; simulated
-physical output never silently resizes the host window.
+physical output never silently resizes the host window. The host can explicitly
+follow a fraction of logical size or match only its aspect ratio. The simulated
+canvas and ImGui tools use separate presentation layers, so tiny retro and large
+high-density presets leave tool size and mouse coordinates unchanged. For a
+direct compositor check, pass `--logical-resolution 160x144` while keeping the
+normal `--width 1280 --height 720` host.
 Authoring uses the same View and S-expression representation as runtime.
 
 Navigation is authored between semantic scopes rather than repeated item

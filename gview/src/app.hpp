@@ -15,6 +15,8 @@
 struct TrialOptions {
     int width = 1280;
     int height = 720;
+    int logical_width = 0;
+    int logical_height = 0;
     int screen = 0;
     int frames = 0;
     bool hidden = false;
@@ -36,6 +38,8 @@ class TrialApp {
     void resize(int width, int height);
     void resize_host_window(int width, int height);
     void apply_preview(const gview::PreviewConfig& preview);
+    void prepare_game_canvas();
+    void prepare_tool_layer();
     void process(const SDL_Event& event);
     void update();
     void render();
