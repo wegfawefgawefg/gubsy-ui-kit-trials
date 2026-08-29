@@ -34,6 +34,7 @@ class ViewBuilder {
     void image(std::string_view parent, std::string id, std::string asset, float height);
     void surface(std::string_view parent, std::string id, std::string asset);
     void focus_group(std::string id, std::string entry, std::string owner = {});
+    void focus_scope(std::string_view root, std::string group);
     void edge(std::string from, gview::NavAction action, std::string to);
     void group_edge(std::string from, gview::NavAction action, std::string to);
     void scrolling(std::string_view id);

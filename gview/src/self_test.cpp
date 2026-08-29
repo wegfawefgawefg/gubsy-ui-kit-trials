@@ -9,6 +9,14 @@ bool expect(bool condition, const char* message) {
     return condition;
 }
 
+bool expect_focus(const TrialApp& app, std::string_view expected, const char* message) {
+    const std::string actual = app.focus_id();
+    if (actual == expected) return true;
+    std::fprintf(stderr, "self-test failed: %s (expected %.*s, got %s)\n", message,
+                 static_cast<int>(expected.size()), expected.data(), actual.c_str());
+    return false;
+}
+
 void step(TrialApp& app, gview::NavAction action) {
     app.navigate(action);
     app.update();
@@ -36,6 +44,9 @@ bool run_self_test(TrialApp& app) {
     ok &= expect(app.focus_id() == "nav-Play", "Play owns initial focus");
     step(app, gview::NavAction::Right);
     ok &= expect(app.focus_id() == "activity", "right enters Play setup");
+    step(app, gview::NavAction::Left);
+    ok &= expect(app.focus_id() == "nav-Play", "left exits the Play setup group to its rail owner");
+    step(app, gview::NavAction::Right);
     step(app, gview::NavAction::Down);
     ok &= expect(app.focus_id() == "resume-point", "down follows local setup order");
     step(app, gview::NavAction::Back);
@@ -50,6 +61,35 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Right);
     step(app, gview::NavAction::Down);
     ok &= expect(app.focus_id() == "roster-moss", "Players tab enters its local content");
+    step(app, gview::NavAction::Right);
+    ok &= expect(app.focus_id() == "player-profile", "roster enters the adjacent detail group");
+    step(app, gview::NavAction::Left);
+    ok &= expect(app.focus_id() == "roster-moss", "detail returns to the remembered roster item");
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Left);
+    ok &= expect(app.focus_id() == "roster-vega",
+                 "cross-group memory restores the exact roster item last used");
+    app.select_screen(4);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Right);
+    ok &= expect_focus(app, "player-tab-Profiles", "right stays within the Players tab strip");
+
+    app.select_screen(0);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Up);
+    for (int index = 0; index < 5; ++index) step(app, gview::NavAction::Down);
+    ok &= expect_focus(app, "session-mods", "Play setup reaches its final list item");
+    step(app, gview::NavAction::Down);
+    ok &= expect(app.focus_id() == "pause-preview", "setup enters the separate action row");
+    step(app, gview::NavAction::Right);
+    ok &= expect(app.focus_id() == "begin-session", "both Play actions are reachable locally");
+    step(app, gview::NavAction::Up);
+    ok &= expect(app.focus_id() == "session-mods",
+                 "action row returns to the remembered setup item");
 
     app.select_screen(7);
     app.update();

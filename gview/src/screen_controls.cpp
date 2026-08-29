@@ -136,12 +136,43 @@ void tuning(ViewBuilder& ui, std::string_view content) {
 
 void build_controls(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     tabs(ui, content, model);
-    if (model.controls_tab == "Devices") devices(ui, content);
-    else if (model.controls_tab == "Input tuning") tuning(ui, content);
-    else bindings(ui, content);
-    ui.focus_group("controls-content", {}, std::string("control-tab-") + model.controls_tab);
+    const std::string owner = std::string("control-tab-") + model.controls_tab;
+    if (model.controls_tab == "Devices") {
+        devices(ui, content);
+        ui.focus_scope("control-device-list", "control-device-list");
+        ui.focus_scope("control-device-detail", "control-device-detail");
+        ui.focus_group("control-device-list", {}, owner);
+        ui.focus_group("control-device-detail", "owner-unassigned", owner);
+        ui.group_edge("control-tabs", gview::NavAction::Down, "control-device-list");
+        ui.group_edge("control-device-list", gview::NavAction::Up, "control-tabs");
+        ui.group_edge("control-device-list", gview::NavAction::Right,
+                      "control-device-detail");
+        ui.group_edge("control-device-detail", gview::NavAction::Left,
+                      "control-device-list");
+        ui.group_edge("control-device-detail", gview::NavAction::Up, "control-tabs");
+    } else if (model.controls_tab == "Input tuning") {
+        tuning(ui, content);
+        ui.focus_scope("tuning-list", "control-tuning");
+        ui.focus_group("control-tuning", "look-sensitivity", owner);
+        ui.group_edge("control-tabs", gview::NavAction::Down, "control-tuning");
+        ui.group_edge("control-tuning", gview::NavAction::Up, "control-tabs");
+    } else {
+        bindings(ui, content);
+        ui.focus_scope("binding-toolbar", "binding-toolbar");
+        ui.focus_scope("action-list", "binding-actions");
+        ui.focus_scope("binding-detail", "binding-detail");
+        ui.focus_group("binding-toolbar", "binding-filter", owner);
+        ui.focus_group("binding-actions", "action-Menu Up", owner);
+        ui.focus_group("binding-detail", "bind-one", owner);
+        ui.group_edge("control-tabs", gview::NavAction::Down, "binding-toolbar");
+        ui.group_edge("binding-toolbar", gview::NavAction::Up, "control-tabs");
+        ui.group_edge("binding-toolbar", gview::NavAction::Down, "binding-actions");
+        ui.group_edge("binding-actions", gview::NavAction::Up, "binding-toolbar");
+        ui.group_edge("binding-actions", gview::NavAction::Right, "binding-detail");
+        ui.group_edge("binding-detail", gview::NavAction::Left, "binding-actions");
+        ui.group_edge("binding-detail", gview::NavAction::Up, "control-tabs");
+    }
     ui.edge("nav-Controls", gview::NavAction::Right,
             std::string("control-tab-") + model.controls_tab);
-    ui.group_edge("control-tabs", gview::NavAction::Down, "controls-content");
-    ui.group_edge("controls-content", gview::NavAction::Up, "control-tabs");
+    ui.group_edge("control-tabs", gview::NavAction::Left, "rail");
 }

@@ -20,11 +20,11 @@ void local_players(ViewBuilder& ui, std::string_view content) {
                  {12.0f, 10.0f, 12.0f, 10.0f});
     ui.label("roster", "roster-title", "LOCAL ROSTER · 2 / 4 players", 34.0f, 12.0f);
     ui.button("roster", "roster-moss", "P1  Moss\nDefault Binds · Xbox controller", "select:Moss",
-              "players-content", 68.0f);
+              "player-roster", 68.0f);
     ui.button("roster", "roster-vega", "P2  Vega\nArcade Binds · Keyboard + mouse", "select:Vega",
-              "players-content", 68.0f);
+              "player-roster", 68.0f);
     ui.button("roster", "add-local-player", "+ Add local player", "toast:Player added",
-              "players-content", 52.0f);
+              "player-roster", 52.0f);
     ui.container("players-workspace", "player-detail", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});
@@ -32,18 +32,25 @@ void local_players(ViewBuilder& ui, std::string_view content) {
     ui.label("player-detail", "local-kicker", "LOCAL PLAYER", 24.0f, 11.0f);
     ui.label("player-detail", "local-name", "P1 · Moss", 44.0f, 27.0f);
     ui.select("player-detail", "player-profile", "Profile", "player-profile",
-              {"Moss", "Vega", "Guest"}, "players-content");
+              {"Moss", "Vega", "Guest"}, "player-detail");
     ui.select("player-detail", "player-binds", "Binding profile", "player-binds",
-              {"Default Binds", "Arcade Binds", "Accessibility"}, "players-content");
+              {"Default Binds", "Arcade Binds", "Accessibility"}, "player-detail");
     ui.select("player-detail", "player-tuning", "Input profile", "player-tuning",
-              {"Standard", "Precise", "Vehicle"}, "players-content");
+              {"Standard", "Precise", "Vehicle"}, "player-detail");
     ui.label("player-detail", "assigned-devices",
              "ASSIGNED DEVICES\nXbox Wireless Controller\nKeyboard + "
              "Mouse\nT-LCM Pedals",
              120.0f, 14.0f);
     ui.button("player-detail", "assign-device", "Assign another device", "controls:devices",
-              "players-content");
-    ui.toggle("player-detail", "ready", "Ready for session", "player-ready", "players-content");
+              "player-detail");
+    ui.toggle("player-detail", "ready", "Ready for session", "player-ready", "player-detail");
+    ui.focus_group("player-roster", "roster-moss", "player-tab-Local players");
+    ui.focus_group("player-detail", "player-profile", "player-tab-Local players");
+    ui.group_edge("player-tabs", gview::NavAction::Down, "player-roster");
+    ui.group_edge("player-roster", gview::NavAction::Up, "player-tabs");
+    ui.group_edge("player-roster", gview::NavAction::Right, "player-detail");
+    ui.group_edge("player-detail", gview::NavAction::Left, "player-roster");
+    ui.group_edge("player-detail", gview::NavAction::Up, "player-tabs");
 }
 
 void profiles(ViewBuilder& ui, std::string_view content) {
@@ -54,13 +61,13 @@ void profiles(ViewBuilder& ui, std::string_view content) {
     ui.container("profiles", "profile-cards", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 134.0f}, 12.0f);
     ui.button("profile-cards", "profile-moss", "MO\nMoss\n38h 22m · 84 runs · 21 wins",
-              "select:Moss", "players-content", 134.0f);
+              "select:Moss", "profile-cards", 134.0f);
     ui.button("profile-cards", "profile-vega", "VE\nVega\n14h 11m · 31 runs · 4 wins",
-              "select:Vega", "players-content", 134.0f);
+              "select:Vega", "profile-cards", 134.0f);
     ui.button("profile-cards", "profile-guest", "GU\nGuest\nNever · 0 runs · 0 wins",
-              "select:Guest", "players-content", 134.0f);
+              "select:Guest", "profile-cards", 134.0f);
     ui.button("profile-cards", "new-profile", "+ New profile", "toast:Profile editor opened",
-              "players-content", 134.0f);
+              "profile-cards", 134.0f);
     ui.label("profiles", "profile-data-title", "PROFILE DATA IS NOT A SAVE\nMoss's history", 58.0f,
              22.0f);
     ui.label("profiles", "profile-statistics",
@@ -72,7 +79,13 @@ void profiles(ViewBuilder& ui, std::string_view content) {
              "survive across campaigns and checkpoints.",
              64.0f, 14.0f);
     ui.button("profiles", "profile-replays", "Browse replays", "toast:Replay browser opened",
-              "players-content");
+              "profile-actions");
+    ui.focus_group("profile-cards", "profile-moss", "player-tab-Profiles");
+    ui.focus_group("profile-actions", "profile-replays", "player-tab-Profiles");
+    ui.group_edge("player-tabs", gview::NavAction::Down, "profile-cards");
+    ui.group_edge("profile-cards", gview::NavAction::Up, "player-tabs");
+    ui.group_edge("profile-cards", gview::NavAction::Down, "profile-actions");
+    ui.group_edge("profile-actions", gview::NavAction::Up, "profile-cards");
 }
 
 void devices(ViewBuilder& ui, std::string_view content) {
@@ -88,7 +101,7 @@ void devices(ViewBuilder& ui, std::string_view content) {
     for (const char* device : devices)
         ui.button("device-list", std::string("device-") + device,
                   device + std::string("\nConnected · input explorer ready"),
-                  std::string("select:") + device, "players-content", 64.0f);
+                  std::string("select:") + device, "player-devices", 64.0f);
     ui.container("devices-workspace", "device-detail", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});
@@ -100,17 +113,24 @@ void devices(ViewBuilder& ui, std::string_view content) {
              "gamepads, wheels, pedals, sticks, and macro pads.",
              72.0f, 14.0f);
     ui.button("device-detail", "device-unassigned", "○  Unassigned", "toast:Device unassigned",
-              "players-content");
+              "device-actions");
     ui.button("device-detail", "device-moss", "P1  Moss · Default Binds", "toast:Assigned to Moss",
-              "players-content");
+              "device-actions");
     ui.button("device-detail", "device-vega", "P2  Vega · Arcade Binds", "toast:Assigned to Vega",
-              "players-content");
+              "device-actions");
     ui.label("device-detail", "input-explorer",
              "LIVE INPUT EXPLORER\nAxis 4 · Right Trigger       0.742\nButton 1 "
              "· South             UP\nHat 0 · D-Pad                UP-RIGHT",
              138.0f, 14.0f);
     ui.button("device-detail", "identify-device", "Identify device", "toast:Device rumbled",
-              "players-content");
+              "device-actions");
+    ui.focus_group("player-devices", "device-Keyboard + Mouse", "player-tab-Devices");
+    ui.focus_group("device-actions", "device-unassigned", "player-tab-Devices");
+    ui.group_edge("player-tabs", gview::NavAction::Down, "player-devices");
+    ui.group_edge("player-devices", gview::NavAction::Up, "player-tabs");
+    ui.group_edge("player-devices", gview::NavAction::Right, "device-actions");
+    ui.group_edge("device-actions", gview::NavAction::Left, "player-devices");
+    ui.group_edge("device-actions", gview::NavAction::Up, "player-tabs");
 }
 
 } // namespace
@@ -121,8 +141,6 @@ void build_players(ViewBuilder& ui, const TrialModel& model, std::string_view co
     else if (model.players_tab == "Devices") devices(ui, content);
     else local_players(ui, content);
     ui.focus_group("player-tabs", std::string("player-tab-") + model.players_tab, "nav-Players");
-    ui.focus_group("players-content", {}, std::string("player-tab-") + model.players_tab);
     ui.edge("nav-Players", gview::NavAction::Right, std::string("player-tab-") + model.players_tab);
-    ui.group_edge("player-tabs", gview::NavAction::Down, "players-content");
-    ui.group_edge("players-content", gview::NavAction::Up, "player-tabs");
+    ui.group_edge("player-tabs", gview::NavAction::Left, "rail");
 }

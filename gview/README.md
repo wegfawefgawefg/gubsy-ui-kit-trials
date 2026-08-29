@@ -53,6 +53,13 @@ run the 36-preset display simulator with independent logical/physical size,
 device pixel ratio, UI scale, safe area, fit mode, sampling, zoom, and pan.
 Authoring uses the same View and S-expression representation as runtime.
 
+Navigation is authored between semantic scopes rather than repeated item
+pairs. Tabs, toolbars, primary lists, detail panes, and action rows remember
+their own last member. Selecting a layout container in the focus inspector can
+assign its complete focusable subtree as one scope. F5 labels pink scope exits
+and cyan item exceptions directly over the rendered controls; unlabeled local
+movement is generated spatially inside the outlined scope.
+
 Benchmark scenarios are `stable`, `value`, `layout`, and `scroll`. The first
 120 frames are discarded. Output separates runtime update, SDL recording,
 complete CPU frame, compile/activation, cache builds, and GView-owned memory.

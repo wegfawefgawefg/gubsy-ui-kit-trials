@@ -151,10 +151,31 @@ void browse(ViewBuilder& ui, std::string_view content) {
 
 void build_mods(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     tabs(ui, content, model);
-    if (model.mods_tab == "Browse catalog") browse(ui, content);
-    else installed(ui, content);
-    ui.focus_group("mods-content", {}, std::string("mod-tab-") + model.mods_tab);
+    const std::string owner = std::string("mod-tab-") + model.mods_tab;
+    if (model.mods_tab == "Browse catalog") {
+        browse(ui, content);
+        ui.focus_scope("catalog-tools", "mod-tools");
+        ui.focus_scope("catalog-list", "mod-list");
+        ui.focus_scope("mod-detail", "mod-detail");
+        ui.focus_group("mod-tools", "catalog-search", owner);
+        ui.focus_group("mod-list", "catalog-item-0", owner);
+        ui.focus_group("mod-detail", "install-session", owner);
+    } else {
+        installed(ui, content);
+        ui.focus_scope("installed-toolbar", "mod-tools");
+        ui.focus_scope("installed-list", "mod-list");
+        ui.focus_scope("mod-detail", "mod-detail");
+        ui.focus_group("mod-tools", "refresh-installed", owner);
+        ui.focus_group("mod-list", "installed-0", owner);
+        ui.focus_group("mod-detail", "mod-version", owner);
+    }
     ui.edge("nav-Mods", gview::NavAction::Right, std::string("mod-tab-") + model.mods_tab);
-    ui.group_edge("mod-tabs", gview::NavAction::Down, "mods-content");
-    ui.group_edge("mods-content", gview::NavAction::Up, "mod-tabs");
+    ui.group_edge("mod-tabs", gview::NavAction::Left, "rail");
+    ui.group_edge("mod-tabs", gview::NavAction::Down, "mod-tools");
+    ui.group_edge("mod-tools", gview::NavAction::Up, "mod-tabs");
+    ui.group_edge("mod-tools", gview::NavAction::Down, "mod-list");
+    ui.group_edge("mod-list", gview::NavAction::Up, "mod-tools");
+    ui.group_edge("mod-list", gview::NavAction::Right, "mod-detail");
+    ui.group_edge("mod-detail", gview::NavAction::Left, "mod-list");
+    ui.group_edge("mod-detail", gview::NavAction::Up, "mod-tabs");
 }

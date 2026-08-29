@@ -3,6 +3,7 @@
 #include "theme.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace {
 
@@ -191,6 +192,21 @@ void ViewBuilder::surface(std::string_view parent, std::string id, std::string a
 
 void ViewBuilder::focus_group(std::string id, std::string entry, std::string owner) {
     view_.focus_groups.push_back({std::move(id), std::move(entry), std::move(owner), true, true});
+}
+
+// Treats a layout subtree as one local navigation scope without coupling its
+// content identities to the focus graph.
+void ViewBuilder::focus_scope(std::string_view root, std::string group) {
+    const glayout::GraphNode* scope = glayout::find_graph_node(view_.layout, root);
+    if (!scope) return;
+    std::unordered_set<std::string> ids;
+    const auto collect = [&](const auto& self, const glayout::GraphNode& node) -> void {
+        ids.insert(node.id);
+        for (const glayout::GraphNode& child : node.children) self(self, child);
+    };
+    collect(collect, *scope);
+    for (gview::NodeSpec& node : view_.nodes)
+        if (node.focusable && ids.contains(node.layout_id)) node.focus_group = group;
 }
 
 void ViewBuilder::edge(std::string from, gview::NavAction action, std::string to) {

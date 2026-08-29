@@ -106,9 +106,17 @@ void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view c
               "settings-content");
     ui.button("setting-detail", "reset-category", "Reset category", "toast:Category reset",
               "settings-content");
-    ui.focus_group("settings-content", {}, std::string("setting-tab-") + model.settings_tab);
+    const std::string owner = std::string("setting-tab-") + model.settings_tab;
+    ui.focus_scope("setting-list", "settings-list");
+    ui.focus_scope("setting-detail", "settings-actions");
+    ui.focus_group("settings-list", {}, owner);
+    ui.focus_group("settings-actions", "apply-settings", owner);
     ui.edge("nav-Settings", gview::NavAction::Right,
             std::string("setting-tab-") + model.settings_tab);
-    ui.group_edge("setting-tabs", gview::NavAction::Down, "settings-content");
-    ui.group_edge("settings-content", gview::NavAction::Up, "setting-tabs");
+    ui.group_edge("setting-tabs", gview::NavAction::Left, "rail");
+    ui.group_edge("setting-tabs", gview::NavAction::Down, "settings-list");
+    ui.group_edge("settings-list", gview::NavAction::Up, "setting-tabs");
+    ui.group_edge("settings-list", gview::NavAction::Right, "settings-actions");
+    ui.group_edge("settings-actions", gview::NavAction::Left, "settings-list");
+    ui.group_edge("settings-actions", gview::NavAction::Up, "setting-tabs");
 }

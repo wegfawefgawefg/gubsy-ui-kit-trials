@@ -19,31 +19,31 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     ui.label("setup", "quest-title", "The Violet Reach", 30.0f, 22.0f);
     ui.label("setup", "quest-note", "The Glass Caverns · Latest checkpoint · Vega", 20.0f, 12.0f);
     ui.select("setup", "activity", "Activity", "activity",
-              {"Continue expedition", "New expedition", "Arena run"}, "play-content", 48.0f);
+              {"Continue expedition", "New expedition", "Arena run"}, "play-setup", 48.0f);
     ui.button("setup", "resume-point",
               continuing ? "Resume point\nLatest checkpoint · The Violet Reach"
                          : "Quest\nChoose a quest and starting route",
-              "play:quest", "play-content", 48.0f);
+              "play:quest", "play-setup", 48.0f);
     ui.select("setup", "play-with", "Play with", "access",
-              {"Solo", "Friends can join", "Invite only", "Public"}, "play-content", 48.0f);
+              {"Solo", "Friends can join", "Invite only", "Public"}, "play-setup", 48.0f);
     ui.select("setup", "host-using", "Host using", "host",
-              {"Automatic", "Host locally", "Dedicated relay"}, "play-content", 48.0f);
+              {"Automatic", "Host locally", "Dedicated relay"}, "play-setup", 48.0f);
     ui.button("setup", "expedition-rules", "Expedition rules\nStandard · 4 lives · ghost at 180s",
-              "play:rules", "play-content", 50.0f);
+              "play:rules", "play-setup", 50.0f);
     ui.button("setup", "session-mods", "Session mods\n7 active · dependency set valid", "play:mods",
-              "play-content", 50.0f);
+              "play-setup", 50.0f);
     ui.container("setup", "play-actions", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f}, 8.0f);
     ui.button("play-actions", "pause-preview", "Pause preview", "toast:Preview paused",
-              "play-content", 46.0f);
+              "play-actions", 46.0f);
     ui.button("play-actions", "begin-session",
               continuing ? "▶ Resume latest checkpoint" : "▶ Begin new expedition", "start-session",
-              "play-content", 46.0f);
+              "play-actions", 46.0f);
 
     panel(ui, "play-workspace", "party", {glayout::LengthKind::Pixels, 330.0f});
     ui.label("party", "party-title", "PLAYERS\nYour party", 54.0f, 18.0f);
     ui.button("party", "player-one", "P1   Moss\n      Xbox Wireless Controller        READY",
-              "players", "play-content", 62.0f);
+              "players", "play-party", 62.0f);
     if (!solo) {
         for (int slot = 2; slot <= 4; ++slot)
             ui.button("party", "open-slot-" + std::to_string(slot),
@@ -57,24 +57,15 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
              "CONTENT                 7 mods\nRULESET                 "
              "Standard\nNETWORK                 Automatic",
              80.0f, 12.0f);
-    for (const char* id : {"player-one"})
-        ui.spec(id).focus_group = "play-party";
-    ui.focus_group("play-content", "activity", "nav-Play");
+    ui.focus_group("play-setup", "activity", "nav-Play");
+    ui.focus_group("play-actions", "pause-preview", "nav-Play");
     ui.focus_group("play-party", "player-one", "nav-Play");
     ui.edge("nav-Play", gview::NavAction::Right, "activity");
-    if (!solo) {
-        const std::pair<const char*, const char*> relationships[]{
-            {"activity", "player-one"},     {"resume-point", "open-slot-2"},
-            {"play-with", "open-slot-3"},   {"host-using", "open-slot-4"},
-            {"expedition-rules", "invite"}, {"session-mods", "find-games"}};
-        for (const auto& [left, right] : relationships) {
-            ui.edge(left, gview::NavAction::Right, right);
-            ui.edge(right, gview::NavAction::Left, left);
-        }
-    } else {
-        ui.edge("activity", gview::NavAction::Right, "player-one");
-        ui.edge("player-one", gview::NavAction::Left, "activity");
-    }
+    ui.group_edge("play-setup", gview::NavAction::Left, "rail");
+    ui.group_edge("play-setup", gview::NavAction::Right, "play-party");
+    ui.group_edge("play-party", gview::NavAction::Left, "play-setup");
+    ui.group_edge("play-setup", gview::NavAction::Down, "play-actions");
+    ui.group_edge("play-actions", gview::NavAction::Up, "play-setup");
 }
 
 void quest(ViewBuilder& ui, const TrialModel&, std::string_view content) {

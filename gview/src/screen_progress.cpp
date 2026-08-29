@@ -53,6 +53,16 @@ void build_progress(ViewBuilder& ui, const TrialModel&, std::string_view content
     ui.button("campaign-actions", "export-campaign", "Export", "toast:Campaign exported",
               "progress", 48.0f);
     ui.button("campaign-actions", "delete-campaign", "Delete", "modal:delete", "progress", 48.0f);
-    ui.focus_group("progress", "new-quest", "nav-Progress");
+    ui.focus_scope("progress-toolbar", "progress-toolbar");
+    ui.focus_scope("campaign-list", "campaign-list");
+    ui.focus_scope("campaign-detail", "campaign-detail");
+    ui.focus_group("progress-toolbar", "new-quest", "nav-Progress");
+    ui.focus_group("campaign-list", "campaign-glass", "nav-Progress");
+    ui.focus_group("campaign-detail", "inspect-packages", "nav-Progress");
     ui.edge("nav-Progress", gview::NavAction::Right, "new-quest");
+    ui.group_edge("progress-toolbar", gview::NavAction::Left, "rail");
+    ui.group_edge("progress-toolbar", gview::NavAction::Down, "campaign-list");
+    ui.group_edge("campaign-list", gview::NavAction::Up, "progress-toolbar");
+    ui.group_edge("campaign-list", gview::NavAction::Right, "campaign-detail");
+    ui.group_edge("campaign-detail", gview::NavAction::Left, "campaign-list");
 }
