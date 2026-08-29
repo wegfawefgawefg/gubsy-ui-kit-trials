@@ -370,7 +370,7 @@ void TrialApp::draw_authoring() {
         return std::string(text);
     };
     gview::draw_authoring_tools(authoring_, authoring_ui_, hooks, runtime_.view(),
-                                runtime_.geometry());
+                                runtime_.geometry(), &runtime_.paint());
 }
 
 void TrialApp::select_screen(int screen) {
