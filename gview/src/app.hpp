@@ -34,7 +34,7 @@ class TrialApp {
     bool running() const;
     void stop();
     void resize(int width, int height);
-    void resize_output(int width, int height);
+    void resize_host_window(int width, int height);
     void apply_preview(const gview::PreviewConfig& preview);
     void process(const SDL_Event& event);
     void update();
@@ -76,8 +76,6 @@ class TrialApp {
     gview::InputFrame input_;
     int width_ = 1280;
     int height_ = 720;
-    int output_width_ = 1280;
-    int output_height_ = 720;
     int axis_x_ = 0;
     int axis_y_ = 0;
     bool ready_ = false;

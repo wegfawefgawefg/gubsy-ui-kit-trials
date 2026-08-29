@@ -105,11 +105,11 @@ void TrialApp::resize(int width, int height) {
     model_.rebuild = true;
 }
 
-void TrialApp::resize_output(int width, int height) {
-    output_width_ = std::max(160, width);
-    output_height_ = std::max(144, height);
+void TrialApp::resize_host_window(int width, int height) {
+    const int host_width = std::max(160, width);
+    const int host_height = std::max(144, height);
     if (SDL_Window* window = SDL_GetRenderWindow(renderer_))
-        SDL_SetWindowSize(window, output_width_, output_height_);
+        SDL_SetWindowSize(window, host_width, host_height);
 }
 
 void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
@@ -338,7 +338,7 @@ void TrialApp::draw_authoring() {
         model_.rebuild = true;
     };
     hooks.apply_preview = [&](const gview::PreviewConfig& preview) { apply_preview(preview); };
-    hooks.resize_output = [&](int width, int height) { resize_output(width, height); };
+    hooks.resize_host_window = [&](int width, int height) { resize_host_window(width, height); };
     hooks.rebuild = [&] { authored_rebuild_ = true; };
     hooks.metrics = [&] {
         char text[256]{};

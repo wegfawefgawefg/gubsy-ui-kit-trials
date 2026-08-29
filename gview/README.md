@@ -51,6 +51,8 @@ canvas and require explicit Apply or Cancel. Separate focused ImGui windows
 select state/provider data, edit properties/groups/themes, inspect timings, and
 run the 36-preset display simulator with independent logical/physical size,
 device pixel ratio, UI scale, safe area, fit mode, sampling, zoom, and pan.
+Device presets remain fitted inside the current desktop window; simulated
+physical output never silently resizes the host window.
 Authoring uses the same View and S-expression representation as runtime.
 
 Navigation is authored between semantic scopes rather than repeated item

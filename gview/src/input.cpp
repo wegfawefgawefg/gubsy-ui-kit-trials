@@ -45,12 +45,7 @@ void TrialApp::process(const SDL_Event& source) {
          (ImGui::GetIO().WantCaptureMouse && event.type >= SDL_EVENT_MOUSE_MOTION &&
           event.type <= SDL_EVENT_MOUSE_WHEEL)))
         return;
-    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-        output_width_ = event.window.data1;
-        output_height_ = event.window.data2;
-        authoring_ui_.preview.output_width = output_width_;
-        authoring_ui_.preview.output_height = output_height_;
-    }
+    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) return;
     else if (event.type == SDL_EVENT_MOUSE_MOTION) {
         input_.pointer.x = event.motion.x;
         input_.pointer.y = event.motion.y;
