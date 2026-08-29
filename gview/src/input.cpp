@@ -14,8 +14,27 @@ void TrialApp::process(const SDL_Event& source) {
     } else if (event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         close_gamepad(event.gdevice.which);
         return;
-    } else if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F3 && !event.key.repeat) {
-        authoring_enabled_ = !authoring_enabled_;
+    } else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+               event.key.key >= SDLK_F1 && event.key.key <= SDLK_F5) {
+        if (event.key.key == SDLK_F1) {
+            if (!authoring_enabled_) {
+                authoring_enabled_ = true;
+                authoring_ui_.show_launcher = true;
+            } else
+                authoring_ui_.show_launcher = !authoring_ui_.show_launcher;
+        } else {
+            authoring_enabled_ = true;
+            if (event.key.key == SDLK_F2)
+                authoring_ui_.mode = authoring_ui_.mode == gview::AuthoringMode::Test
+                                         ? gview::AuthoringMode::Edit
+                                         : gview::AuthoringMode::Test;
+            else if (event.key.key == SDLK_F3)
+                authoring_ui_.show_layout_boxes = !authoring_ui_.show_layout_boxes;
+            else if (event.key.key == SDLK_F4)
+                authoring_ui_.show_grid = !authoring_ui_.show_grid;
+            else if (event.key.key == SDLK_F5)
+                authoring_ui_.show_focus_overlay = !authoring_ui_.show_focus_overlay;
+        }
         return;
     }
     if (authoring_enabled_ && gview::authoring_captures_runtime(authoring_ui_) &&

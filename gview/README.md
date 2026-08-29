@@ -38,9 +38,13 @@ remembered-member re-entry, explicit exceptional edges, dropdown capture/cancel,
 and Back-to-owner behavior instead of moving a synthetic pointer or persisting
 fake-data item IDs.
 
-F3 toggles the live authoring suite. Test mode sends input to the UI; Edit mode
-pauses it and makes the polished native canvas directly selectable. The canvas
-supports clean, layout, focus, and combined overlays; center/edge/corner drag,
+F1 toggles a small top-level tool launcher. F2 switches Test/Edit mode, F3
+toggles all layout boxes, F4 toggles the grid, and F5 toggles focus relationships.
+The launcher independently opens the hierarchy/properties, display simulator,
+and focus inspector windows. Hiding every ImGui window does not leave Edit mode,
+so the polished canvas remains directly manipulable without panels covering it.
+Test mode sends input to the UI; Edit mode pauses it. The canvas supports
+independent boxes, IDs, grid, and focus overlays; center/edge/corner drag,
 grid and sibling snapping, nudge, multi-select, reparent, copy/cut/paste,
 duplicate/delete, undo/redo, save, and reload. Focus links are staged on the
 canvas and require explicit Apply or Cancel. Separate focused ImGui windows

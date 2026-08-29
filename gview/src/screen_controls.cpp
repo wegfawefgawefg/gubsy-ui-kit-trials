@@ -19,7 +19,7 @@ void bindings(ViewBuilder& ui, std::string_view content) {
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f}, 8.0f);
     ui.button("binding-toolbar", "binding-filter", "Filter actions…", "toast:Search focused",
               "controls-content", 46.0f);
-    ui.select("binding-toolbar", "binding-profile", "Default Binds", "binding-profile",
+    ui.select("binding-toolbar", "binding-profile", "", "binding-profile",
               {"Default Binds", "Arcade Binds", "Accessibility"}, "controls-content", 46.0f);
     for (const char* action : {"New", "Rename", "Reset", "Delete"})
         ui.button("binding-toolbar", std::string("binding-") + action, action,
