@@ -36,7 +36,9 @@ semantic navigation actions; gamepads are opened on startup and hot-plugged. Foc
 groups provide generated local geometric movement, group-level exits, exact
 remembered-member re-entry, explicit exceptional edges, dropdown capture/cancel,
 and Back-to-owner behavior instead of moving a synthetic pointer or persisting
-fake-data item IDs.
+fake-data item IDs. Focus changes reveal their item in every owning scroll area,
+and stable-ID runtime reconciliation preserves that scroll when an on-focus
+selection rebuilds adjacent host content.
 
 F1 is the master show/hide for the complete GView authoring layer. Its small
 launcher only selects focused tool windows; native-canvas modes live in the
@@ -82,7 +84,10 @@ layout containers, so section backgrounds support the same natural, stretch,
 cover, tile, and nine-slice modes as widgets. Exact-node recipes override class
 recipes, which override control-wide recipes. `Draw box underneath` only affects
 nodes matched by that recipe; unmatched nodes retain their semantic fallback
-box.
+box. The editor reports each recipe's match count and warns when its scope is
+broad. Selecting text inside a themed container identifies the nearest visible
+owner; editing it creates a non-destructive exact override cloned from the
+inherited recipe.
 
 Presented regions can independently layer Shadow, Background, and Frame parts,
 so a backplate can sit behind a frame without also drawing the fallback

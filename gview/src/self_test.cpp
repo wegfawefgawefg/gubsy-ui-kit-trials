@@ -197,6 +197,18 @@ bool run_self_test(TrialApp& app) {
     ok &= expect_focus(app, "install-session", "catalog confirm enters the detail actions");
     step(app, gview::NavAction::Back);
     ok &= expect_focus(app, "catalog-item-1", "catalog detail returns to the remembered package");
+
+    app.select_screen(15);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Down);
+    for (int index = 0; index < 6; ++index)
+        step(app, gview::NavAction::Down);
+    ok &= expect_focus(app, "installed-6", "controller reaches the final installed package");
+    ok &= expect(app.scroll_offset("installed-list") > 0.0f,
+                 "host-content rebuild retains focus-driven list scroll");
+
     app.select_screen(17);
     app.update();
     ok &= expect(app.focus_id() == "inventory-item-8", "non-menu inventory has stable grid focus");

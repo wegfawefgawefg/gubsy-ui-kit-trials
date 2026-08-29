@@ -183,7 +183,8 @@ void TrialApp::rebuild() {
 
     // What is: Each screen keeps its own undoable working document in memory.
     const std::string context = authoring_context(model_);
-    if (context != authoring_context_) {
+    const bool same_context = context == authoring_context_;
+    if (!same_context) {
         if (!authoring_context_.empty())
             authoring_documents_.insert_or_assign(authoring_context_, std::move(authoring_));
         const auto stored = authoring_documents_.find(context);
@@ -201,7 +202,7 @@ void TrialApp::rebuild() {
         authoring_ui_.edge_source.clear();
         authoring_ui_.edge_target.clear();
     }
-    compile_view(merge_authored_view(authoring_.view(), source));
+    compile_view(merge_authored_view(authoring_.view(), source), same_context);
     model_.rebuild = false;
 }
 
@@ -214,7 +215,7 @@ std::string TrialApp::authoring_path(std::string_view context) const {
     return std::string(GVIEW_TRIAL_SOURCE_DIR) + "/authoring/" + filename + ".sexp";
 }
 
-void TrialApp::compile_view(gview::View source) {
+void TrialApp::compile_view(gview::View source, bool retain_runtime_state) {
     std::string retained_focus;
     if (runtime_.focus() != gview::invalid_node && runtime_.focus() < runtime_.view().nodes.size())
         retained_focus = runtime_.view().nodes[runtime_.focus()].source.layout_id;
@@ -228,7 +229,8 @@ void TrialApp::compile_view(gview::View source) {
         return;
     }
     const auto activation_begin = Clock::now();
-    runtime_.reset(std::move(compiled.view));
+    if (retain_runtime_state) runtime_.reconcile(std::move(compiled.view));
+    else runtime_.reset(std::move(compiled.view));
     activation_ms_ = milliseconds(activation_begin, Clock::now());
     if (!model_.pending_focus.empty()) {
         runtime_.set_focus(model_.pending_focus);
@@ -473,27 +475,3 @@ void TrialApp::benchmark_step(std::string_view scenario, int frame) {
         }
     }
 }
-
-std::string TrialApp::focus_id() const {
-    const gview::NodeIndex focus = runtime_.focus();
-    if (focus == gview::invalid_node || focus >= runtime_.view().nodes.size()) return {};
-    return runtime_.view().nodes[focus].source.layout_id;
-}
-
-gview::Value TrialApp::value(std::string_view key) const { return model_.read(key); }
-
-bool TrialApp::focus_open() const {
-    const gview::NodeIndex focus = runtime_.focus();
-    return focus != gview::invalid_node && focus < runtime_.state().size() &&
-           runtime_.state()[focus].open;
-}
-
-bool TrialApp::authoring_enabled() const { return authoring_enabled_; }
-void TrialApp::set_authoring_enabled(bool enabled) { authoring_enabled_ = enabled; }
-
-double TrialApp::update_ms() const { return update_ms_; }
-double TrialApp::render_ms() const { return render_ms_; }
-double TrialApp::compile_ms() const { return compile_ms_; }
-double TrialApp::activation_ms() const { return activation_ms_; }
-const gview::RuntimeStats& TrialApp::stats() const { return runtime_.stats(); }
-std::size_t TrialApp::owned_bytes() const { return runtime_.owned_bytes(); }

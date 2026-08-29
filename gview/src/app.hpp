@@ -52,6 +52,7 @@ class TrialApp {
     std::string focus_id() const;
     gview::Value value(std::string_view key) const;
     bool focus_open() const;
+    float scroll_offset(std::string_view id) const;
     bool authoring_enabled() const;
     void set_authoring_enabled(bool enabled);
 
@@ -66,7 +67,7 @@ class TrialApp {
     void rebuild();
     void action(std::string_view action, gview::NodeIndex source);
     void load_assets();
-    void compile_view(gview::View view);
+    void compile_view(gview::View view, bool retain_runtime_state = true);
     std::string authoring_path(std::string_view context) const;
     void open_gamepad(SDL_JoystickID id);
     void close_gamepad(SDL_JoystickID id);
