@@ -25,6 +25,10 @@ gview::WidgetSkin slider_skin() {
         asset_part(gview::WidgetPart::Thumb, "ui-slider-thumb", gview::ImageMode::Contain)};
     skin.parts[0].slice = 16.0f;
     skin.parts[1].slice = 16.0f;
+    skin.parts[0].slice_modes.top = gview::SliceTileMode::Repeat;
+    skin.parts[0].slice_modes.bottom = gview::SliceTileMode::Repeat;
+    skin.parts[1].slice_modes.top = gview::SliceTileMode::Repeat;
+    skin.parts[1].slice_modes.bottom = gview::SliceTileMode::Repeat;
     return skin;
 }
 

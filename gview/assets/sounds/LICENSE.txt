@@ -1,0 +1,9 @@
+Universal UI Soundpack
+Created and distributed by Nathan Gibson
+https://nathangibson.myportfolio.com
+
+Licensed under the Creative Commons Attribution 4.0 International License:
+https://creativecommons.org/licenses/by/4.0/
+
+The three Wood Block sounds in this directory are unmodified copies from the
+Universal UI Soundpack.

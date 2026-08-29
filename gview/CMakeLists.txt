@@ -10,6 +10,7 @@ include(FetchContent)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(HOST_SDL3 REQUIRED IMPORTED_TARGET GLOBAL sdl3>=3.2.0)
+pkg_check_modules(SNDFILE REQUIRED IMPORTED_TARGET GLOBAL sndfile>=1.0)
 set(SDL3_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../rmlui/cmake/SDL3" CACHE PATH "" FORCE)
 
 FetchContent_Declare(
@@ -76,8 +77,10 @@ add_executable(gubsy-gview-trial
   src/self_test.cpp
   src/shell.cpp
   src/theme.cpp
+  src/ui_audio.cpp
   src/view_builder.cpp)
-target_link_libraries(gubsy-gview-trial PRIVATE gview::sdl3 gview::imgui trial_imgui SDL3_image-static)
+target_link_libraries(gubsy-gview-trial PRIVATE gview::sdl3 gview::imgui trial_imgui
+  SDL3_image-static PkgConfig::SNDFILE)
 target_compile_definitions(gubsy-gview-trial PRIVATE
   GVIEW_TRIAL_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../rmlui/assets"
   GVIEW_TRIAL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")

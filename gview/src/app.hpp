@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model.hpp"
+#include "ui_audio.hpp"
 
 #include <gview/imgui_editor.hpp>
 #include <gview/sdl3_renderer.hpp>
@@ -71,6 +72,7 @@ class TrialApp {
 
     SDL_Renderer* renderer_ = nullptr;
     std::unique_ptr<gview::Sdl3Renderer> painter_;
+    std::unique_ptr<UiAudio> audio_;
     std::unordered_map<std::string, SDL_Texture*> textures_;
     std::vector<SDL_Gamepad*> gamepads_;
     TrialModel model_;

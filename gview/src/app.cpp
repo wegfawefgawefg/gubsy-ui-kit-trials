@@ -52,6 +52,7 @@ TrialApp::TrialApp(SDL_Renderer* renderer, int width, int height)
     authoring_ui_.preview.output_width = width;
     authoring_ui_.preview.output_height = height;
     painter_ = std::make_unique<gview::Sdl3Renderer>(renderer_, asset_path("DejaVuSans.ttf"));
+    audio_ = std::make_unique<UiAudio>();
     painter_->register_surface("world-preview", draw_world_preview);
     int gamepad_count = 0;
     SDL_JoystickID* gamepads = SDL_GetGamepads(&gamepad_count);
@@ -300,6 +301,7 @@ void TrialApp::update() {
     host.read = [&](std::string_view key) { return model_.read(key); };
     host.write = [&](std::string_view key, const gview::Value& value) { model_.write(key, value); };
     host.action = [&](std::string_view name, gview::NodeIndex source) { action(name, source); };
+    host.feedback = [&](gview::FeedbackEvent event, gview::NodeIndex) { audio_->play(event); };
     host.revision = model_.revision;
     glayout::ResolveInput resolution{glayout::Rect{layout_jitter_, 0.0f,
                                                    static_cast<float>(width_) - layout_jitter_,

@@ -71,6 +71,13 @@ can overlay slice guides on the native canvas. The trial sliders use tintable
 CC0 stepped-panel assets derived from Kenney Fantasy UI Borders; their license
 is retained beside the assets.
 
+Each nine-slice edge and its center independently support Stretch, Repeat,
+Mirror, Blank Repeat, and Hide modes. The live editor also controls whether the
+normal semantic box is drawn underneath the asset. Navigation randomly
+alternates the first two Wood Block sounds from Nathan Gibson's Universal UI
+Soundpack; activation, opening, closing, and toggling use the third. The
+retained license and attribution are beside those audio assets.
+
 Navigation is authored between semantic scopes rather than repeated item
 pairs. Tabs, toolbars, primary lists, detail panes, and action rows remember
 their own last member. Selecting a layout container in the focus inspector can
