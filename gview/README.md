@@ -60,6 +60,15 @@ direct compositor check, pass `--logical-resolution 160x144` while keeping the
 normal `--width 1280 --height 720` host.
 Authoring uses the same View and S-expression representation as runtime.
 
+Widget themes support natural, stretch, contain, cover, tile, and nine-slice
+image modes. Nine-slice keeps authored corners intact while stretching the
+edges and center, so the same asset can skin panels, buttons, slider tracks,
+and slider fills at unrelated sizes. C++ recipes set `ImageMode::NineSlice`
+and `PartPresentation::slice`; S-expression themes use `(image_mode
+nine_slice)` and `(slice 16)`. The trial sliders use tintable CC0 stepped-panel
+assets derived from Kenney Fantasy UI Borders; their license is retained beside
+the assets.
+
 Navigation is authored between semantic scopes rather than repeated item
 pairs. Tabs, toolbars, primary lists, detail panes, and action rows remember
 their own last member. Selecting a layout container in the focus inspector can

@@ -149,8 +149,10 @@ void TrialApp::load_assets() {
     load("splonks-title", asset_path("splonks-title.png"));
     load("ui-panel-grid", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/panel-grid.svg");
     load("ui-control-frame", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/control-frame.svg");
-    load("ui-slider-track", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-track.svg");
-    load("ui-slider-fill", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-fill.svg");
+    load("ui-slider-track",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped-soft.svg");
+    load("ui-slider-fill",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped.svg");
     load("ui-slider-thumb", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-thumb.svg");
     for (int index = 0; index < 20; ++index) {
         const int sheet = index / 5 + 1;

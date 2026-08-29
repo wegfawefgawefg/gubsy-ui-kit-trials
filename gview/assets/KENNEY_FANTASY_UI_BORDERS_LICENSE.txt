@@ -1,0 +1,13 @@
+Fantasy UI Borders (1.0)
+
+Created/distributed by Kenney (www.kenney.nl)
+Creation date: 03-12-2023
+
+License: Creative Commons Zero (CC0)
+http://creativecommons.org/publicdomain/zero/1.0/
+
+You can use this content for personal, educational, and commercial purposes.
+Support by crediting Kenney or www.kenney.nl; credit is not required.
+
+The SVGs named kenney-panel-stepped*.svg are extracted from panel_014 in the
+original Fantasy UI Borders vector sheet and retain this CC0 license.

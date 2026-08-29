@@ -3,12 +3,14 @@
 namespace {
 
 gview::PartPresentation asset_part(gview::WidgetPart part, std::string asset,
-                                   gview::ImageMode mode, float opacity = 1.0f) {
+                                   gview::ImageMode mode, float opacity = 1.0f,
+                                   gview::Color tint = {255, 255, 255, 255}) {
     gview::PartPresentation result;
     result.part = part;
     result.asset = std::move(asset);
     result.image_mode = mode;
     result.opacity = opacity;
+    result.tint = tint;
     return result;
 }
 
@@ -16,9 +18,13 @@ gview::WidgetSkin slider_skin() {
     gview::WidgetSkin skin;
     skin.control = gview::ControlKind::Slider;
     skin.parts = {
-        asset_part(gview::WidgetPart::Track, "ui-slider-track", gview::ImageMode::Tile),
-        asset_part(gview::WidgetPart::Fill, "ui-slider-fill", gview::ImageMode::Tile),
+        asset_part(gview::WidgetPart::Track, "ui-slider-track",
+                   gview::ImageMode::NineSlice, 0.82f, {42, 88, 96, 255}),
+        asset_part(gview::WidgetPart::Fill, "ui-slider-fill",
+                   gview::ImageMode::NineSlice, 1.0f, {142, 239, 117, 255}),
         asset_part(gview::WidgetPart::Thumb, "ui-slider-thumb", gview::ImageMode::Contain)};
+    skin.parts[0].slice = 16.0f;
+    skin.parts[1].slice = 16.0f;
     return skin;
 }
 
