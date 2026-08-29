@@ -59,6 +59,12 @@ bool run_self_test(TrialApp& app) {
     ok &= expect_focus(app, "nav-Players", "S produces semantic down navigation");
     key_step(app, SDLK_W);
     ok &= expect_focus(app, "nav-Play", "W produces semantic up navigation");
+    app.set_authoring_enabled(true);
+    key_step(app, SDLK_F1);
+    ok &= expect(!app.authoring_enabled(), "F1 hides the complete authoring layer");
+    key_step(app, SDLK_F1);
+    ok &= expect(app.authoring_enabled(), "F1 restores the complete authoring layer");
+    app.set_authoring_enabled(false);
     step(app, gview::NavAction::Right);
     ok &= expect(app.focus_id() == "activity", "right enters Play setup");
     step(app, gview::NavAction::Left);
@@ -108,6 +114,19 @@ bool run_self_test(TrialApp& app) {
     ok &= expect(app.focus_id() == "session-mods",
                  "action row returns to the remembered setup item");
 
+    app.select_screen(3);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Down);
+    ok &= expect_focus(app, "session-Cartographer's Desk",
+                       "session package list owns local movement");
+    step(app, gview::NavAction::Confirm);
+    ok &= expect_focus(app, "browse-add", "confirm enters the session package action pane");
+    step(app, gview::NavAction::Back);
+    ok &= expect_focus(app, "session-Cartographer's Desk",
+                       "back restores the exact session package");
+
     app.select_screen(7);
     app.update();
     step(app, gview::NavAction::Right);
@@ -141,6 +160,13 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Confirm);
     ok &= expect(std::get<std::string>(app.value("catalog-search")) == "cavern",
                  "text input commits typed state");
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Down);
+    ok &= expect_focus(app, "catalog-item-1", "catalog selection is local to the package list");
+    step(app, gview::NavAction::Confirm);
+    ok &= expect_focus(app, "install-session", "catalog confirm enters the detail actions");
+    step(app, gview::NavAction::Back);
+    ok &= expect_focus(app, "catalog-item-1", "catalog detail returns to the remembered package");
     app.select_screen(17);
     app.update();
     ok &= expect(app.focus_id() == "inventory-item-8", "non-menu inventory has stable grid focus");

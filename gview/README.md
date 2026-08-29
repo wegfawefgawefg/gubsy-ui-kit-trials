@@ -38,12 +38,11 @@ remembered-member re-entry, explicit exceptional edges, dropdown capture/cancel,
 and Back-to-owner behavior instead of moving a synthetic pointer or persisting
 fake-data item IDs.
 
-F1 toggles a small top-level tool launcher. F2 switches Test/Edit mode, F3
-toggles all layout boxes, F4 toggles the grid, and F5 toggles focus relationships.
-The launcher independently opens the hierarchy/properties, display simulator,
-and focus inspector windows. Hiding every ImGui window does not leave Edit mode,
-so the polished canvas remains directly manipulable without panels covering it.
-Test mode sends input to the UI; Edit mode pauses it. The canvas supports
+F1 is the master show/hide for the complete GView authoring layer. Its small
+launcher only selects focused tool windows; native-canvas modes live in the
+Canvas Editor window instead of crowding the launcher. F2 switches Test/Edit
+mode, F3 toggles all layout boxes, F4 toggles the grid, and F5 toggles focus
+relationships. Test mode sends input to the UI; Edit mode pauses it. The canvas supports
 independent boxes, IDs, grid, and focus overlays; center/edge/corner drag,
 grid and sibling snapping, nudge, multi-select, reparent, copy/cut/paste,
 duplicate/delete, undo/redo, save, and reload. Focus links are staged on the
@@ -70,6 +69,14 @@ asymmetric source margins, rendered border scale, tint, and opacity live, and
 can overlay slice guides on the native canvas. The trial sliders use tintable
 CC0 stepped-panel assets derived from Kenney Fantasy UI Borders; their license
 is retained beside the assets.
+
+The Theme & Assets editor targets recipes at any control, a control kind, a
+style class, or one exact selected node. Class and node recipes can skin normal
+layout containers, so section backgrounds support the same natural, stretch,
+cover, tile, and nine-slice modes as widgets. Exact-node recipes override class
+recipes, which override control-wide recipes. `Draw box underneath` only affects
+nodes matched by that recipe; unmatched nodes retain their semantic fallback
+box.
 
 Each nine-slice edge and its center independently support Stretch, Repeat,
 Mirror, Blank Repeat, and Hide modes. The live editor also controls whether the

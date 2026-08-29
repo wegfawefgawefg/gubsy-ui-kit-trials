@@ -17,6 +17,8 @@ struct TrialModel {
     std::string controls_tab = "Bindings";
     std::string mods_tab = "Installed";
     std::string selected = "The Violet Reach";
+    std::string selected_mod = "Old Lanterns";
+    std::string selected_session_mod = "Old Lanterns";
     std::string provider_state = "Populated";
     std::unordered_map<std::string, gview::Value> values;
     std::string toast;

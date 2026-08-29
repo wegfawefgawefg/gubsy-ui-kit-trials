@@ -17,11 +17,8 @@ void TrialApp::process(const SDL_Event& source) {
     } else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
                event.key.key >= SDLK_F1 && event.key.key <= SDLK_F5) {
         if (event.key.key == SDLK_F1) {
-            if (!authoring_enabled_) {
-                authoring_enabled_ = true;
-                authoring_ui_.show_launcher = true;
-            } else
-                authoring_ui_.show_launcher = !authoring_ui_.show_launcher;
+            authoring_enabled_ = !authoring_enabled_;
+            if (authoring_enabled_) authoring_ui_.show_launcher = true;
         } else {
             authoring_enabled_ = true;
             if (event.key.key == SDLK_F2)

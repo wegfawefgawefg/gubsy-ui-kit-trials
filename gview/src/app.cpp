@@ -244,6 +244,8 @@ void TrialApp::action(std::string_view action_name, gview::NodeIndex) {
         model_.rebuild = true;
     } else if (action.rfind("mods-tab:", 0) == 0) {
         model_.mods_tab = suffix("mods-tab:");
+        model_.selected_mod =
+            model_.mods_tab == "Browse catalog" ? "Mycelium Below" : "Old Lanterns";
         model_.rebuild = true;
     } else if (action == "play:lobby") {
         model_.destination = Destination::Play;
@@ -265,6 +267,14 @@ void TrialApp::action(std::string_view action_name, gview::NodeIndex) {
     } else if (action == "controls:devices") {
         model_.destination = Destination::Controls;
         model_.controls_tab = "Devices";
+        model_.rebuild = true;
+    } else if (action.rfind("session-mod-select:", 0) == 0) {
+        model_.selected_session_mod = suffix("session-mod-select:");
+        ++model_.revision;
+        model_.rebuild = true;
+    } else if (action.rfind("mod-select:", 0) == 0) {
+        model_.selected_mod = suffix("mod-select:");
+        ++model_.revision;
         model_.rebuild = true;
     } else if (action.rfind("select:", 0) == 0) {
         model_.selected = suffix("select:");
@@ -403,6 +413,7 @@ void TrialApp::select_screen(int screen) {
     else {
         model_.destination = Destination::Mods;
         model_.mods_tab = screen == 16 ? "Browse catalog" : "Installed";
+        model_.selected_mod = screen == 16 ? "Mycelium Below" : "Old Lanterns";
     }
     model_.pending_focus = "nav-" + destination_name(model_.destination);
     model_.rebuild = true;

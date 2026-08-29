@@ -69,7 +69,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
              ui.compact() ? 28.0f : 42.0f);
     ui.container("main", "content", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f);
-    ui.spec("content").style_class = "panel";
+    ui.spec("content").style_class = "panel-background";
     if (ui.phone()) ui.scrolling("content");
 
     if (model.provider_state != "Populated") {

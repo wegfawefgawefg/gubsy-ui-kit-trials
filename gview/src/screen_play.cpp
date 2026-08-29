@@ -1,11 +1,42 @@
 #include "view_builder.hpp"
 
+#include <algorithm>
+#include <array>
+
 namespace {
+
+struct SessionMod {
+    const char* name;
+    const char* asset;
+    const char* detail;
+};
+
+// What is: The session package content bound into the master/detail screen.
+constexpr std::array<SessionMod, 7> session_mod_content{{
+    {"Base Content", "mod-0", "The core rooms, mechanics, items, and synchronization package."},
+    {"Cartographer's Desk", "mod-1", "Shared maps, route annotations, and expedition planning."},
+    {"Old Lanterns", "mod-3",
+     "Update available. Required by Temple Weather and Pocket Expedition. Exact versions are "
+     "recorded with checkpoints."},
+    {"Underground Rivers", "mod-2", "Flooded routes and current-driven traversal for shared runs."},
+    {"Mycelium Below", "mod-4", "Fungal rooms, creatures, and co-op environmental mechanics."},
+    {"Temple Weather", "mod-5", "Temple-local storms and renderer-driven atmosphere effects."},
+    {"Pocket Expedition", "mod-6", "A compact expedition ruleset built from the active package set."},
+}};
+
+const SessionMod& selected_session_mod(const TrialModel& model) {
+    const auto found = std::find_if(session_mod_content.begin(), session_mod_content.end(),
+                                    [&](const SessionMod& mod) {
+                                        return mod.name == model.selected_session_mod;
+                                    });
+    return found == session_mod_content.end() ? session_mod_content.front() : *found;
+}
 
 void panel(ViewBuilder& ui, std::string_view parent, const std::string& id,
            glayout::Length width = {glayout::LengthKind::Fill, 1.0f}) {
     ui.container(parent, id, glayout::ContainerKind::Column, width,
                  {glayout::LengthKind::Fill, 1.0f}, 6.0f, {12.0f, 10.0f, 12.0f, 10.0f});
+    ui.spec(id).style_class = "panel";
 }
 
 void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
@@ -147,37 +178,45 @@ void rules(ViewBuilder& ui, const TrialModel&, std::string_view content) {
     ui.edge("nav-Play", gview::NavAction::Right, "rules-back");
 }
 
-void session_mods(ViewBuilder& ui, const TrialModel&, std::string_view content) {
-    ui.button(content, "mods-back", "‹ Back to lobby", "play:lobby", "session-mods", 44.0f);
+void session_mods(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
+    const SessionMod& selected = selected_session_mod(model);
+    ui.label(content, "session-mod-breadcrumb", "PLAY / SESSION MODS", 20.0f, 11.0f);
+    ui.button(content, "mods-back", "‹ Back to lobby", "play:lobby", "session-mod-back", 44.0f);
     ui.container(content, "session-mod-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
                  {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     panel(ui, "session-mod-workspace", "session-mod-list");
     ui.scrolling("session-mod-list");
     ui.label("session-mod-list", "session-mod-title", "CURRENT SESSION SET · 7 PACKAGES", 34.0f,
              12.0f);
-    constexpr const char* mods[]{"Base Content",       "Cartographer's Desk", "Old Lanterns",
-                                 "Underground Rivers", "Mycelium Below",      "Temple Weather",
-                                 "Pocket Expedition"};
-    for (const char* mod : mods)
-        ui.button("session-mod-list", std::string("session-") + mod,
-                  mod + std::string("\nActive · dependencies satisfied"),
-                  std::string("select:") + mod, "session-mods", 56.0f);
+    for (const SessionMod& mod : session_mod_content) {
+        const std::string id = std::string("session-") + mod.name;
+        ui.button("session-mod-list", id,
+                  mod.name + std::string("\nActive · dependencies satisfied"),
+                  std::string("session-mod-select:") + mod.name, "session-mod-list", 56.0f,
+                  gview::ActivationPolicy::OnFocus);
+        ui.spec(id).selected = model.selected_session_mod == mod.name;
+    }
     panel(ui, "session-mod-workspace", "session-mod-detail", {glayout::LengthKind::Pixels, 430.0f});
     ui.scrolling("session-mod-detail");
-    ui.image("session-mod-detail", "session-mod-art", "mod-3", 140.0f);
-    ui.label("session-mod-detail", "session-mod-name", "Old Lanterns", 42.0f, 26.0f);
-    ui.label("session-mod-detail", "session-mod-info",
-             "Update available. Required by Temple Weather and Pocket "
-             "Expedition. Exact versions are recorded with checkpoints.",
-             86.0f, 14.0f);
+    ui.image("session-mod-detail", "session-mod-art", selected.asset, 140.0f);
+    ui.label("session-mod-detail", "session-mod-name", selected.name, 42.0f, 26.0f);
+    ui.label("session-mod-detail", "session-mod-info", selected.detail, 86.0f, 14.0f);
     ui.button("session-mod-detail", "browse-add", "Browse & add mods", "mods:browse",
-              "session-mods");
+              "session-mod-actions");
     ui.button("session-mod-detail", "update-session-mod", "Update in this set",
-              "toast:Update planned", "session-mods");
+              "toast:Update planned", "session-mod-actions");
     ui.button("session-mod-detail", "remove-session-mod", "Remove with dependency plan",
-              "toast:Dependency plan opened", "session-mods");
-    ui.focus_group("session-mods", "mods-back", "nav-Play");
+              "toast:Dependency plan opened", "session-mod-actions");
+    ui.focus_group("session-mod-back", "mods-back", "nav-Play");
+    ui.focus_group("session-mod-list", "session-Base Content");
+    ui.focus_group("session-mod-actions", "browse-add");
     ui.edge("nav-Play", gview::NavAction::Right, "mods-back");
+    ui.group_edge("session-mod-back", gview::NavAction::Down, "session-mod-list");
+    ui.group_edge("session-mod-list", gview::NavAction::Up, "session-mod-back");
+    ui.group_edge("session-mod-list", gview::NavAction::Right, "session-mod-actions");
+    ui.group_edge("session-mod-list", gview::NavAction::Confirm, "session-mod-actions");
+    ui.group_edge("session-mod-actions", gview::NavAction::Left, "session-mod-list");
+    ui.group_edge("session-mod-actions", gview::NavAction::Back, "session-mod-list");
 }
 
 } // namespace
