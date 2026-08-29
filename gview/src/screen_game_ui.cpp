@@ -12,15 +12,18 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
                  {30.0f, 20.0f, 30.0f, 18.0f});
     ui.spec("inventory-safe").style.normal.fill = {2, 12, 17, 96};
-    ui.spec("inventory-safe").style_class = "shell-background";
+    ui.spec("inventory-safe").style_class = "parchment-ornate";
     ui.container("inventory-safe", "inventory-header", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 74.0f}, 12.0f);
+    ui.spec("inventory-header").style_class = "bar-dark";
     ui.label("inventory-header", "hud-health", ui.phone() ? "♥ ♥ ♥" : "♥ ♥ ♥   THE VIOLET REACH",
              74.0f, ui.phone() ? 12.0f : 16.0f);
     ui.label("inventory-header", "inventory-title", "INVENTORY", 74.0f, ui.phone() ? 18.0f : 28.0f,
              gview::TextAlign::Center);
     ui.label("inventory-header", "hud-currency", "◇  1,464", 74.0f, ui.phone() ? 12.0f : 18.0f,
              gview::TextAlign::End);
+    for (const char* id : {"hud-health", "inventory-title", "hud-currency"})
+        ui.spec(id).style.normal.text = {239, 225, 187, 255};
 
     ui.layout_container("inventory-safe", "inventory-tabs", glayout::ContainerKind::Row,
                         {glayout::LengthKind::Percent, 0.58f}, {glayout::LengthKind::Pixels, 52.0f},

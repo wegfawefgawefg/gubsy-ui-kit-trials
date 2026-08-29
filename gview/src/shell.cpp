@@ -6,6 +6,11 @@ std::string active_nav(const TrialModel& model) {
     return "nav-" + destination_name(model.destination);
 }
 
+// What is: Light ink used only where text sits on the dark bar asset.
+void light_ink(ViewBuilder& ui, std::string_view id) {
+    ui.spec(id).style.normal.text = {239, 225, 187, 255};
+}
+
 } // namespace
 
 // Composes fixed game chrome around independently authored destination content.
@@ -14,11 +19,12 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
     const float s = ui.scale();
     ui.container("root", "shell-frame", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
-    ui.spec("shell-frame").style_class = "shell-background";
+    ui.spec("shell-frame").style_class = "bar-dark";
     ui.container("shell-frame", "header", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f},
                  {glayout::LengthKind::Pixels, ui.compact() ? 46.0f : 56.0f}, 12.0f,
                  {16.0f, 6.0f, 16.0f, 6.0f});
+    ui.spec("header").style_class = "bar-dark";
     ui.label("header", "brand", "G  G U B S Y  S H E L L", 44.0f, 14.0f);
     ui.label("header", "connection", "●  OFFLINE    |    VEGA", 44.0f, 13.0f,
              gview::TextAlign::Center);
@@ -27,6 +33,9 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
                  "DEMO · " + model.provider_state + "    " + std::to_string(width) + " × " +
                      std::to_string(height),
                  44.0f, 13.0f, gview::TextAlign::End);
+    light_ink(ui, "brand");
+    light_ink(ui, "connection");
+    if (!ui.compact()) light_ink(ui, "viewport");
 
     ui.layout_container("shell-frame", "body", glayout::ContainerKind::Row,
                         {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 0.0f);
@@ -42,6 +51,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.container("body", "nav", glayout::ContainerKind::Column,
                      {glayout::LengthKind::Pixels, 244.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
                      {16.0f, 16.0f, 16.0f, 16.0f});
+        ui.spec("nav").style_class = "parchment-ornate";
         ui.label("nav", "profile", "VE   ACTIVE PROFILE\n       Vega", 72.0f, 13.0f);
         for (const Nav& entry : entries) {
             const std::string id = std::string("nav-") + entry.name;
@@ -61,16 +71,17 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.spec("nav-Quit").text_style.size = 14.0f * s;
     }
 
-    ui.layout_container("body", "main", glayout::ContainerKind::Column,
-                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
-                        {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 18.0f,
-                         ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 12.0f});
+    ui.container("body", "main", glayout::ContainerKind::Column,
+                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
+                 {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 18.0f,
+                  ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 12.0f});
+    ui.spec("main").style_class = "parchment-ornate";
     ui.label("main", "breadcrumb", "SPLONKS / GVIEW", ui.compact() ? 15.0f : 22.0f, 11.0f);
     ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 64.0f,
              ui.compact() ? 28.0f : 42.0f);
     ui.container("main", "content", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f);
-    ui.spec("content").style_class = "panel-background";
+    ui.spec("content").style_class = "parchment-ornate";
     if (ui.phone()) ui.scrolling("content");
 
     if (model.provider_state != "Populated") {
@@ -114,6 +125,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.container("shell-frame", "mobile-nav", glayout::ContainerKind::Row,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 54.0f}, 2.0f,
                      {4.0f, 2.0f, 4.0f, 2.0f});
+        ui.spec("mobile-nav").style_class = "bar-dark";
         for (const Nav& entry : entries) {
             const std::string id = std::string("nav-") + entry.name;
             ui.button("mobile-nav", id, entry.name, std::string("destination:") + entry.name,
@@ -121,16 +133,21 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
             ui.spec(id).text_style.size = 10.0f;
             ui.spec(id).text_style.horizontal = gview::TextAlign::Center;
             ui.spec(id).selected = id == active_nav(model);
+            ui.layout(id).padding.left = 3.0f * s;
+            ui.layout(id).padding.right = 3.0f * s;
         }
     } else {
         ui.container("shell-frame", "footer", glayout::ContainerKind::Row,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 30.0f}, 16.0f,
                      {18.0f, 0.0f, 18.0f, 0.0f});
+        ui.spec("footer").style_class = "bar-dark";
         ui.label("footer", "help",
                  "D-pad / left stick  Navigate    Enter / A  Select    Esc / B  Back", 30.0f,
                  11.0f);
         ui.label("footer", "focus-status", "●  Native focus graph active", 30.0f, 11.0f,
                  gview::TextAlign::End);
+        light_ink(ui, "help");
+        light_ink(ui, "focus-status");
     }
     ui.focus_group("rail", active_nav(model));
     if (!model.modal.empty()) {
@@ -141,6 +158,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.container("modal-layer", "modal-card", glayout::ContainerKind::Column,
                      {glayout::LengthKind::Pixels, 520.0f}, {glayout::LengthKind::Pixels, 274.0f},
                      10.0f, {22.0f, 18.0f, 22.0f, 18.0f});
+        ui.spec("modal-card").style_class = "parchment-ornate";
         ui.layout("modal-card").align = glayout::Align::Center;
         ui.label("modal-card", "modal-kicker", "CONFIRM CHANGE", 24.0f, 11.0f);
         ui.label("modal-card", "modal-title", model.modal, 48.0f, 25.0f);

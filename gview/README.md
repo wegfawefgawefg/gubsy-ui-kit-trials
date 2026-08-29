@@ -85,11 +85,12 @@ nodes matched by that recipe; unmatched nodes retain their semantic fallback
 box.
 
 Presented regions can independently layer Shadow, Background, and Frame parts,
-so a paper/stone/metal backplate can sit behind the existing Kenney nine-slice
-without also drawing the fallback rectangle. Structural rows, workspaces, and
-spacers are layout-only nodes and paint nothing. The current trial uses reduced
-copies of the user-provided paper textures for shell, panel, and control depth;
-their unresolved source provenance is documented beside the assets.
+so a backplate can sit behind a frame without also drawing the fallback
+rectangle. Structural rows, workspaces, and spacers are layout-only nodes and
+paint nothing. The current trial maps the project owner's parchment nine-slices
+to semantic roles: dark chrome, ornate outer regions, inner groups, light rows,
+and green action states. Each keeps its 32 px source cuts while independently
+scaling the rendered border.
 
 Each nine-slice edge and its center independently support Stretch, Repeat,
 Mirror, Blank Repeat, and Hide modes. The live editor also controls whether the

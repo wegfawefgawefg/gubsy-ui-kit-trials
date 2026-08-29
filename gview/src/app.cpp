@@ -151,18 +151,20 @@ void TrialApp::load_assets() {
         }
     };
     load("splonks-title", asset_path("splonks-title.png"));
-    load("ui-panel-grid", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/panel-grid.svg");
-    load("ui-control-frame", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/control-frame.svg");
+    load("ui-action-green",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/action-green.png");
+    load("ui-bar-dark", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/bar-dark.png");
+    load("ui-button-light",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/button-light.png");
+    load("ui-group-inner",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/group-inner.png");
+    load("ui-parchment-ornate",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/parchment-ornate.png");
     load("ui-slider-track",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped-soft.svg");
     load("ui-slider-fill",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped.svg");
     load("ui-slider-thumb", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-thumb.svg");
-    load("ui-paper-dark", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-dark.jpg");
-    load("ui-paper-mid", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-mid.jpg");
-    load("ui-paper-light",
-         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-light.jpg");
-    load("ui-paper-warm", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-warm.jpg");
     for (int index = 0; index < 20; ++index) {
         const int sheet = index / 5 + 1;
         const int cell = index % 5;

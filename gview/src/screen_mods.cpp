@@ -79,7 +79,7 @@ void detail(ViewBuilder& ui, std::string_view parent, bool installed, const Tria
                  {glayout::LengthKind::Pixels, 440.0f}, {glayout::LengthKind::Fill, 1.0f}, 7.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});
     ui.scrolling("mod-detail");
-    ui.spec("mod-detail").style_class = "panel";
+    ui.spec("mod-detail").style_class = "group-inner";
     ui.image("mod-detail", "mod-hero", mod_asset(model.selected_mod, installed), 132.0f);
     ui.label("mod-detail", "mod-kicker", installed ? "INSTALLED PACKAGE" : "CATALOG ENTRY", 22.0f,
              11.0f);
@@ -137,7 +137,7 @@ void installed(ViewBuilder& ui, std::string_view content, const TrialModel& mode
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 5.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
     ui.scrolling("installed-list");
-    ui.spec("installed-list").style_class = "panel";
+    ui.spec("installed-list").style_class = "group-inner";
     for (std::size_t index = 0; index < installed_mods.size(); ++index) {
         const std::string id = "installed-" + std::to_string(index);
         ui.button("installed-list", id,
@@ -166,7 +166,7 @@ void browse(ViewBuilder& ui, std::string_view content, const TrialModel& model) 
                  {12.0f, 10.0f, 12.0f, 10.0f});
     ui.layout("catalog-list").clip = true;
     ui.spec("catalog-list").control = gview::ControlKind::ScrollArea;
-    ui.spec("catalog-list").style_class = "panel";
+    ui.spec("catalog-list").style_class = "group-inner";
     ui.label("catalog-list", "catalog-count", "20 CATALOG MODS", 24.0f, 11.0f);
     for (std::size_t index = 0; index < catalog.size(); ++index) {
         ui.layout_container("catalog-list", "catalog-row-" + std::to_string(index),

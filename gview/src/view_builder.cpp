@@ -61,15 +61,16 @@ gview::NodeSpec& ViewBuilder::spec(std::string_view id) {
 gview::NodeSpec ViewBuilder::base_spec(std::string id) const {
     gview::NodeSpec spec;
     spec.layout_id = std::move(id);
-    const gview::BoxStyle normal = box({7, 23, 27, 238}, {37, 65, 68, 255}, {220, 232, 231, 255});
+    const gview::BoxStyle normal = box({244, 236, 211, 255}, {124, 101, 66, 255},
+                                       {58, 42, 24, 255});
     spec.style.normal = normal;
-    spec.style.selected = box({12, 42, 31, 248}, {89, 133, 96, 255}, {235, 245, 241, 255});
-    spec.style.hovered = box({15, 42, 37, 248}, {89, 133, 96, 255}, {235, 245, 241, 255});
-    spec.style.focused = box({23, 57, 41, 255}, {151, 239, 117, 255}, {245, 255, 242, 255});
+    spec.style.selected = box({65, 72, 35, 255}, {193, 158, 70, 255}, {255, 226, 145, 255});
+    spec.style.hovered = box({239, 226, 193, 255}, {145, 115, 73, 255}, {48, 34, 20, 255});
+    spec.style.focused = box({65, 72, 35, 255}, {218, 179, 78, 255}, {255, 230, 153, 255});
     spec.style.selected_focused =
-        box({35, 75, 47, 255}, {190, 255, 161, 255}, {255, 255, 255, 255});
-    spec.style.pressed = box({49, 93, 61, 255}, {183, 255, 151, 255}, {255, 255, 255, 255});
-    spec.style.disabled = box({9, 19, 22, 200}, {32, 45, 48, 255}, {90, 105, 106, 255});
+        box({76, 82, 39, 255}, {229, 189, 82, 255}, {255, 237, 170, 255});
+    spec.style.pressed = box({83, 88, 42, 255}, {238, 200, 98, 255}, {255, 241, 183, 255});
+    spec.style.disabled = box({218, 208, 183, 255}, {145, 130, 102, 255}, {132, 118, 94, 255});
     spec.text_style.size = 16.0f * scale_;
     spec.text_style.vertical = gview::TextAlign::Center;
     spec.text_style.wrap = true;
@@ -110,7 +111,7 @@ void ViewBuilder::container(std::string_view parent, std::string id, glayout::Co
                             glayout::Insets padding) {
     glayout::GraphNode node = container_node(id, kind, width, height, gap, padding);
     gview::NodeSpec spec = base_spec(id);
-    spec.style_class = "panel";
+    spec.style_class = "group-inner";
     append(parent, std::move(node), std::move(spec));
 }
 

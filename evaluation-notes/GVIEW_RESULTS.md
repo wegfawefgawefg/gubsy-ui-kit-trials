@@ -29,14 +29,12 @@ The SDL renderer timer covers command recording; the full timer additionally
 covers input/update, ImGui's empty release-trial frame, submission, and the
 benchmark present path.
 
-The 2026-08-29 layered-theme/persistence pass was rerun after adding paper
-backgrounds, independent nine-slice frames, and shadow commands. At 1280x720,
-the installed-mods stable workload recorded 0.1464 ms render and 0.2653 ms full
-CPU frame; the scrolling catalog recorded 0.0114 ms update, 0.1637 ms render,
-and 0.3105 ms full CPU frame. GView-owned estimates were 174,760 and 308,158
-bytes respectively. Stable layout and paint still built once across 2,000
-frames, so the additional visual layers did not change the retained-frame
-contract.
+The 2026-08-29 theme/persistence pass was rerun after replacing the provisional
+paper and border layers with the five generated parchment nine-slices. At
+1280x720, the Play stable workload recorded 0.1483 ms render and 0.2602 ms full
+CPU frame with a 193,519-byte GView-owned estimate. Stable layout and paint
+still built once across 2,000 frames, so the richer asset hierarchy did not
+change the retained-frame contract.
 
 ## Memory and executable envelope
 

@@ -37,7 +37,7 @@ void panel(ViewBuilder& ui, std::string_view parent, const std::string& id,
            glayout::Length width = {glayout::LengthKind::Fill, 1.0f}) {
     ui.container(parent, id, glayout::ContainerKind::Column, width,
                  {glayout::LengthKind::Fill, 1.0f}, 6.0f, {12.0f, 10.0f, 12.0f, 10.0f});
-    ui.spec(id).style_class = "panel";
+    ui.spec(id).style_class = "group-inner";
 }
 
 void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
@@ -46,6 +46,8 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     const bool solo = model.text("access", "Friends can join") == "Solo";
     ui.layout_container(content, "play-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
                         {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    if (ui.phone())
+        ui.layout("play-workspace").size.height = {glayout::LengthKind::Pixels, 1080.0f * ui.scale()};
     panel(ui, "play-workspace", "setup");
     ui.label("setup", "quest-kicker", continuing ? "CONTINUE QUEST" : "START QUEST", 18.0f, 11.0f);
     ui.label("setup", "quest-title", "The Violet Reach", 30.0f, 22.0f);
@@ -65,13 +67,13 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     ui.button("setup", "session-mods", "Session mods\n7 active · dependency set valid", "play:mods",
               "play-setup", 50.0f);
     ui.layout_container("setup", "play-actions", glayout::ContainerKind::Row,
-                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f},
-                        8.0f);
+                        {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Pixels, ui.phone() ? 56.0f : 46.0f}, 8.0f);
     ui.button("play-actions", "pause-preview", "Pause preview", "toast:Preview paused",
-              "play-actions", 46.0f);
+              "play-actions", ui.phone() ? 56.0f : 46.0f);
     ui.button("play-actions", "begin-session",
               continuing ? "▶ Resume latest checkpoint" : "▶ Begin new expedition", "start-session",
-              "play-actions", 46.0f);
+              "play-actions", ui.phone() ? 56.0f : 46.0f);
 
     panel(ui, "play-workspace", "party", {glayout::LengthKind::Pixels, 330.0f});
     ui.label("party", "party-title", "PLAYERS\nYour party", 54.0f, 18.0f);
