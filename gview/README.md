@@ -57,7 +57,13 @@ canvas and ImGui tools use separate presentation layers, so tiny retro and large
 high-density presets leave tool size and mouse coordinates unchanged. For a
 direct compositor check, pass `--logical-resolution 160x144` while keeping the
 normal `--width 1280 --height 720` host.
-Authoring uses the same View and S-expression representation as runtime.
+Authoring uses the same View and S-expression representation as runtime. Each
+screen keeps an independent in-memory working document and history. Host model
+refreshes update live semantic content without replacing unsaved layout/theme
+edits; Save writes the screen's `.sexp`, while Reload intentionally discards
+the working copy and reads that file. Flow-child dragging reorders siblings,
+edge/corner dragging edits only the affected size axes, and absolute or anchored
+children retain free positional editing.
 
 Widget themes support natural, stretch, contain, cover, tile, and nine-slice
 image modes. Nine-slice keeps authored corners intact while stretching the
@@ -77,6 +83,13 @@ cover, tile, and nine-slice modes as widgets. Exact-node recipes override class
 recipes, which override control-wide recipes. `Draw box underneath` only affects
 nodes matched by that recipe; unmatched nodes retain their semantic fallback
 box.
+
+Presented regions can independently layer Shadow, Background, and Frame parts,
+so a paper/stone/metal backplate can sit behind the existing Kenney nine-slice
+without also drawing the fallback rectangle. Structural rows, workspaces, and
+spacers are layout-only nodes and paint nothing. The current trial uses reduced
+copies of the user-provided paper textures for shell, panel, and control depth;
+their unresolved source provenance is documented beside the assets.
 
 Each nine-slice edge and its center independently support Stretch, Repeat,
 Mirror, Blank Repeat, and Hide modes. The live editor also controls whether the

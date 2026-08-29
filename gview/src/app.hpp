@@ -66,7 +66,8 @@ class TrialApp {
     void rebuild();
     void action(std::string_view action, gview::NodeIndex source);
     void load_assets();
-    void compile_view(gview::View view, bool reopen_authoring);
+    void compile_view(gview::View view);
+    std::string authoring_path(std::string_view context) const;
     void open_gamepad(SDL_JoystickID id);
     void close_gamepad(SDL_JoystickID id);
 
@@ -78,6 +79,9 @@ class TrialApp {
     TrialModel model_;
     gview::Runtime runtime_;
     gview::AuthoringSession authoring_;
+    std::unordered_map<std::string, gview::AuthoringSession> authoring_documents_;
+    gview::View generated_view_;
+    std::string authoring_context_;
     gview::AuthoringUiState authoring_ui_;
     gview::InputFrame input_;
     int width_ = 1280;

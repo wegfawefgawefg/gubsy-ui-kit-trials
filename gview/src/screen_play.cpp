@@ -16,19 +16,20 @@ constexpr std::array<SessionMod, 7> session_mod_content{{
     {"Base Content", "mod-0", "The core rooms, mechanics, items, and synchronization package."},
     {"Cartographer's Desk", "mod-1", "Shared maps, route annotations, and expedition planning."},
     {"Old Lanterns", "mod-3",
-     "Update available. Required by Temple Weather and Pocket Expedition. Exact versions are "
+     "Update available. Required by Temple Weather and Pocket Expedition. "
+     "Exact versions are "
      "recorded with checkpoints."},
     {"Underground Rivers", "mod-2", "Flooded routes and current-driven traversal for shared runs."},
     {"Mycelium Below", "mod-4", "Fungal rooms, creatures, and co-op environmental mechanics."},
     {"Temple Weather", "mod-5", "Temple-local storms and renderer-driven atmosphere effects."},
-    {"Pocket Expedition", "mod-6", "A compact expedition ruleset built from the active package set."},
+    {"Pocket Expedition", "mod-6",
+     "A compact expedition ruleset built from the active package set."},
 }};
 
 const SessionMod& selected_session_mod(const TrialModel& model) {
-    const auto found = std::find_if(session_mod_content.begin(), session_mod_content.end(),
-                                    [&](const SessionMod& mod) {
-                                        return mod.name == model.selected_session_mod;
-                                    });
+    const auto found =
+        std::find_if(session_mod_content.begin(), session_mod_content.end(),
+                     [&](const SessionMod& mod) { return mod.name == model.selected_session_mod; });
     return found == session_mod_content.end() ? session_mod_content.front() : *found;
 }
 
@@ -43,8 +44,8 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     const std::string activity = model.text("activity", "Continue expedition");
     const bool continuing = activity == "Continue expedition";
     const bool solo = model.text("access", "Friends can join") == "Solo";
-    ui.container(content, "play-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "play-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     panel(ui, "play-workspace", "setup");
     ui.label("setup", "quest-kicker", continuing ? "CONTINUE QUEST" : "START QUEST", 18.0f, 11.0f);
     ui.label("setup", "quest-title", "The Violet Reach", 30.0f, 22.0f);
@@ -63,8 +64,9 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
               "play:rules", "play-setup", 50.0f);
     ui.button("setup", "session-mods", "Session mods\n7 active · dependency set valid", "play:mods",
               "play-setup", 50.0f);
-    ui.container("setup", "play-actions", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f}, 8.0f);
+    ui.layout_container("setup", "play-actions", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f},
+                        8.0f);
     ui.button("play-actions", "pause-preview", "Pause preview", "toast:Preview paused",
               "play-actions", 46.0f);
     ui.button("play-actions", "begin-session",
@@ -101,8 +103,8 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
 
 void quest(ViewBuilder& ui, const TrialModel&, std::string_view content) {
     ui.button(content, "quest-back", "‹ Back to lobby", "play:lobby", "quest", 44.0f);
-    ui.container(content, "quest-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "quest-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     panel(ui, "quest-workspace", "quest-list", {glayout::LengthKind::Pixels, 390.0f});
     ui.scrolling("quest-list");
     ui.label("quest-list", "quest-list-title", "EXPEDITIONS AND QUESTS", 28.0f, 11.0f);
@@ -131,14 +133,15 @@ void quest(ViewBuilder& ui, const TrialModel&, std::string_view content) {
 }
 
 void rules(ViewBuilder& ui, const TrialModel&, std::string_view content) {
-    ui.container(content, "rules-header", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 52.0f}, 8.0f);
+    ui.layout_container(content, "rules-header", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 52.0f},
+                        8.0f);
     ui.button("rules-header", "rules-back", "‹ Back to lobby", "play:lobby", "rules", 52.0f);
     ui.label("rules-header", "rules-title", "EXPEDITION SETTINGS · 10 rules · 1 from mods", 52.0f,
              16.0f);
     ui.button("rules-header", "rules-reset", "Reset defaults", "toast:Rules reset", "rules", 52.0f);
-    ui.container(content, "rules-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "rules-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     panel(ui, "rules-workspace", "rules-list");
     ui.layout("rules-list").clip = true;
     ui.spec("rules-list").control = gview::ControlKind::ScrollArea;
@@ -182,8 +185,9 @@ void session_mods(ViewBuilder& ui, const TrialModel& model, std::string_view con
     const SessionMod& selected = selected_session_mod(model);
     ui.label(content, "session-mod-breadcrumb", "PLAY / SESSION MODS", 20.0f, 11.0f);
     ui.button(content, "mods-back", "‹ Back to lobby", "play:lobby", "session-mod-back", 44.0f);
-    ui.container(content, "session-mod-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "session-mod-workspace", ui.split(),
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f},
+                        12.0f);
     panel(ui, "session-mod-workspace", "session-mod-list");
     ui.scrolling("session-mod-list");
     ui.label("session-mod-list", "session-mod-title", "CURRENT SESSION SET · 7 PACKAGES", 34.0f,

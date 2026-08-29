@@ -64,6 +64,7 @@ FetchContent_MakeAvailable(SDL3_image)
 
 add_executable(gubsy-gview-trial
   src/app.cpp
+  src/authoring_document.cpp
   src/input.cpp
   src/main.cpp
   src/model.cpp

@@ -1,14 +1,16 @@
 #include "view_builder.hpp"
 
 void build_progress(ViewBuilder& ui, const TrialModel&, std::string_view content) {
-    ui.container(content, "progress-toolbar", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f}, 8.0f);
+    ui.layout_container(content, "progress-toolbar", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f},
+                        8.0f);
     ui.label("progress-toolbar", "progress-summary", "GAME-PROVIDED PROGRESSION · 3 campaigns",
              48.0f, 13.0f);
     ui.button("progress-toolbar", "new-quest", "+ Choose a new quest", "play:quest", "progress",
               48.0f);
-    ui.container(content, "progress-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "progress-workspace", ui.split(),
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f},
+                        12.0f);
     ui.container("progress-workspace", "campaign-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 440.0f}, {glayout::LengthKind::Fill, 1.0f}, 7.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -46,8 +48,9 @@ void build_progress(ViewBuilder& ui, const TrialModel&, std::string_view content
               "toast:Checkpoint selected", "progress", 46.0f);
     ui.button("campaign-detail", "checkpoint-mushroom", "Mushroom crossing · Aug 24 · BACKUP",
               "toast:Checkpoint selected", "progress", 46.0f);
-    ui.container("campaign-detail", "campaign-actions", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f}, 7.0f);
+    ui.layout_container("campaign-detail", "campaign-actions", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f},
+                        7.0f);
     ui.button("campaign-actions", "resume-campaign", "▶ Resume campaign", "start-session",
               "progress", 48.0f);
     ui.button("campaign-actions", "export-campaign", "Export", "toast:Campaign exported",

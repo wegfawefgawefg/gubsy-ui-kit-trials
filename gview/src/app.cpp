@@ -1,5 +1,6 @@
 #include "app.hpp"
 
+#include "authoring_document.hpp"
 #include "view_builder.hpp"
 
 #include <SDL3_image/SDL_image.h>
@@ -8,6 +9,7 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
 
 namespace {
 
@@ -132,7 +134,8 @@ void TrialApp::prepare_game_canvas() {
     SDL_SetRenderLogicalPresentation(renderer_, preview.width, preview.height, presentation);
 }
 
-// Restores host pixels so authoring tools never inherit game resolution scaling.
+// Restores host pixels so authoring tools never inherit game resolution
+// scaling.
 void TrialApp::prepare_tool_layer() {
     SDL_SetRenderLogicalPresentation(renderer_, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
 }
@@ -155,6 +158,11 @@ void TrialApp::load_assets() {
     load("ui-slider-fill",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped.svg");
     load("ui-slider-thumb", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-thumb.svg");
+    load("ui-paper-dark", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-dark.jpg");
+    load("ui-paper-mid", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-mid.jpg");
+    load("ui-paper-light",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-light.jpg");
+    load("ui-paper-warm", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/textures/paper-warm.jpg");
     for (int index = 0; index < 20; ++index) {
         const int sheet = index / 5 + 1;
         const int cell = index % 5;
@@ -169,21 +177,45 @@ void TrialApp::rebuild() {
                                         : build_shell_view(model_, width_, height_);
     source.layout.dpi_scale = authoring_ui_.preview.dpi_scale;
     source.layout.form_factor = authoring_ui_.preview.form_factor;
-    compile_view(std::move(source), true);
-    model_.rebuild = false;
-}
+    generated_view_ = source;
 
-void TrialApp::compile_view(gview::View source, bool reopen_authoring) {
-    std::string retained_focus;
-    if (runtime_.focus() != gview::invalid_node && runtime_.focus() < runtime_.view().nodes.size())
-        retained_focus = runtime_.view().nodes[runtime_.focus()].source.layout_id;
-    if (reopen_authoring) {
+    // What is: Each screen keeps its own undoable working document in memory.
+    const std::string context = authoring_context(model_);
+    if (context != authoring_context_) {
+        if (!authoring_context_.empty())
+            authoring_documents_.insert_or_assign(authoring_context_, std::move(authoring_));
+        const auto stored = authoring_documents_.find(context);
+        if (stored == authoring_documents_.end()) {
+            const std::string path = authoring_path(context);
+            authoring_.open(source, path);
+            if (std::filesystem::exists(path)) authoring_.reload();
+        } else {
+            authoring_ = std::move(stored->second);
+            authoring_documents_.erase(stored);
+        }
+        authoring_context_ = context;
         glayout::graph_canvas_clear(authoring_ui_.canvas);
         authoring_ui_.transaction.reset();
         authoring_ui_.edge_source.clear();
         authoring_ui_.edge_target.clear();
-        authoring_.open(source, std::string(GVIEW_TRIAL_SOURCE_DIR) + "/authoring/live-view.sexp");
     }
+    compile_view(merge_authored_view(authoring_.view(), source));
+    model_.rebuild = false;
+}
+
+// What is: A filesystem-safe source path for one screen's explicit save/reload.
+std::string TrialApp::authoring_path(std::string_view context) const {
+    std::string filename(context);
+    std::replace_if(
+        filename.begin(), filename.end(),
+        [](char value) { return value == ' ' || value == '/' || value == '\\'; }, '-');
+    return std::string(GVIEW_TRIAL_SOURCE_DIR) + "/authoring/" + filename + ".sexp";
+}
+
+void TrialApp::compile_view(gview::View source) {
+    std::string retained_focus;
+    if (runtime_.focus() != gview::invalid_node && runtime_.focus() < runtime_.view().nodes.size())
+        retained_focus = runtime_.view().nodes[runtime_.focus()].source.layout_id;
     const auto compile_begin = Clock::now();
     gview::CompileResult compiled = gview::compile_view(std::move(source));
     compile_ms_ = milliseconds(compile_begin, Clock::now());
@@ -303,7 +335,7 @@ void TrialApp::action(std::string_view action_name, gview::NodeIndex) {
 void TrialApp::update() {
     if (model_.rebuild) rebuild();
     else if (authored_rebuild_) {
-        compile_view(authoring_.view(), false);
+        compile_view(merge_authored_view(authoring_.view(), generated_view_));
         authored_rebuild_ = false;
     }
     const auto begin = Clock::now();
@@ -355,7 +387,7 @@ void TrialApp::draw_authoring() {
     hooks.active_state = active_screen_;
     hooks.scenarios = {"Populated", "Loading", "Empty", "Provider error"};
     hooks.active_scenario = active_scenario_;
-    hooks.default_save_path = std::string(GVIEW_TRIAL_SOURCE_DIR) + "/authoring/live-view.sexp";
+    hooks.default_save_path = authoring_path(authoring_context_);
     hooks.select_state = [&](int screen) { select_screen(screen); };
     hooks.select_scenario = [&](int scenario) {
         active_scenario_ = std::clamp(scenario, 0, 3);

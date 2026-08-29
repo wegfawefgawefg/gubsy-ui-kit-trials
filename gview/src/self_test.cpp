@@ -1,5 +1,8 @@
 #include "app.hpp"
+#include "authoring_document.hpp"
+#include "view_builder.hpp"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace {
@@ -32,12 +35,38 @@ void key_step(TrialApp& app, SDL_Keycode key) {
     app.update();
 }
 
+// What is: Authored geometry survives while the host refreshes semantic content.
+bool expect_authored_merge() {
+    TrialModel model;
+    model.destination = Destination::Mods;
+    model.mods_tab = "Installed";
+    gview::View authored = build_shell_view(model, 1280, 720);
+    glayout::GraphNode* detail = glayout::find_graph_node(authored.layout, "mod-detail");
+    if (!detail) return expect(false, "mod detail exists for merge coverage");
+    detail->size.width = {glayout::LengthKind::Pixels, 503.0f};
+    std::swap(detail->children[0], detail->children[1]);
+
+    model.selected_mod = "Base Content";
+    const gview::View generated = build_shell_view(model, 1280, 720);
+    const gview::View merged = merge_authored_view(authored, generated);
+    const glayout::GraphNode* merged_detail = glayout::find_graph_node(merged.layout, "mod-detail");
+    const auto name =
+        std::find_if(merged.nodes.begin(), merged.nodes.end(),
+                     [](const gview::NodeSpec& node) { return node.layout_id == "mod-name"; });
+    return expect(merged_detail && merged_detail->size.width.value == 503.0f,
+                  "runtime refresh retains authored constraints") &&
+           expect(merged_detail && merged_detail->children[0].id == "mod-kicker",
+                  "runtime refresh retains authored sibling order") &&
+           expect(name != merged.nodes.end() && name->text == "Base Content",
+                  "runtime refresh updates host-owned content");
+}
+
 } // namespace
 
 // Exercises controller semantics and real widgets without moving the user's
 // devices.
 bool run_self_test(TrialApp& app) {
-    bool ok = true;
+    bool ok = expect_authored_merge();
     for (int screen = 0; screen <= 17; ++screen) {
         app.select_screen(screen);
         app.update();
@@ -104,15 +133,16 @@ bool run_self_test(TrialApp& app) {
     app.update();
     step(app, gview::NavAction::Right);
     step(app, gview::NavAction::Up);
-    for (int index = 0; index < 5; ++index) step(app, gview::NavAction::Down);
+    for (int index = 0; index < 5; ++index)
+        step(app, gview::NavAction::Down);
     ok &= expect_focus(app, "session-mods", "Play setup reaches its final list item");
     step(app, gview::NavAction::Down);
     ok &= expect(app.focus_id() == "pause-preview", "setup enters the separate action row");
     step(app, gview::NavAction::Right);
     ok &= expect(app.focus_id() == "begin-session", "both Play actions are reachable locally");
     step(app, gview::NavAction::Up);
-    ok &= expect(app.focus_id() == "session-mods",
-                 "action row returns to the remembered setup item");
+    ok &=
+        expect(app.focus_id() == "session-mods", "action row returns to the remembered setup item");
 
     app.select_screen(3);
     app.update();
@@ -124,8 +154,8 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Confirm);
     ok &= expect_focus(app, "browse-add", "confirm enters the session package action pane");
     step(app, gview::NavAction::Back);
-    ok &= expect_focus(app, "session-Cartographer's Desk",
-                       "back restores the exact session package");
+    ok &=
+        expect_focus(app, "session-Cartographer's Desk", "back restores the exact session package");
 
     app.select_screen(7);
     app.update();

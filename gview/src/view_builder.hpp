@@ -17,6 +17,9 @@ class ViewBuilder {
     void container(std::string_view parent, std::string id, glayout::ContainerKind kind,
                    glayout::Length width, glayout::Length height, float gap = 0.0f,
                    glayout::Insets padding = {});
+    void layout_container(std::string_view parent, std::string id, glayout::ContainerKind kind,
+                          glayout::Length width, glayout::Length height, float gap = 0.0f,
+                          glayout::Insets padding = {});
     void label(std::string_view parent, std::string id, std::string text, float height,
                float size = 16.0f, gview::TextAlign align = gview::TextAlign::Start);
     void button(std::string_view parent, std::string id, std::string text, std::string action,
@@ -41,7 +44,11 @@ class ViewBuilder {
 
   private:
     gview::NodeSpec base_spec(std::string id) const;
+    glayout::GraphNode container_node(std::string id, glayout::ContainerKind kind,
+                                      glayout::Length width, glayout::Length height, float gap,
+                                      glayout::Insets padding) const;
     void append(std::string_view parent, glayout::GraphNode node, gview::NodeSpec spec);
+    void append_layout(std::string_view parent, glayout::GraphNode node);
 
     gview::View view_;
     float scale_ = 1.0f;

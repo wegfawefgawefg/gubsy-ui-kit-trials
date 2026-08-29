@@ -23,9 +23,9 @@ gview::BoxStyle box(gview::Color fill, gview::Color border, gview::Color text) {
 ViewBuilder::ViewBuilder(std::string id, int width, int height) {
     width_ = width;
     height_ = height;
-    scale_ = std::clamp(std::min(static_cast<float>(width) / 1280.0f,
-                                 static_cast<float>(height) / 720.0f),
-                        0.75f, 1.5f);
+    scale_ = std::clamp(
+        std::min(static_cast<float>(width) / 1280.0f, static_cast<float>(height) / 720.0f), 0.75f,
+        1.5f);
     view_.id = std::move(id);
     view_.label = view_.id;
     view_.layout.id = view_.id + "_layout";
@@ -82,11 +82,17 @@ void ViewBuilder::append(std::string_view parent, glayout::GraphNode node, gview
     view_.nodes.push_back(std::move(spec));
 }
 
-void ViewBuilder::container(std::string_view parent, std::string id, glayout::ContainerKind kind,
-                            glayout::Length width, glayout::Length height, float gap,
-                            glayout::Insets padding) {
+void ViewBuilder::append_layout(std::string_view parent, glayout::GraphNode node) {
+    glayout::GraphNode* target = glayout::find_graph_node(view_.layout, parent);
+    target->children.push_back(std::move(node));
+}
+
+// What is: Shared geometry construction for visible and layout-only regions.
+glayout::GraphNode ViewBuilder::container_node(std::string id, glayout::ContainerKind kind,
+                                               glayout::Length width, glayout::Length height,
+                                               float gap, glayout::Insets padding) const {
     glayout::GraphNode node;
-    node.id = id;
+    node.id = std::move(id);
     node.container = kind;
     if (compact() && width.kind == glayout::LengthKind::Pixels && width.value > 300.0f)
         width = {glayout::LengthKind::Percent, 0.44f};
@@ -95,8 +101,24 @@ void ViewBuilder::container(std::string_view parent, std::string id, glayout::Co
     node.gap = gap * scale_;
     node.padding = {padding.left * scale_, padding.top * scale_, padding.right * scale_,
                     padding.bottom * scale_};
+    return node;
+}
+
+// What is: A region that participates in both geometry and presentation.
+void ViewBuilder::container(std::string_view parent, std::string id, glayout::ContainerKind kind,
+                            glayout::Length width, glayout::Length height, float gap,
+                            glayout::Insets padding) {
+    glayout::GraphNode node = container_node(id, kind, width, height, gap, padding);
     gview::NodeSpec spec = base_spec(id);
+    spec.style_class = "panel";
     append(parent, std::move(node), std::move(spec));
+}
+
+// What is: Pure layout structure with no paint or interaction node.
+void ViewBuilder::layout_container(std::string_view parent, std::string id,
+                                   glayout::ContainerKind kind, glayout::Length width,
+                                   glayout::Length height, float gap, glayout::Insets padding) {
+    append_layout(parent, container_node(std::move(id), kind, width, height, gap, padding));
 }
 
 void ViewBuilder::label(std::string_view parent, std::string id, std::string text, float height,
@@ -188,6 +210,7 @@ void ViewBuilder::surface(std::string_view parent, std::string id, std::string a
     item.asset = std::move(asset);
     item.style.normal.fill = {0, 0, 0, 0};
     item.style.normal.border = {0, 0, 0, 0};
+    item.style_class.clear();
 }
 
 void ViewBuilder::focus_group(std::string id, std::string entry, std::string owner) {
@@ -202,7 +225,8 @@ void ViewBuilder::focus_scope(std::string_view root, std::string group) {
     std::unordered_set<std::string> ids;
     const auto collect = [&](const auto& self, const glayout::GraphNode& node) -> void {
         ids.insert(node.id);
-        for (const glayout::GraphNode& child : node.children) self(self, child);
+        for (const glayout::GraphNode& child : node.children)
+            self(self, child);
     };
     collect(collect, *scope);
     for (gview::NodeSpec& node : view_.nodes)

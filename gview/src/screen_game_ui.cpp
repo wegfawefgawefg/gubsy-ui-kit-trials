@@ -2,7 +2,8 @@
 
 #include <array>
 
-// Proves that GLayout/GView can compose an in-game inventory over native game rendering.
+// Proves that GLayout/GView can compose an in-game inventory over native game
+// rendering.
 gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
     ViewBuilder ui("inventory-overlay", width, height);
     const float s = ui.scale();
@@ -11,6 +12,7 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
                  {30.0f, 20.0f, 30.0f, 18.0f});
     ui.spec("inventory-safe").style.normal.fill = {2, 12, 17, 96};
+    ui.spec("inventory-safe").style_class = "shell-background";
     ui.container("inventory-safe", "inventory-header", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 74.0f}, 12.0f);
     ui.label("inventory-header", "hud-health", ui.phone() ? "♥ ♥ ♥" : "♥ ♥ ♥   THE VIOLET REACH",
@@ -20,8 +22,9 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
     ui.label("inventory-header", "hud-currency", "◇  1,464", 74.0f, ui.phone() ? 12.0f : 18.0f,
              gview::TextAlign::End);
 
-    ui.container("inventory-safe", "inventory-tabs", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Percent, 0.58f}, {glayout::LengthKind::Pixels, 52.0f}, 5.0f);
+    ui.layout_container("inventory-safe", "inventory-tabs", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Percent, 0.58f}, {glayout::LengthKind::Pixels, 52.0f},
+                        5.0f);
     constexpr std::array tabs{"TOOLS", "RELICS", "SUPPLIES", "KEYS", "FAVORITES"};
     for (std::size_t index = 0; index < tabs.size(); ++index) {
         const std::string id = "inventory-tab-" + std::to_string(index);
@@ -32,8 +35,9 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
         ui.spec(id).text_style.size = 12.0f * s;
     }
 
-    ui.container("inventory-safe", "inventory-body", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 18.0f);
+    ui.layout_container("inventory-safe", "inventory-body", ui.split(),
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f},
+                        18.0f);
     ui.container("inventory-body", "inventory-grid", glayout::ContainerKind::Grid,
                  ui.phone() ? glayout::Length{glayout::LengthKind::Fill, 1.0f}
                             : glayout::Length{glayout::LengthKind::Percent, 0.58f},
@@ -61,19 +65,21 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
              ui.compact() ? 19.0f : 26.0f);
     ui.label("inventory-detail", "item-stats", "♥ ♥    RESTORES 4 HEALTH", 26.0f, 13.0f);
     ui.label("inventory-detail", "item-copy",
-             "Honey gathered below the Glass Caverns. Eat it now, hold it for crafting, or move it "
+             "Honey gathered below the Glass Caverns. Eat it now, hold it for "
+             "crafting, or move it "
              "into the shared party pack.",
              ui.compact() ? 46.0f : 70.0f, ui.compact() ? 12.0f : 15.0f);
-    ui.container("inventory-detail", "item-actions",
-                 ui.compact() ? glayout::ContainerKind::Row : glayout::ContainerKind::Column,
-                 {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Pixels, ui.compact() ? 34.0f : 112.0f}, 6.0f);
+    ui.layout_container("inventory-detail", "item-actions",
+                        ui.compact() ? glayout::ContainerKind::Row : glayout::ContainerKind::Column,
+                        {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Pixels, ui.compact() ? 34.0f : 112.0f}, 6.0f);
     ui.button("item-actions", "item-use", "Use", "toast:Item used", "inventory-actions", 32.0f);
     ui.button("item-actions", "item-hold", "Hold", "toast:Item held", "inventory-actions", 32.0f);
     ui.button("item-actions", "item-cancel", "Cancel", "back", "inventory-actions", 32.0f);
     ui.label("inventory-safe", "inventory-help",
-             "LB / RB  Category     D-pad  Select     A  Actions     B  Close     Y  Sort", 30.0f,
-             12.0f, gview::TextAlign::Center);
+             "LB / RB  Category     D-pad  Select     A  Actions     B  Close    "
+             " Y  Sort",
+             30.0f, 12.0f, gview::TextAlign::Center);
     ui.focus_group("inventory-tabs", "inventory-tab-2");
     ui.focus_group("inventory", {}, "inventory-tab-2");
     ui.focus_group("inventory-actions", "item-use");
@@ -86,6 +92,7 @@ gview::View build_game_ui_view(const TrialModel& model, int width, int height) {
         ui.container("root", "toast-layer", glayout::ContainerKind::Overlay,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
         ui.spec("toast-layer").style.normal.fill = {0, 0, 0, 0};
+        ui.spec("toast-layer").style_class.clear();
         ui.button("toast-layer", "toast-message", model.toast + "    ×", "toast:clear", "toast",
                   44.0f);
         ui.layout("toast-message").absolute_rect = {0.36f, 0.86f, 0.28f, 0.07f};

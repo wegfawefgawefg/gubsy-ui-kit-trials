@@ -3,8 +3,9 @@
 namespace {
 
 void tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
-    ui.container(content, "player-tabs", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f}, 4.0f);
+    ui.layout_container(content, "player-tabs", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f},
+                        4.0f);
     for (const char* tab : {"Local players", "Profiles", "Devices"})
         ui.button("player-tabs", std::string("player-tab-") + tab, tab,
                   std::string("players-tab:") + tab, "player-tabs", 44.0f,
@@ -13,8 +14,8 @@ void tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
 }
 
 void local_players(ViewBuilder& ui, std::string_view content) {
-    ui.container(content, "players-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "players-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     ui.container("players-workspace", "roster", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 420.0f}, {glayout::LengthKind::Fill, 1.0f}, 7.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -58,8 +59,9 @@ void profiles(ViewBuilder& ui, std::string_view content) {
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});
     ui.scrolling("profiles");
-    ui.container("profiles", "profile-cards", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 134.0f}, 12.0f);
+    ui.layout_container("profiles", "profile-cards", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 134.0f},
+                        12.0f);
     ui.button("profile-cards", "profile-moss", "MO\nMoss\n38h 22m · 84 runs · 21 wins",
               "select:Moss", "profile-cards", 134.0f);
     ui.button("profile-cards", "profile-vega", "VE\nVega\n14h 11m · 31 runs · 4 wins",
@@ -89,8 +91,8 @@ void profiles(ViewBuilder& ui, std::string_view content) {
 }
 
 void devices(ViewBuilder& ui, std::string_view content) {
-    ui.container(content, "devices-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "devices-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     ui.container("devices-workspace", "device-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 440.0f}, {glayout::LengthKind::Fill, 1.0f}, 6.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});

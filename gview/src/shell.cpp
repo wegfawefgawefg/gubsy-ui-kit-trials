@@ -14,6 +14,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
     const float s = ui.scale();
     ui.container("root", "shell-frame", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
+    ui.spec("shell-frame").style_class = "shell-background";
     ui.container("shell-frame", "header", glayout::ContainerKind::Row,
                  {glayout::LengthKind::Fill, 1.0f},
                  {glayout::LengthKind::Pixels, ui.compact() ? 46.0f : 56.0f}, 12.0f,
@@ -27,8 +28,8 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
                      std::to_string(height),
                  44.0f, 13.0f, gview::TextAlign::End);
 
-    ui.container("shell-frame", "body", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 0.0f);
+    ui.layout_container("shell-frame", "body", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 0.0f);
     struct Nav {
         const char* name;
         const char* note;
@@ -54,16 +55,16 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
                 ui.layout(id).padding.right = 10.0f * s;
             }
         }
-        ui.container("nav", "nav-spacer", glayout::ContainerKind::Absolute,
-                     {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
+        ui.layout_container("nav", "nav-spacer", glayout::ContainerKind::Absolute,
+                            {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
         ui.button("nav", "nav-Quit", "×  Quit\n    Return to desktop", "quit", "rail", 58.0f);
         ui.spec("nav-Quit").text_style.size = 14.0f * s;
     }
 
-    ui.container("body", "main", glayout::ContainerKind::Column, {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 10.0f,
-                 {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 18.0f,
-                  ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 12.0f});
+    ui.layout_container("body", "main", glayout::ContainerKind::Column,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
+                        {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 18.0f,
+                         ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 12.0f});
     ui.label("main", "breadcrumb", "SPLONKS / GVIEW", ui.compact() ? 15.0f : 22.0f, 11.0f);
     ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 64.0f,
              ui.compact() ? 28.0f : 42.0f);
@@ -136,6 +137,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.container("root", "modal-layer", glayout::ContainerKind::Stack,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
         ui.spec("modal-layer").style.normal.fill = {0, 0, 0, 190};
+        ui.spec("modal-layer").style_class.clear();
         ui.container("modal-layer", "modal-card", glayout::ContainerKind::Column,
                      {glayout::LengthKind::Pixels, 520.0f}, {glayout::LengthKind::Pixels, 274.0f},
                      10.0f, {22.0f, 18.0f, 22.0f, 18.0f});
@@ -146,8 +148,9 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
                  "Gubsy computed the complete dependency and state impact. This "
                  "local trial does not mutate files.",
                  74.0f, 14.0f);
-        ui.container("modal-card", "modal-actions", glayout::ContainerKind::Row,
-                     {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f}, 8.0f);
+        ui.layout_container("modal-card", "modal-actions", glayout::ContainerKind::Row,
+                            {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 48.0f},
+                            8.0f);
         ui.button("modal-actions", "modal-cancel", "Cancel", "modal:cancel", "modal", 48.0f);
         ui.button("modal-actions", "modal-confirm", "Confirm", "modal:confirm", "modal", 48.0f);
         ui.focus_group("modal", "modal-cancel");
@@ -156,6 +159,7 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
         ui.container("root", "toast-layer", glayout::ContainerKind::Absolute,
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f});
         ui.spec("toast-layer").style.normal.fill = {0, 0, 0, 0};
+        ui.spec("toast-layer").style_class.clear();
         ui.button("toast-layer", "toast-message", model.toast + "    ×", "toast:clear", "toast",
                   48.0f);
         ui.layout("toast-message").absolute_rect = {0.34f, 0.89f, 0.32f, 0.07f};

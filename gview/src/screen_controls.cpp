@@ -3,8 +3,9 @@
 namespace {
 
 void tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
-    ui.container(content, "control-tabs", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f}, 4.0f);
+    ui.layout_container(content, "control-tabs", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f},
+                        4.0f);
     for (const char* tab : {"Bindings", "Devices", "Input tuning"})
         ui.button("control-tabs", std::string("control-tab-") + tab, tab,
                   std::string("controls-tab:") + tab, "control-tabs", 44.0f,
@@ -15,8 +16,9 @@ void tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
 }
 
 void bindings(ViewBuilder& ui, std::string_view content) {
-    ui.container(content, "binding-toolbar", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f}, 8.0f);
+    ui.layout_container(content, "binding-toolbar", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 46.0f},
+                        8.0f);
     ui.button("binding-toolbar", "binding-filter", "Filter actions…", "toast:Search focused",
               "controls-content", 46.0f);
     ui.select("binding-toolbar", "binding-profile", "", "binding-profile",
@@ -24,8 +26,8 @@ void bindings(ViewBuilder& ui, std::string_view content) {
     for (const char* action : {"New", "Rename", "Reset", "Delete"})
         ui.button("binding-toolbar", std::string("binding-") + action, action,
                   std::string("toast:") + action + " binding profile", "controls-content", 46.0f);
-    ui.container(content, "binding-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "binding-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     ui.container("binding-workspace", "action-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 430.0f}, {glayout::LengthKind::Fill, 1.0f}, 5.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -62,8 +64,9 @@ void bindings(ViewBuilder& ui, std::string_view content) {
 }
 
 void devices(ViewBuilder& ui, std::string_view content) {
-    ui.container(content, "control-device-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "control-device-workspace", ui.split(),
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f},
+                        12.0f);
     ui.container("control-device-workspace", "control-device-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 440.0f}, {glayout::LengthKind::Fill, 1.0f}, 6.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -99,8 +102,8 @@ void devices(ViewBuilder& ui, std::string_view content) {
 }
 
 void tuning(ViewBuilder& ui, std::string_view content) {
-    ui.container(content, "tuning-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "tuning-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 12.0f);
     ui.container("tuning-workspace", "tuning-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 7.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
@@ -145,10 +148,8 @@ void build_controls(ViewBuilder& ui, const TrialModel& model, std::string_view c
         ui.focus_group("control-device-detail", "owner-unassigned", owner);
         ui.group_edge("control-tabs", gview::NavAction::Down, "control-device-list");
         ui.group_edge("control-device-list", gview::NavAction::Up, "control-tabs");
-        ui.group_edge("control-device-list", gview::NavAction::Right,
-                      "control-device-detail");
-        ui.group_edge("control-device-detail", gview::NavAction::Left,
-                      "control-device-list");
+        ui.group_edge("control-device-list", gview::NavAction::Right, "control-device-detail");
+        ui.group_edge("control-device-detail", gview::NavAction::Left, "control-device-list");
         ui.group_edge("control-device-detail", gview::NavAction::Up, "control-tabs");
     } else if (model.controls_tab == "Input tuning") {
         tuning(ui, content);

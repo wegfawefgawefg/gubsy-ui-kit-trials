@@ -3,8 +3,9 @@
 namespace {
 
 void setting_tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
-    ui.container(content, "setting-tabs", glayout::ContainerKind::Row,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f}, 4.0f);
+    ui.layout_container(content, "setting-tabs", glayout::ContainerKind::Row,
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f},
+                        4.0f);
     for (const char* tab : {"Display", "Audio", "Accessibility", "Gameplay"})
         ui.button("setting-tabs", std::string("setting-tab-") + tab, tab,
                   std::string("settings-tab:") + tab, "setting-tabs", 44.0f,
@@ -76,8 +77,9 @@ void gameplay(ViewBuilder& ui) {
 
 void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     setting_tabs(ui, content, model);
-    ui.container(content, "settings-workspace", ui.split(), {glayout::LengthKind::Fill, 1.0f},
-                 {glayout::LengthKind::Fill, 1.0f}, 12.0f);
+    ui.layout_container(content, "settings-workspace", ui.split(),
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f},
+                        12.0f);
     ui.container("settings-workspace", "setting-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 6.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
