@@ -23,6 +23,15 @@ void step(TrialApp& app, gview::NavAction action) {
     app.update();
 }
 
+void key_step(TrialApp& app, SDL_Keycode key) {
+    SDL_Event event{};
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.key = key;
+    app.process(event);
+    app.update();
+    app.update();
+}
+
 } // namespace
 
 // Exercises controller semantics and real widgets without moving the user's
@@ -42,6 +51,14 @@ bool run_self_test(TrialApp& app) {
     app.select_screen(0);
     app.update();
     ok &= expect(app.focus_id() == "nav-Play", "Play owns initial focus");
+    key_step(app, SDLK_D);
+    ok &= expect_focus(app, "activity", "D produces semantic right navigation");
+    key_step(app, SDLK_A);
+    ok &= expect_focus(app, "nav-Play", "A produces semantic left navigation");
+    key_step(app, SDLK_S);
+    ok &= expect_focus(app, "nav-Players", "S produces semantic down navigation");
+    key_step(app, SDLK_W);
+    ok &= expect_focus(app, "nav-Play", "W produces semantic up navigation");
     step(app, gview::NavAction::Right);
     ok &= expect(app.focus_id() == "activity", "right enters Play setup");
     step(app, gview::NavAction::Left);

@@ -31,8 +31,8 @@ Every overflow region is an internal GView scroll area. The shell has no outer
 document scroll. Widths below 1000 or heights below 600 select the compact
 composition used for tablet, landscape phone, and portrait evidence.
 
-Mouse controls use normal hit testing. Keyboard and gamepads produce semantic
-navigation actions; controllers are opened on startup and hot-plugged. Focus
+Mouse controls use normal hit testing. Arrow keys and WASD produce the same
+semantic navigation actions; gamepads are opened on startup and hot-plugged. Focus
 groups provide generated local geometric movement, group-level exits, exact
 remembered-member re-entry, explicit exceptional edges, dropdown capture/cancel,
 and Back-to-owner behavior instead of moving a synthetic pointer or persisting

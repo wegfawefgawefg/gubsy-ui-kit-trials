@@ -66,11 +66,20 @@ void TrialApp::process(const SDL_Event& source) {
     } else if (event.type == SDL_EVENT_TEXT_INPUT) {
         input_.text += event.text.text;
     } else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
+        const gview::NodeIndex focus = runtime_.focus();
+        const bool editing_text =
+            focus != gview::invalid_node && focus < runtime_.state().size() &&
+            runtime_.state()[focus].editing &&
+            runtime_.view().nodes[focus].source.control == gview::ControlKind::TextInput;
         if (event.key.key == SDLK_BACKSPACE) input_.text.push_back('\b');
-        else if (event.key.key == SDLK_UP) input_.navigation.push_back(gview::NavAction::Up);
-        else if (event.key.key == SDLK_DOWN) input_.navigation.push_back(gview::NavAction::Down);
-        else if (event.key.key == SDLK_LEFT) input_.navigation.push_back(gview::NavAction::Left);
-        else if (event.key.key == SDLK_RIGHT) input_.navigation.push_back(gview::NavAction::Right);
+        else if (event.key.key == SDLK_UP || (!editing_text && event.key.key == SDLK_W))
+            input_.navigation.push_back(gview::NavAction::Up);
+        else if (event.key.key == SDLK_DOWN || (!editing_text && event.key.key == SDLK_S))
+            input_.navigation.push_back(gview::NavAction::Down);
+        else if (event.key.key == SDLK_LEFT || (!editing_text && event.key.key == SDLK_A))
+            input_.navigation.push_back(gview::NavAction::Left);
+        else if (event.key.key == SDLK_RIGHT || (!editing_text && event.key.key == SDLK_D))
+            input_.navigation.push_back(gview::NavAction::Right);
         else if (event.key.key == SDLK_RETURN || event.key.key == SDLK_SPACE)
             input_.navigation.push_back(gview::NavAction::Confirm);
         else if (event.key.key == SDLK_ESCAPE) input_.navigation.push_back(gview::NavAction::Back);
