@@ -24,13 +24,13 @@ gview::PartPresentation sliced_part(gview::WidgetPart part, std::string asset, f
     return result;
 }
 
-// What is: One generated 32 px panel cut rendered at control-scale borders.
+// What is: One generated 23 px panel cut rendered at its authored source scale.
 gview::PartPresentation nine_slice(std::string asset, gview::PresentationState state,
                                    float border_scale, float opacity = 1.0f) {
     gview::PartPresentation result =
         asset_part(gview::WidgetPart::Frame, std::move(asset), gview::ImageMode::NineSlice, opacity);
     result.state = state;
-    result.slice = 32.0f;
+    result.slice = 23.0f;
     result.slice_scale = border_scale;
     result.draw_box_underlay = false;
     return result;
@@ -77,7 +77,7 @@ gview::WidgetSkin scrollbar_skin() {
 gview::WidgetSkin control_skin(gview::ControlKind control) {
     gview::WidgetSkin skin;
     skin.control = control;
-    constexpr float button_border = 0.22f;
+    constexpr float button_border = 1.0f;
     skin.parts = {
         nine_slice("ui-button-light", gview::PresentationState::Normal, button_border),
         nine_slice("ui-button-light", gview::PresentationState::Hovered, button_border),
@@ -116,9 +116,9 @@ std::vector<gview::Theme> trial_themes() {
     game.id = "splonks";
     game.extends = "gubsy-default";
     game.widgets = {
-        region_skin("bar-dark", "ui-bar-dark", 0.25f),
-        region_skin("parchment-ornate", "ui-parchment-ornate", 0.28f),
-        region_skin("group-inner", "ui-group-inner", 0.24f),
+        region_skin("bar-dark", "ui-bar-dark", 1.0f),
+        region_skin("parchment-ornate", "ui-parchment-ornate", 1.0f),
+        region_skin("group-inner", "ui-group-inner", 1.0f),
     };
     return {std::move(base), std::move(game)};
 }
