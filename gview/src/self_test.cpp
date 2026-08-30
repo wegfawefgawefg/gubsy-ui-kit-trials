@@ -296,6 +296,30 @@ bool run_self_test(TrialApp& app) {
     step(app, gview::NavAction::Back);
     ok &= expect_focus(app, "catalog-item-1", "catalog detail returns to the remembered package");
 
+    app.select_screen(16);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Down);
+    for (int index = 0; index < 12; ++index)
+        step(app, gview::NavAction::Down);
+    const std::string catalog_focus = app.focus_id();
+    const float catalog_scroll = app.scroll_offset("catalog-list");
+    ok &= expect(app.node_selected(catalog_focus),
+                 "focus-previewed catalog package becomes the persistent selection");
+    step(app, gview::NavAction::Right);
+    ok &= expect(catalog_scroll > 0.0f, "deep catalog focus scrolls the package list") &&
+          expect(app.scroll_offset("catalog-list") == catalog_scroll,
+                 "leaving the catalog list preserves its scroll position") &&
+          expect(app.node_selected(catalog_focus),
+                 "catalog selection survives entry into the detail pane");
+    step(app, gview::NavAction::Up);
+    ok &= expect(app.node_selected(catalog_focus),
+                 "refocusing the active Mods tab does not reset its package selection");
+    step(app, gview::NavAction::Down);
+    step(app, gview::NavAction::Down);
+    ok &= expect_focus(app, catalog_focus, "deep catalog focus remains the remembered package");
+
     app.select_screen(15);
     app.update();
     step(app, gview::NavAction::Right);

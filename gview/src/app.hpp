@@ -51,6 +51,7 @@ class TrialApp {
     void enter_text(std::string text);
     void benchmark_step(std::string_view scenario, int frame);
     std::string focus_id() const;
+    bool node_selected(std::string_view id) const;
     gview::Value value(std::string_view key) const;
     bool focus_open() const;
     float scroll_offset(std::string_view id) const;

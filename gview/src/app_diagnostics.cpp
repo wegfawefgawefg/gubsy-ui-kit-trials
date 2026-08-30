@@ -7,6 +7,12 @@ std::string TrialApp::focus_id() const {
     return runtime_.view().nodes[focus].source.layout_id;
 }
 
+bool TrialApp::node_selected(std::string_view id) const {
+    const auto found = runtime_.view().indices.find(std::string(id));
+    return found != runtime_.view().indices.end() &&
+           runtime_.view().nodes[found->second].source.selected;
+}
+
 gview::Value TrialApp::value(std::string_view key) const { return model_.read(key); }
 
 bool TrialApp::focus_open() const {

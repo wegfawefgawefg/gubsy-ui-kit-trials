@@ -61,10 +61,13 @@ void TrialApp::action(std::string_view action_name, gview::NodeIndex) {
         model_.controls_tab = suffix("controls-tab:");
         model_.rebuild = true;
     } else if (action.rfind("mods-tab:", 0) == 0) {
-        model_.mods_tab = suffix("mods-tab:");
-        model_.selected_mod =
-            model_.mods_tab == "Browse catalog" ? "Mycelium Below" : "Old Lanterns";
-        model_.rebuild = true;
+        const std::string next_tab = suffix("mods-tab:");
+        if (next_tab != model_.mods_tab) {
+            model_.mods_tab = next_tab;
+            model_.selected_mod =
+                model_.mods_tab == "Browse catalog" ? "Mycelium Below" : "Old Lanterns";
+            model_.rebuild = true;
+        }
     } else if (action == "play:lobby") {
         model_.destination = Destination::Play;
         model_.play_page = PlayPage::Lobby;
