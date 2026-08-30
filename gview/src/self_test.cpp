@@ -151,13 +151,48 @@ bool expect_structural_shell_geometry() {
                   "scroll lists reserve a themed content gutter");
 }
 
+bool expect_authored_resolution_rebase() {
+    TrialModel model;
+    gview::View authored = build_shell_view(model, 1280, 720);
+    const glayout::GraphNode* old_quit = glayout::find_graph_node(authored.layout, "nav-Quit");
+    const gview::NodeSpec* old_title = nullptr;
+    for (const gview::NodeSpec& node : authored.nodes)
+        if (node.layout_id == "title") old_title = &node;
+    if (!old_quit || !old_title) return expect(false, "resolution fixture contains shell nodes");
+    const float old_quit_height = old_quit->size.height.value;
+    const float old_title_size = old_title->text_style.size;
+
+    const gview::View large = build_shell_view(model, 1920, 1080);
+    adapt_authored_view_resolution(authored, large);
+    const glayout::GraphNode* large_quit = glayout::find_graph_node(authored.layout, "nav-Quit");
+    const gview::NodeSpec* large_title = nullptr;
+    for (const gview::NodeSpec& node : authored.nodes)
+        if (node.layout_id == "title") large_title = &node;
+    const bool enlarged = large_quit && large_title && authored.layout.width == 1920 &&
+                          authored.layout.height == 1080 &&
+                          large_quit->size.height.value == old_quit_height * 1.5f &&
+                          large_title->text_style.size == old_title_size * 1.5f;
+
+    const gview::View normal = build_shell_view(model, 1280, 720);
+    adapt_authored_view_resolution(authored, normal);
+    const glayout::GraphNode* restored_quit = glayout::find_graph_node(authored.layout, "nav-Quit");
+    const gview::NodeSpec* restored_title = nullptr;
+    for (const gview::NodeSpec& node : authored.nodes)
+        if (node.layout_id == "title") restored_title = &node;
+    return expect(enlarged, "authored pixels and text follow the logical UI scale") &&
+           expect(restored_quit && restored_title &&
+                      restored_quit->size.height.value == old_quit_height &&
+                      restored_title->text_style.size == old_title_size,
+                  "authored resolution rebasing is reversible");
+}
+
 } // namespace
 
 // Exercises controller semantics and real widgets without moving the user's
 // devices.
 bool run_self_test(TrialApp& app) {
     bool ok = expect_authored_merge() && expect_compound_control_theme() &&
-              expect_structural_shell_geometry();
+              expect_structural_shell_geometry() && expect_authored_resolution_rebase();
     for (int screen = 0; screen <= 17; ++screen) {
         app.select_screen(screen);
         app.update();

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace {
 
@@ -84,7 +85,65 @@ void migrate_legacy_workspace_padding(gview::View& authored, const gview::View& 
     target->padding.bottom = source->padding.bottom;
 }
 
+float authored_ui_scale(int width, int height) {
+    if (width <= 0 || height <= 0) return 1.0f;
+    return std::clamp(
+        std::min(static_cast<float>(width) / 1280.0f,
+                 static_cast<float>(height) / 720.0f),
+        0.75f, 1.5f);
+}
+
+void scale_length(glayout::Length& length, float factor) {
+    if (length.kind == glayout::LengthKind::Pixels) length.value *= factor;
+}
+
+void scale_optional_bound(float& value, float factor) {
+    if (value > 0.0f && value < std::numeric_limits<float>::max() * 0.5f) value *= factor;
+}
+
+void scale_layout_metrics(glayout::GraphNode& node, float factor) {
+    scale_length(node.size.width, factor);
+    scale_length(node.size.height, factor);
+    scale_optional_bound(node.size.min_width, factor);
+    scale_optional_bound(node.size.min_height, factor);
+    scale_optional_bound(node.size.max_width, factor);
+    scale_optional_bound(node.size.max_height, factor);
+    node.padding.left *= factor;
+    node.padding.top *= factor;
+    node.padding.right *= factor;
+    node.padding.bottom *= factor;
+    node.gap *= factor;
+    for (glayout::AnchorRule& anchor : node.anchors) anchor.offset *= factor;
+    for (glayout::GraphNode& child : node.children) scale_layout_metrics(child, factor);
+}
+
 } // namespace
+
+// Keeps one authored document visually stable as the preview moves between
+// logical resolutions. Relative/fill layout remains relative; only authored
+// design-pixel measurements follow the trial's clamped UI scale.
+void adapt_authored_view_resolution(gview::View& authored, const gview::View& generated) {
+    const int old_width = authored.layout.width;
+    const int old_height = authored.layout.height;
+    const int new_width = generated.layout.width;
+    const int new_height = generated.layout.height;
+    if (old_width == new_width && old_height == new_height) return;
+
+    const float old_scale = authored_ui_scale(old_width, old_height);
+    const float new_scale = authored_ui_scale(new_width, new_height);
+    const float factor = old_scale > 0.0f ? new_scale / old_scale : 1.0f;
+    if (std::abs(factor - 1.0f) > 0.0001f) {
+        scale_layout_metrics(authored.layout.root, factor);
+        for (gview::NodeSpec& node : authored.nodes) {
+            node.text_style.size *= factor;
+            if (node.text_style.line_height > 0.0f) node.text_style.line_height *= factor;
+        }
+    }
+    authored.layout.width = new_width;
+    authored.layout.height = new_height;
+    authored.layout.dpi_scale = generated.layout.dpi_scale;
+    authored.layout.form_factor = generated.layout.form_factor;
+}
 
 // Migrates the pre-compact-shell documents once, using the removed breadcrumb
 // as a schema marker.

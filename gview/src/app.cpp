@@ -204,6 +204,7 @@ void TrialApp::rebuild() {
         authoring_ui_.edge_source.clear();
         authoring_ui_.edge_target.clear();
     }
+    adapt_authored_view_resolution(authoring_.view(), source);
     migrate_authored_view(authoring_.view(), source);
     apply_shared_theme(authoring_.view());
     compile_view(merge_authored_view(authoring_.view(), source), same_context);
