@@ -1,0 +1,11 @@
+(gview_preview
+  (logical 1280 720)
+  (output 1280 720)
+  (dpi_scale 1)
+  (device_pixel_ratio 1)
+  (ui_scale 1)
+  (zoom 1) (pan 0 0)
+  (presentation fit) (sampling linear)
+  (form_factor desktop)
+  (safe_area 0 0 0 0)
+  (state "default"))
