@@ -86,10 +86,13 @@ layout containers, so section backgrounds support the same natural, stretch,
 cover, tile, and nine-slice modes as widgets. Exact-node recipes override class
 recipes, which override control-wide recipes. `Draw box underneath` only affects
 nodes matched by that recipe; unmatched nodes retain their semantic fallback
-box. The editor reports each recipe's match count and warns when its scope is
-broad. Selecting text inside a themed container identifies the nearest visible
-owner; editing it creates a non-destructive exact override cloned from the
-inherited recipe.
+box. Canvas selection now follows the effective shared recipe automatically,
+including recipes inherited from `gubsy-default`. The editor shows recipes
+applying to the selection, the complete inherited recipe library, source layer,
+selector scope, parts, and match count. Clicking a compound widget follows the
+specific frame, track, fill, thumb, or indicator under the pointer. Reusable
+preset/classes can be assigned or created in place; exact-node overrides remain
+under an advanced section.
 
 Presented regions can independently layer Shadow, Background, and Frame parts,
 so a backplate can sit behind a frame without also drawing the fallback
