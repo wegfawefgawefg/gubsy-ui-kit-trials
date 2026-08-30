@@ -64,6 +64,7 @@ FetchContent_Declare(SDL3_image
 FetchContent_MakeAvailable(SDL3_image)
 
 add_executable(gubsy-gview-trial
+  src/actions.cpp
   src/app.cpp
   src/app_diagnostics.cpp
   src/authoring_store.cpp

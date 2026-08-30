@@ -73,6 +73,9 @@ scope beside the selected recipe. Save writes both the current screen and
 `authoring/shared-theme.sexp`; Reload intentionally discards both working
 domains and reads them from disk. Before the shared document exists, the trial
 migrates the newest legacy page theme once so previous tuning is not discarded.
+New generated recipe slots merge into older theme documents without replacing
+authored slots. Existing projects therefore gain defaults for new compound
+parts such as select popups and option rows while retaining their edits.
 Host model refreshes continue to update semantic content without replacing
 unsaved authoring work. Flow-child dragging reorders siblings, edge/corner
 dragging edits only the affected size axes, and absolute or anchored children

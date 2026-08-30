@@ -24,16 +24,24 @@ gview::PartPresentation sliced_part(gview::WidgetPart part, std::string asset, f
     return result;
 }
 
-// What is: One generated 23 px panel cut rendered at its authored source scale.
-gview::PartPresentation nine_slice(std::string asset, gview::PresentationState state,
-                                   float border_scale, float opacity = 1.0f) {
+// What is: One generated 23 px cut rendered at its authored source scale.
+gview::PartPresentation nine_slice_part(gview::WidgetPart part, std::string asset,
+                                        gview::PresentationState state, float border_scale,
+                                        float opacity = 1.0f) {
     gview::PartPresentation result =
-        asset_part(gview::WidgetPart::Frame, std::move(asset), gview::ImageMode::NineSlice, opacity);
+        asset_part(part, std::move(asset), gview::ImageMode::NineSlice, opacity);
     result.state = state;
     result.slice = 23.0f;
     result.slice_scale = border_scale;
     result.draw_box_underlay = false;
     return result;
+}
+
+// What is: Normal control and region frame shorthand.
+gview::PartPresentation nine_slice(std::string asset, gview::PresentationState state,
+                                   float border_scale, float opacity = 1.0f) {
+    return nine_slice_part(gview::WidgetPart::Frame, std::move(asset), state, border_scale,
+                           opacity);
 }
 
 gview::WidgetSkin slider_skin() {
@@ -89,6 +97,16 @@ gview::WidgetSkin control_skin(gview::ControlKind control) {
         nine_slice("ui-action-green", gview::PresentationState::On, button_border),
         nine_slice("ui-button-light", gview::PresentationState::Off, button_border),
         nine_slice("ui-button-light", gview::PresentationState::Disabled, button_border, 0.55f)};
+    if (control == gview::ControlKind::Select) {
+        auto popup = nine_slice_part(gview::WidgetPart::Popup, "ui-group-inner",
+                                     gview::PresentationState::Normal, button_border);
+        popup.outset = 6.0f;
+        skin.parts.push_back(std::move(popup));
+        skin.parts.push_back(nine_slice_part(gview::WidgetPart::Option, "ui-button-light",
+                                             gview::PresentationState::Normal, button_border));
+        skin.parts.push_back(nine_slice_part(gview::WidgetPart::Option, "ui-action-green",
+                                             gview::PresentationState::Selected, button_border));
+    }
     return skin;
 }
 

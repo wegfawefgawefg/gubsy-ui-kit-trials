@@ -64,6 +64,42 @@ std::vector<gview::Theme> shared_only(const std::vector<gview::Theme>& themes) {
     return result;
 }
 
+bool same_selector(const gview::WidgetSkin& left, const gview::WidgetSkin& right) {
+    return left.control == right.control && left.any_control == right.any_control &&
+           left.style_class == right.style_class && left.node_id == right.node_id;
+}
+
+// What is: New generated recipe slots added without replacing authored slots.
+void merge_theme_defaults(std::vector<gview::Theme>& authored,
+                          const std::vector<gview::Theme>& generated) {
+    for (const gview::Theme& generated_theme : generated) {
+        const auto theme = std::find_if(authored.begin(), authored.end(), [&](const auto& item) {
+            return item.id == generated_theme.id;
+        });
+        if (theme == authored.end()) {
+            authored.push_back(generated_theme);
+            continue;
+        }
+        for (const gview::WidgetSkin& generated_skin : generated_theme.widgets) {
+            const auto skin = std::find_if(theme->widgets.begin(), theme->widgets.end(),
+                                           [&](const auto& item) {
+                                               return same_selector(item, generated_skin);
+                                           });
+            if (skin == theme->widgets.end()) {
+                theme->widgets.push_back(generated_skin);
+                continue;
+            }
+            for (const gview::PartPresentation& generated_part : generated_skin.parts) {
+                const bool present = std::any_of(
+                    skin->parts.begin(), skin->parts.end(), [&](const auto& part) {
+                        return part.part == generated_part.part && part.state == generated_part.state;
+                    });
+                if (!present) skin->parts.push_back(generated_part);
+            }
+        }
+    }
+}
+
 void append_local_overrides(std::vector<gview::Theme>& destination,
                             const std::vector<gview::Theme>& source) {
     for (const gview::Theme& local_theme : source) {
@@ -107,13 +143,15 @@ void link_legacy_slice_geometry(std::vector<gview::Theme>& themes) {
 // What is: One canonical theme library shared by every authored page.
 void TrialApp::initialize_shared_theme(const gview::View& generated) {
     if (shared_theme_initialized_) return;
-    shared_themes_ = shared_only(generated.themes);
+    const std::vector<gview::Theme> defaults = shared_only(generated.themes);
+    shared_themes_ = defaults;
     shared_active_theme_ = generated.active_theme;
     std::optional<gview::View> source = load_first_view(shared_theme_path());
     const bool migrating_legacy = !source;
     if (!source) source = newest_legacy_theme();
     if (source && !source->themes.empty()) {
         shared_themes_ = shared_only(source->themes);
+        merge_theme_defaults(shared_themes_, defaults);
         shared_active_theme_ = std::move(source->active_theme);
         if (migrating_legacy) link_legacy_slice_geometry(shared_themes_);
     }

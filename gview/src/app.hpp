@@ -71,6 +71,8 @@ class TrialApp {
     bool save_authoring_documents();
     bool reload_authoring_documents();
     void restore_authoring_preferences();
+    void show_toast(std::string message);
+    void clear_toast();
     void action(std::string_view action, gview::NodeIndex source);
     void load_assets();
     void compile_view(gview::View view, bool retain_runtime_state = true);
@@ -110,6 +112,7 @@ class TrialApp {
     double compile_ms_ = 0.0;
     double activation_ms_ = 0.0;
     float layout_jitter_ = 0.0f;
+    Uint64 toast_expires_at_ = 0;
 };
 
 TrialOptions parse_options(int argc, char** argv);

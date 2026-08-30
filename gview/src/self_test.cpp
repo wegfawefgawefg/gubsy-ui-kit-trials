@@ -144,6 +144,13 @@ bool run_self_test(TrialApp& app) {
     ok &=
         expect(app.focus_id() == "session-mods", "action row returns to the remembered setup item");
 
+    app.select_screen(0);
+    app.update();
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Right);
+    step(app, gview::NavAction::Confirm);
+    ok &= expect_focus(app, "nav-Players", "party player opens the Players destination");
+
     app.select_screen(3);
     app.update();
     step(app, gview::NavAction::Right);
