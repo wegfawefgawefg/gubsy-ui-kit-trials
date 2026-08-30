@@ -13,6 +13,17 @@ gview::PartPresentation asset_part(gview::WidgetPart part, std::string asset, gv
     return result;
 }
 
+// What is: Three-slice-style control strips expressed through asymmetric
+// nine-slice source caps.
+gview::PartPresentation sliced_part(gview::WidgetPart part, std::string asset, float left,
+                                    float top, float right, float bottom) {
+    gview::PartPresentation result =
+        asset_part(part, std::move(asset), gview::ImageMode::NineSlice);
+    result.slice_margins = {left, top, right, bottom};
+    result.draw_box_underlay = false;
+    return result;
+}
+
 // What is: One generated 32 px panel cut rendered at control-scale borders.
 gview::PartPresentation nine_slice(std::string asset, gview::PresentationState state,
                                    float border_scale, float opacity = 1.0f) {
@@ -28,18 +39,38 @@ gview::PartPresentation nine_slice(std::string asset, gview::PresentationState s
 gview::WidgetSkin slider_skin() {
     gview::WidgetSkin skin;
     skin.control = gview::ControlKind::Slider;
+    skin.parts = {sliced_part(gview::WidgetPart::Track, "ui-slider-track", 8.0f, 3.0f,
+                              8.0f, 3.0f),
+                  sliced_part(gview::WidgetPart::Fill, "ui-slider-fill", 8.0f, 3.0f, 8.0f,
+                              3.0f),
+                  asset_part(gview::WidgetPart::Thumb, "ui-slider-thumb",
+                             gview::ImageMode::Contain)};
+    skin.parts[2].draw_box_underlay = false;
+    return skin;
+}
+
+// What is: Value imagery independent from the toggle row's hover and focus.
+gview::WidgetSkin toggle_indicator_skin() {
+    gview::WidgetSkin skin;
+    skin.control = gview::ControlKind::Toggle;
+    auto off = asset_part(gview::WidgetPart::Indicator, "ui-toggle-off",
+                          gview::ImageMode::Contain);
+    off.state = gview::PresentationState::Off;
+    off.draw_box_underlay = false;
+    auto on = asset_part(gview::WidgetPart::Indicator, "ui-toggle-on", gview::ImageMode::Contain);
+    on.state = gview::PresentationState::On;
+    on.draw_box_underlay = false;
+    skin.parts = {std::move(off), std::move(on)};
+    return skin;
+}
+
+// What is: Passive scrollbar presentation shared by every clipped scroll area.
+gview::WidgetSkin scrollbar_skin() {
+    gview::WidgetSkin skin;
+    skin.control = gview::ControlKind::ScrollArea;
     skin.parts = {
-        asset_part(gview::WidgetPart::Track, "ui-slider-track", gview::ImageMode::NineSlice, 0.82f,
-                   {42, 88, 96, 255}),
-        asset_part(gview::WidgetPart::Fill, "ui-slider-fill", gview::ImageMode::NineSlice, 1.0f,
-                   {142, 239, 117, 255}),
-        asset_part(gview::WidgetPart::Thumb, "ui-slider-thumb", gview::ImageMode::Contain)};
-    skin.parts[0].slice = 16.0f;
-    skin.parts[1].slice = 16.0f;
-    skin.parts[0].slice_modes.top = gview::SliceTileMode::Repeat;
-    skin.parts[0].slice_modes.bottom = gview::SliceTileMode::Repeat;
-    skin.parts[1].slice_modes.top = gview::SliceTileMode::Repeat;
-    skin.parts[1].slice_modes.bottom = gview::SliceTileMode::Repeat;
+        sliced_part(gview::WidgetPart::Track, "ui-scrollbar-track", 4.0f, 8.0f, 4.0f, 8.0f),
+        sliced_part(gview::WidgetPart::Thumb, "ui-scrollbar-thumb", 4.0f, 8.0f, 4.0f, 8.0f)};
     return skin;
 }
 
@@ -79,7 +110,8 @@ std::vector<gview::Theme> trial_themes() {
     base.widgets = {
         control_skin(gview::ControlKind::Button),    control_skin(gview::ControlKind::Toggle),
         control_skin(gview::ControlKind::Slider),    control_skin(gview::ControlKind::Select),
-        control_skin(gview::ControlKind::TextInput), slider_skin()};
+        control_skin(gview::ControlKind::TextInput), slider_skin(), toggle_indicator_skin(),
+        scrollbar_skin()};
     gview::Theme game;
     game.id = "splonks";
     game.extends = "gubsy-default";

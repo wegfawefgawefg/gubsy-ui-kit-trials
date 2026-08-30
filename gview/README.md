@@ -75,8 +75,10 @@ and `PartPresentation::slice`; S-expression themes use `(image_mode
 nine_slice)` and `(slice 16)`. The Theme & Assets window additionally edits
 asymmetric source margins, rendered border scale, tint, and opacity live, and
 can overlay slice guides on the native canvas. The trial sliders use tintable
-CC0 stepped-panel assets derived from Kenney Fantasy UI Borders; their license
-is retained beside the assets.
+parchment strips and knobs from the supplied control set. The same set skins
+toggle on/off plates and passive scroll tracks/thumbs. Asymmetric nine-slice
+margins give horizontal and vertical strips three-slice behavior without a
+second rendering primitive; fixed-shape knobs and toggles use Contain.
 
 The Theme & Assets editor targets recipes at any control, a control kind, a
 style class, or one exact selected node. Class and node recipes can skin normal

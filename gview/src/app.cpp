@@ -160,11 +160,14 @@ void TrialApp::load_assets() {
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/group-inner.png");
     load("ui-parchment-ornate",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/parchment-ornate.png");
-    load("ui-slider-track",
-         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped-soft.svg");
-    load("ui-slider-fill",
-         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/kenney-panel-stepped.svg");
-    load("ui-slider-thumb", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/slider-thumb.svg");
+    const std::string controls = std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/controls/";
+    load("ui-slider-track", controls + "slider-track.png");
+    load("ui-slider-fill", controls + "slider-fill.png");
+    load("ui-slider-thumb", controls + "slider-knob.png");
+    load("ui-toggle-off", controls + "toggle-off.png");
+    load("ui-toggle-on", controls + "toggle-on.png");
+    load("ui-scrollbar-track", controls + "scrollbar-track.png");
+    load("ui-scrollbar-thumb", controls + "scrollbar-thumb.png");
     for (int index = 0; index < 20; ++index) {
         const int sheet = index / 5 + 1;
         const int cell = index % 5;
