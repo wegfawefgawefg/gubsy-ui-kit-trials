@@ -76,6 +76,9 @@ migrates the newest legacy page theme once so previous tuning is not discarded.
 New generated recipe slots merge into older theme documents without replacing
 authored slots. Existing projects therefore gain defaults for new compound
 parts such as select popups and option rows while retaining their edits.
+Toggle values are represented by their on/off indicator, while the surrounding
+row remains focus-driven. Select anchors, popup enclosures, and option rows are
+separate recipe parts, so an open menu can frame light options in action green.
 Host model refreshes continue to update semantic content without replacing
 unsaved authoring work. Flow-child dragging reorders siblings, edge/corner
 dragging edits only the affected size axes, and absolute or anchored children

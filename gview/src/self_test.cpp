@@ -1,5 +1,6 @@
 #include "app.hpp"
 #include "authoring_document.hpp"
+#include "theme.hpp"
 #include "view_builder.hpp"
 
 #include <algorithm>
@@ -61,12 +62,47 @@ bool expect_authored_merge() {
                   "runtime refresh updates host-owned content");
 }
 
+// What is: Presentation-state coverage for compound controls whose value and
+// interaction visuals must remain independent.
+bool expect_compound_control_theme() {
+    const std::vector<gview::Theme> themes = trial_themes();
+    gview::NodeSpec toggle;
+    toggle.control = gview::ControlKind::Toggle;
+    const gview::CompiledSkin toggle_skin =
+        gview::compile_skin(themes, "gubsy-default", toggle);
+    const gview::PartPresentation* toggle_on =
+        gview::find_part(toggle_skin, gview::WidgetPart::Frame,
+                         gview::PresentationState::On);
+    const gview::PartPresentation* indicator_on =
+        gview::find_part(toggle_skin, gview::WidgetPart::Indicator,
+                         gview::PresentationState::On);
+
+    gview::NodeSpec select;
+    select.control = gview::ControlKind::Select;
+    const gview::CompiledSkin select_skin =
+        gview::compile_skin(themes, "gubsy-default", select);
+    const gview::PartPresentation* popup =
+        gview::find_part(select_skin, gview::WidgetPart::Popup,
+                         gview::PresentationState::Normal);
+    const gview::PartPresentation* option =
+        gview::find_part(select_skin, gview::WidgetPart::Option,
+                         gview::PresentationState::Normal);
+    return expect(toggle_on && toggle_on->asset == "ui-button-light",
+                  "an on toggle keeps its neutral unfocused row") &&
+           expect(indicator_on && indicator_on->asset == "ui-toggle-on",
+                  "toggle value remains visible on its indicator") &&
+           expect(popup && popup->asset == "ui-action-green",
+                  "open select uses an action-green popup enclosure") &&
+           expect(option && option->asset == "ui-button-light",
+                  "ordinary select options remain light");
+}
+
 } // namespace
 
 // Exercises controller semantics and real widgets without moving the user's
 // devices.
 bool run_self_test(TrialApp& app) {
-    bool ok = expect_authored_merge();
+    bool ok = expect_authored_merge() && expect_compound_control_theme();
     for (int screen = 0; screen <= 17; ++screen) {
         app.select_screen(screen);
         app.update();

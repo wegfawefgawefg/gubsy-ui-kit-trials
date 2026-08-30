@@ -100,6 +100,25 @@ void merge_theme_defaults(std::vector<gview::Theme>& authored,
     }
 }
 
+// What is: One-time repair for the old trial default that confused a toggle's
+// stored value with focus by painting the complete row green while it was on.
+void remove_legacy_toggle_value_frames(std::vector<gview::Theme>& themes) {
+    for (gview::Theme& theme : themes) {
+        for (gview::WidgetSkin& skin : theme.widgets) {
+            if (skin.any_control || skin.control != gview::ControlKind::Toggle ||
+                !skin.style_class.empty() || !skin.node_id.empty())
+                continue;
+            std::erase_if(skin.parts, [](const gview::PartPresentation& part) {
+                const bool old_on = part.state == gview::PresentationState::On &&
+                                    part.asset == "ui-action-green";
+                const bool old_off = part.state == gview::PresentationState::Off &&
+                                     part.asset == "ui-button-light";
+                return part.part == gview::WidgetPart::Frame && (old_on || old_off);
+            });
+        }
+    }
+}
+
 void append_local_overrides(std::vector<gview::Theme>& destination,
                             const std::vector<gview::Theme>& source) {
     for (const gview::Theme& local_theme : source) {
@@ -152,6 +171,7 @@ void TrialApp::initialize_shared_theme(const gview::View& generated) {
     if (source && !source->themes.empty()) {
         shared_themes_ = shared_only(source->themes);
         merge_theme_defaults(shared_themes_, defaults);
+        remove_legacy_toggle_value_frames(shared_themes_);
         shared_active_theme_ = std::move(source->active_theme);
         if (migrating_legacy) link_legacy_slice_geometry(shared_themes_);
     }
@@ -161,6 +181,7 @@ void TrialApp::initialize_shared_theme(const gview::View& generated) {
 void TrialApp::capture_shared_theme() {
     if (authoring_.view().themes.empty()) return;
     shared_themes_ = shared_only(authoring_.view().themes);
+    remove_legacy_toggle_value_frames(shared_themes_);
     shared_active_theme_ = authoring_.view().active_theme;
     shared_theme_initialized_ = true;
 }
@@ -193,6 +214,7 @@ bool TrialApp::reload_authoring_documents() {
     const auto shared = load_first_view(shared_theme_path());
     if (shared && !shared->themes.empty()) {
         shared_themes_ = shared->themes;
+        remove_legacy_toggle_value_frames(shared_themes_);
         shared_active_theme_ = shared->active_theme;
         shared_theme_initialized_ = true;
     } else {

@@ -94,11 +94,9 @@ gview::WidgetSkin control_skin(gview::ControlKind control) {
         nine_slice("ui-action-green", gview::PresentationState::SelectedFocused, button_border),
         nine_slice("ui-action-green", gview::PresentationState::Pressed, button_border),
         nine_slice("ui-action-green", gview::PresentationState::Open, button_border),
-        nine_slice("ui-action-green", gview::PresentationState::On, button_border),
-        nine_slice("ui-button-light", gview::PresentationState::Off, button_border),
         nine_slice("ui-button-light", gview::PresentationState::Disabled, button_border, 0.55f)};
     if (control == gview::ControlKind::Select) {
-        auto popup = nine_slice_part(gview::WidgetPart::Popup, "ui-group-inner",
+        auto popup = nine_slice_part(gview::WidgetPart::Popup, "ui-action-green",
                                      gview::PresentationState::Normal, button_border);
         skin.parts.push_back(std::move(popup));
         skin.parts.push_back(nine_slice_part(gview::WidgetPart::Option, "ui-button-light",
