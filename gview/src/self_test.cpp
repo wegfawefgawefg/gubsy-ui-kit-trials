@@ -88,12 +88,12 @@ bool run_self_test(TrialApp& app) {
     ok &= expect_focus(app, "nav-Players", "S produces semantic down navigation");
     key_step(app, SDLK_W);
     ok &= expect_focus(app, "nav-Play", "W produces semantic up navigation");
-    app.set_authoring_enabled(true);
+    app.set_authoring_enabled(true, false);
     key_step(app, SDLK_F1);
     ok &= expect(!app.authoring_enabled(), "F1 hides the complete authoring layer");
     key_step(app, SDLK_F1);
     ok &= expect(app.authoring_enabled(), "F1 restores the complete authoring layer");
-    app.set_authoring_enabled(false);
+    app.set_authoring_enabled(false, false);
     step(app, gview::NavAction::Right);
     ok &= expect(app.focus_id() == "activity", "right enters Play setup");
     step(app, gview::NavAction::Left);

@@ -115,12 +115,6 @@ void TrialApp::resize_host_window(int width, int height) {
         SDL_SetWindowSize(window, host_width, host_height);
 }
 
-void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
-    resize(preview.width, preview.height);
-    painter_->set_device_pixel_ratio(preview.device_pixel_ratio);
-    painter_->set_nearest_sampling(preview.sampling == gview::PreviewSampling::Nearest);
-}
-
 // Selects the simulated game's coordinate space for input conversion and paint.
 void TrialApp::prepare_game_canvas() {
     const gview::PreviewConfig& preview = authoring_ui_.preview;
@@ -182,6 +176,9 @@ void TrialApp::rebuild() {
                                         : build_shell_view(model_, width_, height_);
     source.layout.dpi_scale = authoring_ui_.preview.dpi_scale;
     source.layout.form_factor = authoring_ui_.preview.form_factor;
+    initialize_shared_theme(source);
+    if (!authoring_context_.empty()) capture_shared_theme();
+    apply_shared_theme(source);
     generated_view_ = source;
 
     // What is: Each screen keeps its own undoable working document in memory.
@@ -205,6 +202,7 @@ void TrialApp::rebuild() {
         authoring_ui_.edge_source.clear();
         authoring_ui_.edge_target.clear();
     }
+    apply_shared_theme(authoring_.view());
     compile_view(merge_authored_view(authoring_.view(), source), same_context);
     model_.rebuild = false;
 }
@@ -342,6 +340,7 @@ void TrialApp::action(std::string_view action_name, gview::NodeIndex) {
 void TrialApp::update() {
     if (model_.rebuild) rebuild();
     else if (authored_rebuild_) {
+        capture_shared_theme();
         compile_view(merge_authored_view(authoring_.view(), generated_view_));
         authored_rebuild_ = false;
     }
@@ -411,6 +410,10 @@ void TrialApp::draw_authoring() {
     };
     hooks.resize_host_window = [&](int width, int height) { resize_host_window(width, height); };
     hooks.rebuild = [&] { authored_rebuild_ = true; };
+    hooks.save = [&] { return save_authoring_documents(); };
+    hooks.reload = [&] { return reload_authoring_documents(); };
+    hooks.shared_theme_scope = "project-wide shared theme (all pages)";
+    hooks.exact_theme_scope = "current page only";
     hooks.metrics = [&] {
         char text[256]{};
         std::snprintf(text, sizeof(text),

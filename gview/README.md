@@ -59,13 +59,24 @@ canvas and ImGui tools use separate presentation layers, so tiny retro and large
 high-density presets leave tool size and mouse coordinates unchanged. For a
 direct compositor check, pass `--logical-resolution 160x144` while keeping the
 normal `--width 1280 --height 720` host.
+The simulator writes `authoring/display-simulator.sexp` whenever its logical or
+output size, density, UI scale, form factor, safe area, presentation, sampling,
+zoom, or pan changes. Opening the authoring tools in a later process restores
+that profile; it does not resize the desktop host unless host-follow is
+explicitly enabled.
 Authoring uses the same View and S-expression representation as runtime. Each
-screen keeps an independent in-memory working document and history. Host model
-refreshes update live semantic content without replacing unsaved layout/theme
-edits; Save writes the screen's `.sexp`, while Reload intentionally discards
-the working copy and reads that file. Flow-child dragging reorders siblings,
-edge/corner dragging edits only the affected size axes, and absolute or anchored
-children retain free positional editing.
+screen keeps an independent in-memory layout/interaction document and history.
+The project theme is a separate shared document: global, control-kind, and
+style-class recipes immediately apply across every page, while exact-node
+overrides remain local to the current page. The editor labels that storage
+scope beside the selected recipe. Save writes both the current screen and
+`authoring/shared-theme.sexp`; Reload intentionally discards both working
+domains and reads them from disk. Before the shared document exists, the trial
+migrates the newest legacy page theme once so previous tuning is not discarded.
+Host model refreshes continue to update semantic content without replacing
+unsaved authoring work. Flow-child dragging reorders siblings, edge/corner
+dragging edits only the affected size axes, and absolute or anchored children
+retain free positional editing.
 
 Widget themes support natural, stretch, contain, cover, tile, and nine-slice
 image modes. Nine-slice keeps authored corners intact while stretching the
@@ -74,7 +85,11 @@ and slider fills at unrelated sizes. C++ recipes set `ImageMode::NineSlice`
 and `PartPresentation::slice`; S-expression themes use `(image_mode
 nine_slice)` and `(slice 16)`. The Theme & Assets window additionally edits
 asymmetric source margins, rendered border scale, tint, and opacity live, and
-can overlay slice guides on the native canvas. The trial sliders use tintable
+can overlay slice guides on the native canvas. A native-canvas pick follows the
+exact part and visual state that was painted, including a second pick on the
+same node. By default, cuts, rendered scale, and tile modes propagate to the
+other states of that part that use the same asset; green action and light row
+assets therefore remain independently tunable. The trial sliders use tintable
 parchment strips and knobs from the supplied control set. The same set skins
 toggle on/off plates and passive scroll tracks/thumbs. Asymmetric nine-slice
 margins give horizontal and vertical strips three-slice behavior without a

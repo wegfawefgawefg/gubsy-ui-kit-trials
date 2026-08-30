@@ -54,7 +54,7 @@ class TrialApp {
     bool focus_open() const;
     float scroll_offset(std::string_view id) const;
     bool authoring_enabled() const;
-    void set_authoring_enabled(bool enabled);
+    void set_authoring_enabled(bool enabled, bool restore_preferences = true);
 
     double update_ms() const;
     double render_ms() const;
@@ -65,6 +65,12 @@ class TrialApp {
 
   private:
     void rebuild();
+    void initialize_shared_theme(const gview::View& generated);
+    void capture_shared_theme();
+    void apply_shared_theme(gview::View& view) const;
+    bool save_authoring_documents();
+    bool reload_authoring_documents();
+    void restore_authoring_preferences();
     void action(std::string_view action, gview::NodeIndex source);
     void load_assets();
     void compile_view(gview::View view, bool retain_runtime_state = true);
@@ -83,6 +89,8 @@ class TrialApp {
     std::unordered_map<std::string, gview::AuthoringSession> authoring_documents_;
     gview::View generated_view_;
     std::string authoring_context_;
+    std::vector<gview::Theme> shared_themes_;
+    std::string shared_active_theme_;
     gview::AuthoringUiState authoring_ui_;
     gview::InputFrame input_;
     int width_ = 1280;
@@ -93,6 +101,8 @@ class TrialApp {
     bool running_ = true;
     bool authoring_enabled_ = false;
     bool authored_rebuild_ = false;
+    bool shared_theme_initialized_ = false;
+    bool authoring_preferences_restored_ = false;
     int active_screen_ = 0;
     int active_scenario_ = 0;
     double update_ms_ = 0.0;

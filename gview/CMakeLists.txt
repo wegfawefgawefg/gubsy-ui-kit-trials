@@ -44,6 +44,7 @@ target_link_libraries(trial_imgui PUBLIC PkgConfig::HOST_SDL3)
 set(GVIEW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GVIEW_WITH_SDL3_RENDERER ON CACHE BOOL "" FORCE)
 set(GVIEW_WITH_IMGUI ON CACHE BOOL "" FORCE)
+set(GVIEW_WARN_AS_ERROR ON CACHE BOOL "" FORCE)
 set(GVIEW_IMGUI_TARGET trial_imgui CACHE STRING "" FORCE)
 set(GVIEW_GLAYOUT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../glayout" CACHE PATH "" FORCE)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../gview" "${CMAKE_CURRENT_BINARY_DIR}/_deps/gview")
@@ -65,6 +66,7 @@ FetchContent_MakeAvailable(SDL3_image)
 add_executable(gubsy-gview-trial
   src/app.cpp
   src/app_diagnostics.cpp
+  src/authoring_store.cpp
   src/authoring_document.cpp
   src/input.cpp
   src/main.cpp

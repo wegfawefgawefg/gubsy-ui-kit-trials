@@ -22,7 +22,11 @@ float TrialApp::scroll_offset(std::string_view id) const {
 
 // What is: Authoring visibility and timing evidence kept outside app flow.
 bool TrialApp::authoring_enabled() const { return authoring_enabled_; }
-void TrialApp::set_authoring_enabled(bool enabled) { authoring_enabled_ = enabled; }
+void TrialApp::set_authoring_enabled(bool enabled, bool restore_preferences) {
+    if (enabled && restore_preferences) restore_authoring_preferences();
+    else if (enabled) authoring_preferences_restored_ = true;
+    authoring_enabled_ = enabled;
+}
 
 double TrialApp::update_ms() const { return update_ms_; }
 double TrialApp::render_ms() const { return render_ms_; }
