@@ -100,7 +100,6 @@ gview::WidgetSkin control_skin(gview::ControlKind control) {
     if (control == gview::ControlKind::Select) {
         auto popup = nine_slice_part(gview::WidgetPart::Popup, "ui-group-inner",
                                      gview::PresentationState::Normal, button_border);
-        popup.outset = 6.0f;
         skin.parts.push_back(std::move(popup));
         skin.parts.push_back(nine_slice_part(gview::WidgetPart::Option, "ui-button-light",
                                              gview::PresentationState::Normal, button_border));
