@@ -119,6 +119,22 @@ void remove_legacy_toggle_value_frames(std::vector<gview::Theme>& themes) {
     }
 }
 
+// What is: Project-wide state migration that distinguishes persistent
+// selection from the brighter active keyboard/controller focus.
+void migrate_legacy_selected_frames(std::vector<gview::Theme>& themes) {
+    for (gview::Theme& theme : themes) {
+        for (gview::WidgetSkin& skin : theme.widgets) {
+            if (skin.any_control || !skin.style_class.empty() || !skin.node_id.empty()) continue;
+            for (gview::PartPresentation& part : skin.parts) {
+                if (part.part == gview::WidgetPart::Frame &&
+                    part.state == gview::PresentationState::Selected &&
+                    part.asset == "ui-action-green")
+                    part.asset = "ui-action-green-dark";
+            }
+        }
+    }
+}
+
 void append_local_overrides(std::vector<gview::Theme>& destination,
                             const std::vector<gview::Theme>& source) {
     for (const gview::Theme& local_theme : source) {
@@ -172,6 +188,7 @@ void TrialApp::initialize_shared_theme(const gview::View& generated) {
         shared_themes_ = shared_only(source->themes);
         merge_theme_defaults(shared_themes_, defaults);
         remove_legacy_toggle_value_frames(shared_themes_);
+        migrate_legacy_selected_frames(shared_themes_);
         shared_active_theme_ = std::move(source->active_theme);
         if (migrating_legacy) link_legacy_slice_geometry(shared_themes_);
     }
@@ -182,6 +199,7 @@ void TrialApp::capture_shared_theme() {
     if (authoring_.view().themes.empty()) return;
     shared_themes_ = shared_only(authoring_.view().themes);
     remove_legacy_toggle_value_frames(shared_themes_);
+    migrate_legacy_selected_frames(shared_themes_);
     shared_active_theme_ = authoring_.view().active_theme;
     shared_theme_initialized_ = true;
 }
@@ -215,6 +233,7 @@ bool TrialApp::reload_authoring_documents() {
     if (shared && !shared->themes.empty()) {
         shared_themes_ = shared->themes;
         remove_legacy_toggle_value_frames(shared_themes_);
+        migrate_legacy_selected_frames(shared_themes_);
         shared_active_theme_ = shared->active_theme;
         shared_theme_initialized_ = true;
     } else {

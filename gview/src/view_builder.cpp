@@ -248,12 +248,13 @@ void ViewBuilder::scrolling(std::string_view id) {
 
     // What is: Theme-border-safe viewport padding, including a dedicated
     // right gutter for the passive scrollbar.
-    const float inset = 18.0f * scale_;
+    const float horizontal_inset = 18.0f * scale_;
+    const float vertical_inset = 23.0f * scale_;
     const float scrollbar_gutter = 23.0f * scale_;
-    node.padding.left = std::max(node.padding.left, inset);
-    node.padding.top = std::max(node.padding.top, inset);
+    node.padding.left = std::max(node.padding.left, horizontal_inset);
+    node.padding.top = std::max(node.padding.top, vertical_inset);
     node.padding.right = std::max(node.padding.right, scrollbar_gutter);
-    node.padding.bottom = std::max(node.padding.bottom, inset);
+    node.padding.bottom = std::max(node.padding.bottom, vertical_inset);
 
     const auto found =
         std::find_if(view_.nodes.begin(), view_.nodes.end(), [&](const gview::NodeSpec& item) {

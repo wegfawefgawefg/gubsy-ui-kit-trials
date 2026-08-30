@@ -147,6 +147,8 @@ void TrialApp::load_assets() {
     load("splonks-title", asset_path("splonks-title.png"));
     load("ui-action-green",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/action-green.png");
+    load("ui-action-green-dark",
+         std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/action-green-dark.png");
     load("ui-bar-dark", std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/bar-dark.png");
     load("ui-button-light",
          std::string(GVIEW_TRIAL_SOURCE_DIR) + "/assets/theme/button-light.png");

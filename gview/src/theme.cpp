@@ -90,7 +90,7 @@ gview::WidgetSkin control_skin(gview::ControlKind control) {
         nine_slice("ui-button-light", gview::PresentationState::Normal, button_border),
         nine_slice("ui-button-light", gview::PresentationState::Hovered, button_border),
         nine_slice("ui-action-green", gview::PresentationState::Focused, button_border),
-        nine_slice("ui-action-green", gview::PresentationState::Selected, button_border),
+        nine_slice("ui-action-green-dark", gview::PresentationState::Selected, button_border),
         nine_slice("ui-action-green", gview::PresentationState::SelectedFocused, button_border),
         nine_slice("ui-action-green", gview::PresentationState::Pressed, button_border),
         nine_slice("ui-action-green", gview::PresentationState::Open, button_border),

@@ -87,6 +87,12 @@ bool expect_compound_control_theme() {
     const gview::PartPresentation* option =
         gview::find_part(select_skin, gview::WidgetPart::Option,
                          gview::PresentationState::Normal);
+    const gview::PartPresentation* selected =
+        gview::find_part(select_skin, gview::WidgetPart::Frame,
+                         gview::PresentationState::Selected);
+    const gview::PartPresentation* selected_focused =
+        gview::find_part(select_skin, gview::WidgetPart::Frame,
+                         gview::PresentationState::SelectedFocused);
     return expect(toggle_on && toggle_on->asset == "ui-button-light",
                   "an on toggle keeps its neutral unfocused row") &&
            expect(indicator_on && indicator_on->asset == "ui-toggle-on",
@@ -94,7 +100,11 @@ bool expect_compound_control_theme() {
            expect(popup && popup->asset == "ui-action-green",
                   "open select uses an action-green popup enclosure") &&
            expect(option && option->asset == "ui-button-light",
-                  "ordinary select options remain light");
+                  "ordinary select options remain light") &&
+           expect(selected && selected->asset == "ui-action-green-dark",
+                  "persistent selection uses subdued green") &&
+           expect(selected_focused && selected_focused->asset == "ui-action-green",
+                  "active selected focus uses bright green");
 }
 
 // What is: Shell structure and themed scroll gutters remain distinct from
@@ -125,7 +135,7 @@ bool expect_structural_shell_geometry() {
     return expect(content_is_structural, "shell content does not paint a redundant frame") &&
            expect(legacy_removed, "legacy authored content presentation is retired") &&
            expect(list && list->clip && list->padding.left >= 18.0f &&
-                      list->padding.right >= 23.0f && list->padding.bottom >= 18.0f,
+                      list->padding.right >= 23.0f && list->padding.bottom >= 23.0f,
                   "scroll lists reserve a themed content gutter");
 }
 

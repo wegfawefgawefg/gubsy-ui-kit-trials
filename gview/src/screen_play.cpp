@@ -77,13 +77,16 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
 
     panel(ui, "play-workspace", "party", {glayout::LengthKind::Pixels, 330.0f});
     ui.label("party", "party-title", "PLAYERS\nYour party", 54.0f, 18.0f);
-    ui.button("party", "player-one", "P1   Moss\n      Xbox Wireless Controller        READY",
+    ui.button("party", "player-one", "P1  Moss  ·  READY\nXbox Wireless Controller",
               "players", "play-party", 62.0f);
+    ui.spec("player-one").text_style.wrap = false;
     if (!solo) {
-        for (int slot = 2; slot <= 4; ++slot)
+        for (int slot = 2; slot <= 4; ++slot) {
             ui.button("party", "open-slot-" + std::to_string(slot),
-                      "+   Open slot\n      Invite a friend or add locally",
+                      "+  Open slot\nInvite a friend or add locally",
                       "toast:Player slot opened", "play-party", 56.0f);
+            ui.spec("open-slot-" + std::to_string(slot)).text_style.wrap = false;
+        }
         ui.button("party", "invite", "Invite / copy link", "toast:Invite copied", "play-party");
         ui.button("party", "find-games", "Friends & public games", "toast:Browser opened",
                   "play-party");

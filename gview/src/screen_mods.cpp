@@ -182,6 +182,7 @@ void browse(ViewBuilder& ui, std::string_view content, const TrialModel& model) 
                       (catalog[index].compatible ? "" : " · INCOMPATIBLE"),
                   std::string("mod-select:") + catalog[index].name, "mod-list", 66.0f,
                   gview::ActivationPolicy::OnFocus);
+        ui.spec(id).text_style.wrap = false;
         ui.spec(id).selected = model.selected_mod == catalog[index].name;
     }
     detail(ui, "catalog-workspace", false, model);

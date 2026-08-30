@@ -4,7 +4,8 @@ These trial assets were generated and supplied by the project owner in
 `/home/vega/Downloads/9slices/`. Each source is a 256 x 256 opaque PNG authored
 for 32 px nine-slice margins.
 
-- `action-green.png`: focused, selected, open, and active controls
+- `action-green.png`: focused, open, and active controls
+- `action-green-dark.png`: persistent selected-but-unfocused controls
 - `bar-dark.png`: outer shell, header, footer, and dark chrome
 - `button-light.png`: ordinary buttons, rows, and inactive controls
 - `group-inner.png`: nested lists and detail groups

@@ -38,7 +38,7 @@ void bindings(ViewBuilder& ui, std::string_view content) {
     for (const char* action : actions)
         ui.button("action-list", std::string("action-") + action,
                   action + std::string("\nMultiple keyboard and device bindings"),
-                  std::string("select:") + action, "controls-content", 54.0f);
+                  std::string("select:") + action, "controls-content", 58.0f);
     ui.container("binding-workspace", "binding-detail", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 7.0f,
                  {14.0f, 12.0f, 14.0f, 12.0f});

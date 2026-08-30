@@ -132,8 +132,11 @@ so a backplate can sit behind a frame without also drawing the fallback
 rectangle. Structural rows, workspaces, and spacers are layout-only nodes and
 paint nothing. The current trial maps the project owner's parchment nine-slices
 to semantic roles: dark chrome, ornate outer regions, inner groups, light rows,
-and green action states. The square 256 px frames share a 23 px source inset
-and render that border at 1.0 scale.
+dark green persistent selections, and brighter green active focus/action states.
+The square 256 px frames share a 23 px source inset and render that border at
+1.0 scale. Dense catalog and party cards reserve exactly two unwrapped text
+lines so long metadata clips horizontally instead of colliding with adjacent
+rows.
 
 Each nine-slice edge and its center independently support Stretch, Repeat,
 Mirror, Blank Repeat, and Hide modes. The live editor also controls whether the
