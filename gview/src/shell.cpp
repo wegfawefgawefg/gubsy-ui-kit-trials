@@ -67,8 +67,8 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
 
     ui.container("body", "main", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
-                 {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 10.0f,
-                  ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 10.0f});
+                 {ui.compact() ? 10.0f : 16.0f, ui.compact() ? 6.0f : 10.0f,
+                  ui.compact() ? 10.0f : 16.0f, ui.compact() ? 16.0f : 22.0f});
     ui.spec("main").style_class = "parchment-ornate";
     ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 54.0f,
              ui.compact() ? 28.0f : 42.0f);

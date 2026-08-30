@@ -1,6 +1,7 @@
 #include "authoring_document.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace {
 
@@ -66,11 +67,30 @@ void refresh_live_content(gview::NodeSpec& authored, const gview::NodeSpec& gene
     authored.text_style.vertical = generated.text_style.vertical;
 }
 
+// What is: One-time adoption of the balanced workspace gutter. The narrow
+// signature keeps later explicit authoring edits intact.
+void migrate_legacy_workspace_padding(gview::View& authored, const gview::View& generated) {
+    glayout::GraphNode* target = glayout::find_graph_node(authored.layout, "main");
+    const glayout::GraphNode* source = glayout::find_graph_node(generated.layout, "main");
+    if (!target || !source) return;
+
+    const float legacy_side = source->padding.left * 2.0f;
+    const bool legacy_default = std::abs(target->padding.left - legacy_side) < 0.1f &&
+                                std::abs(target->padding.right - legacy_side) < 0.1f &&
+                                target->padding.bottom < source->padding.bottom;
+    if (!legacy_default) return;
+    target->padding.left = source->padding.left;
+    target->padding.right = source->padding.right;
+    target->padding.bottom = source->padding.bottom;
+}
+
 } // namespace
 
 // Migrates the pre-compact-shell documents once, using the removed breadcrumb
 // as a schema marker.
 void migrate_authored_view(gview::View& authored, const gview::View& generated) {
+    migrate_legacy_workspace_padding(authored, generated);
+
     // What is: The shell content node became structural; remove its legacy
     // presentation spec while preserving the authored layout container.
     const bool generated_content_spec =
