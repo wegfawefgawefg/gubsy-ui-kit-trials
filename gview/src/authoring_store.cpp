@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "authoring_document.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -150,6 +151,7 @@ bool TrialApp::save_authoring_documents() {
 
 bool TrialApp::reload_authoring_documents() {
     if (!authoring_.reload()) return false;
+    migrate_authored_view(authoring_.view(), generated_view_);
     const auto shared = load_first_view(shared_theme_path());
     if (shared && !shared->themes.empty()) {
         shared_themes_ = shared->themes;
@@ -183,4 +185,3 @@ void TrialApp::apply_preview(const gview::PreviewConfig& preview) {
     painter_->set_nearest_sampling(preview.sampling == gview::PreviewSampling::Nearest);
     if (authoring_preferences_restored_) gview::save_preview_config(preview_path(), preview);
 }
-

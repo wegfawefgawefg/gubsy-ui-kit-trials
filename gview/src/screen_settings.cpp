@@ -4,11 +4,11 @@ namespace {
 
 void setting_tabs(ViewBuilder& ui, std::string_view content, const TrialModel& model) {
     ui.layout_container(content, "setting-tabs", glayout::ContainerKind::Row,
-                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 44.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 50.0f},
                         4.0f);
     for (const char* tab : {"Display", "Audio", "Accessibility", "Gameplay"})
         ui.button("setting-tabs", std::string("setting-tab-") + tab, tab,
-                  std::string("settings-tab:") + tab, "setting-tabs", 44.0f,
+                  std::string("settings-tab:") + tab, "setting-tabs", 50.0f,
                   gview::ActivationPolicy::OnFocus);
     ui.spec(std::string("setting-tab-") + model.settings_tab).selected = true;
     ui.focus_group("setting-tabs", std::string("setting-tab-") + model.settings_tab,
@@ -82,16 +82,15 @@ void build_settings(ViewBuilder& ui, const TrialModel& model, std::string_view c
                         12.0f);
     ui.container("settings-workspace", "setting-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 6.0f,
-                 {12.0f, 10.0f, 12.0f, 10.0f});
-    ui.layout("setting-list").clip = true;
-    ui.spec("setting-list").control = gview::ControlKind::ScrollArea;
+                 {18.0f, 14.0f, 18.0f, 14.0f});
+    ui.scrolling("setting-list");
     if (model.settings_tab == "Audio") audio(ui);
     else if (model.settings_tab == "Accessibility") accessibility(ui);
     else if (model.settings_tab == "Gameplay") gameplay(ui);
     else display(ui);
     ui.container("settings-workspace", "setting-detail", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 430.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
-                 {14.0f, 12.0f, 14.0f, 12.0f});
+                 {20.0f, 16.0f, 20.0f, 16.0f});
     ui.scrolling("setting-detail");
     ui.label("setting-detail", "setting-detail-kicker", "SELECTED SETTING", 24.0f, 11.0f);
     ui.label("setting-detail", "setting-detail-title", model.settings_tab + " settings", 52.0f,

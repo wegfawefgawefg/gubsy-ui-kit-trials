@@ -77,6 +77,11 @@ Host model refreshes continue to update semantic content without replacing
 unsaved authoring work. Flow-child dragging reorders siblings, edge/corner
 dragging edits only the affected size axes, and absolute or anchored children
 retain free positional editing.
+Older full-view documents are migrated when the generated shell schema
+changes. The current compact-shell migration removes the retired breadcrumb,
+refreshes generated metrics, and retains authored child order and added nodes.
+Text alignment now round-trips in the S-expression itself, so reloading a page
+cannot silently turn vertically centered controls into top-aligned controls.
 
 Widget themes support natural, stretch, contain, cover, tile, and nine-slice
 image modes. Nine-slice keeps authored corners intact while stretching the

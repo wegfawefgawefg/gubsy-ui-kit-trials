@@ -202,6 +202,7 @@ void TrialApp::rebuild() {
         authoring_ui_.edge_source.clear();
         authoring_ui_.edge_target.clear();
     }
+    migrate_authored_view(authoring_.view(), source);
     apply_shared_theme(authoring_.view());
     compile_view(merge_authored_view(authoring_.view(), source), same_context);
     model_.rebuild = false;

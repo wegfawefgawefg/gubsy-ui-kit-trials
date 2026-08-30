@@ -39,24 +39,18 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
 
     ui.layout_container("shell-frame", "body", glayout::ContainerKind::Row,
                         {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 0.0f);
-    struct Nav {
-        const char* name;
-        const char* note;
-    };
-    constexpr Nav entries[]{
-        {"Play", "Continue or start"},           {"Players", "Profiles & devices"},
-        {"Settings", "Game preferences"},        {"Controls", "Bindings & input"},
-        {"Progress", "Campaigns & checkpoints"}, {"Mods", "Installed content"}};
+    constexpr const char* entries[]{"Play", "Players", "Settings",
+                                    "Controls", "Progress", "Mods"};
     if (!ui.compact()) {
         ui.container("body", "nav", glayout::ContainerKind::Column,
                      {glayout::LengthKind::Pixels, 244.0f}, {glayout::LengthKind::Fill, 1.0f}, 8.0f,
                      {16.0f, 16.0f, 16.0f, 16.0f});
         ui.spec("nav").style_class = "parchment-ornate";
         ui.label("nav", "profile", "VE   ACTIVE PROFILE\n       Vega", 72.0f, 13.0f);
-        for (const Nav& entry : entries) {
-            const std::string id = std::string("nav-") + entry.name;
-            ui.button("nav", id, std::string("›  ") + entry.name + "\n    " + entry.note,
-                      std::string("destination:") + entry.name, "rail", 52.0f,
+        for (const char* entry : entries) {
+            const std::string id = std::string("nav-") + entry;
+            ui.button("nav", id, std::string("›  ") + entry,
+                      std::string("destination:") + entry, "rail", 52.0f,
                       gview::ActivationPolicy::OnFocus);
             ui.spec(id).text_style.size = 14.0f * s;
             ui.spec(id).selected = id == active_nav(model);
@@ -73,11 +67,10 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
 
     ui.container("body", "main", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f,
-                 {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 18.0f,
-                  ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 12.0f});
+                 {ui.compact() ? 10.0f : 32.0f, ui.compact() ? 6.0f : 10.0f,
+                  ui.compact() ? 10.0f : 32.0f, ui.compact() ? 4.0f : 10.0f});
     ui.spec("main").style_class = "parchment-ornate";
-    ui.label("main", "breadcrumb", "SPLONKS / GVIEW", ui.compact() ? 15.0f : 22.0f, 11.0f);
-    ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 64.0f,
+    ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 54.0f,
              ui.compact() ? 28.0f : 42.0f);
     ui.container("main", "content", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f);
@@ -126,9 +119,9 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
                      {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Pixels, 54.0f}, 2.0f,
                      {4.0f, 2.0f, 4.0f, 2.0f});
         ui.spec("mobile-nav").style_class = "bar-dark";
-        for (const Nav& entry : entries) {
-            const std::string id = std::string("nav-") + entry.name;
-            ui.button("mobile-nav", id, entry.name, std::string("destination:") + entry.name,
+        for (const char* entry : entries) {
+            const std::string id = std::string("nav-") + entry;
+            ui.button("mobile-nav", id, entry, std::string("destination:") + entry,
                       "rail", 50.0f, gview::ActivationPolicy::OnFocus);
             ui.spec(id).text_style.size = 10.0f;
             ui.spec(id).text_style.horizontal = gview::TextAlign::Center;

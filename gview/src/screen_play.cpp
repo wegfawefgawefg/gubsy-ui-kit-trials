@@ -36,7 +36,7 @@ const SessionMod& selected_session_mod(const TrialModel& model) {
 void panel(ViewBuilder& ui, std::string_view parent, const std::string& id,
            glayout::Length width = {glayout::LengthKind::Fill, 1.0f}) {
     ui.container(parent, id, glayout::ContainerKind::Column, width,
-                 {glayout::LengthKind::Fill, 1.0f}, 6.0f, {12.0f, 10.0f, 12.0f, 10.0f});
+                 {glayout::LengthKind::Fill, 1.0f}, 4.0f, {18.0f, 14.0f, 18.0f, 14.0f});
     ui.spec(id).style_class = "group-inner";
 }
 
@@ -53,27 +53,27 @@ void lobby(ViewBuilder& ui, const TrialModel& model, std::string_view content) {
     ui.label("setup", "quest-title", "The Violet Reach", 30.0f, 22.0f);
     ui.label("setup", "quest-note", "The Glass Caverns · Latest checkpoint · Vega", 20.0f, 12.0f);
     ui.select("setup", "activity", "Activity", "activity",
-              {"Continue expedition", "New expedition", "Arena run"}, "play-setup", 48.0f);
+              {"Continue expedition", "New expedition", "Arena run"}, "play-setup", 54.0f);
     ui.button("setup", "resume-point",
               continuing ? "Resume point\nLatest checkpoint · The Violet Reach"
                          : "Quest\nChoose a quest and starting route",
-              "play:quest", "play-setup", 48.0f);
+              "play:quest", "play-setup", 56.0f);
     ui.select("setup", "play-with", "Play with", "access",
-              {"Solo", "Friends can join", "Invite only", "Public"}, "play-setup", 48.0f);
+              {"Solo", "Friends can join", "Invite only", "Public"}, "play-setup", 54.0f);
     ui.select("setup", "host-using", "Host using", "host",
-              {"Automatic", "Host locally", "Dedicated relay"}, "play-setup", 48.0f);
+              {"Automatic", "Host locally", "Dedicated relay"}, "play-setup", 54.0f);
     ui.button("setup", "expedition-rules", "Expedition rules\nStandard · 4 lives · ghost at 180s",
-              "play:rules", "play-setup", 50.0f);
+              "play:rules", "play-setup", 56.0f);
     ui.button("setup", "session-mods", "Session mods\n7 active · dependency set valid", "play:mods",
-              "play-setup", 50.0f);
+              "play-setup", 56.0f);
     ui.layout_container("setup", "play-actions", glayout::ContainerKind::Row,
                         {glayout::LengthKind::Fill, 1.0f},
-                        {glayout::LengthKind::Pixels, ui.phone() ? 56.0f : 46.0f}, 8.0f);
+                        {glayout::LengthKind::Pixels, ui.phone() ? 56.0f : 50.0f}, 8.0f);
     ui.button("play-actions", "pause-preview", "Pause preview", "toast:Preview paused",
-              "play-actions", ui.phone() ? 56.0f : 46.0f);
+              "play-actions", ui.phone() ? 56.0f : 50.0f);
     ui.button("play-actions", "begin-session",
               continuing ? "▶ Resume latest checkpoint" : "▶ Begin new expedition", "start-session",
-              "play-actions", ui.phone() ? 56.0f : 46.0f);
+              "play-actions", ui.phone() ? 56.0f : 50.0f);
 
     panel(ui, "play-workspace", "party", {glayout::LengthKind::Pixels, 330.0f});
     ui.label("party", "party-title", "PLAYERS\nYour party", 54.0f, 18.0f);
