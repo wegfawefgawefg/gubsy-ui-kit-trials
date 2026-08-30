@@ -243,6 +243,33 @@ void ViewBuilder::group_edge(std::string from, gview::NavAction action, std::str
 }
 
 void ViewBuilder::scrolling(std::string_view id) {
-    layout(id).clip = true;
-    spec(id).control = gview::ControlKind::ScrollArea;
+    glayout::GraphNode& node = layout(id);
+    node.clip = true;
+
+    // What is: Theme-border-safe viewport padding, including a dedicated
+    // right gutter for the passive scrollbar.
+    const float inset = 18.0f * scale_;
+    const float scrollbar_gutter = 23.0f * scale_;
+    node.padding.left = std::max(node.padding.left, inset);
+    node.padding.top = std::max(node.padding.top, inset);
+    node.padding.right = std::max(node.padding.right, scrollbar_gutter);
+    node.padding.bottom = std::max(node.padding.bottom, inset);
+
+    const auto found =
+        std::find_if(view_.nodes.begin(), view_.nodes.end(), [&](const gview::NodeSpec& item) {
+            return item.layout_id == id;
+        });
+    if (found != view_.nodes.end()) {
+        found->control = gview::ControlKind::ScrollArea;
+        return;
+    }
+
+    // What is: A paint-free semantic scroll host for otherwise structural
+    // layout nodes such as the compact shell content area.
+    gview::NodeSpec scroll = base_spec(std::string(id));
+    scroll.control = gview::ControlKind::ScrollArea;
+    scroll.style.normal.fill = {0, 0, 0, 0};
+    scroll.style.normal.border = {0, 0, 0, 0};
+    scroll.style.normal.border_width = 0.0f;
+    view_.nodes.push_back(std::move(scroll));
 }

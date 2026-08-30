@@ -72,9 +72,9 @@ gview::View build_shell_view(const TrialModel& model, int width, int height) {
     ui.spec("main").style_class = "parchment-ornate";
     ui.label("main", "title", destination_name(model.destination), ui.compact() ? 38.0f : 54.0f,
              ui.compact() ? 28.0f : 42.0f);
-    ui.container("main", "content", glayout::ContainerKind::Column,
-                 {glayout::LengthKind::Fill, 1.0f}, {glayout::LengthKind::Fill, 1.0f}, 10.0f);
-    ui.spec("content").style_class = "parchment-ornate";
+    ui.layout_container("main", "content", glayout::ContainerKind::Column,
+                        {glayout::LengthKind::Fill, 1.0f},
+                        {glayout::LengthKind::Fill, 1.0f}, 10.0f);
     if (ui.phone()) ui.scrolling("content");
 
     if (model.provider_state != "Populated") {

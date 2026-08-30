@@ -9,6 +9,7 @@
 #include <SDL3/SDL.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -79,6 +80,8 @@ class TrialApp {
     std::string authoring_path(std::string_view context) const;
     void open_gamepad(SDL_JoystickID id);
     void close_gamepad(SDL_JoystickID id);
+    void update_navigation_repeat();
+    std::optional<gview::NavAction> held_navigation() const;
 
     SDL_Renderer* renderer_ = nullptr;
     std::unique_ptr<gview::Sdl3Renderer> painter_;
@@ -99,6 +102,8 @@ class TrialApp {
     int height_ = 720;
     int axis_x_ = 0;
     int axis_y_ = 0;
+    std::optional<gview::NavAction> repeated_navigation_;
+    Uint64 next_navigation_repeat_ = 0;
     bool ready_ = false;
     bool running_ = true;
     bool authoring_enabled_ = false;

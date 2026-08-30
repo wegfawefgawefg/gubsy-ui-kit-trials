@@ -71,6 +71,39 @@ void refresh_live_content(gview::NodeSpec& authored, const gview::NodeSpec& gene
 // Migrates the pre-compact-shell documents once, using the removed breadcrumb
 // as a schema marker.
 void migrate_authored_view(gview::View& authored, const gview::View& generated) {
+    // What is: The shell content node became structural; remove its legacy
+    // presentation spec while preserving the authored layout container.
+    const bool generated_content_spec =
+        std::any_of(generated.nodes.begin(), generated.nodes.end(), [](const auto& node) {
+            return node.layout_id == "content";
+        });
+    const bool retired_content_spec =
+        !generated_content_spec &&
+        std::any_of(authored.nodes.begin(), authored.nodes.end(), [](const auto& node) {
+            return node.layout_id == "content";
+        });
+    if (!generated_content_spec)
+        std::erase_if(authored.nodes,
+                      [](const auto& node) { return node.layout_id == "content"; });
+
+    // What is: The same shell migration adopts minimum safe-area gutters for
+    // existing authored scroll hosts without replacing larger user padding.
+    if (retired_content_spec) {
+        for (const gview::NodeSpec& spec : generated.nodes) {
+            if (spec.control != gview::ControlKind::ScrollArea) continue;
+            const glayout::GraphNode* source =
+                glayout::find_graph_node(generated.layout, spec.layout_id);
+            glayout::GraphNode* target =
+                glayout::find_graph_node(authored.layout, spec.layout_id);
+            if (!source || !target) continue;
+            target->clip = source->clip;
+            target->padding.left = std::max(target->padding.left, source->padding.left);
+            target->padding.top = std::max(target->padding.top, source->padding.top);
+            target->padding.right = std::max(target->padding.right, source->padding.right);
+            target->padding.bottom = std::max(target->padding.bottom, source->padding.bottom);
+        }
+    }
+
     if (!glayout::find_graph_node(authored.layout, "breadcrumb") ||
         glayout::find_graph_node(generated.layout, "breadcrumb"))
         return;

@@ -3,6 +3,15 @@
 #include <algorithm>
 #include <imgui.h>
 
+namespace {
+
+bool directional(gview::NavAction action) {
+    return action == gview::NavAction::Up || action == gview::NavAction::Down ||
+           action == gview::NavAction::Left || action == gview::NavAction::Right;
+}
+
+} // namespace
+
 // Converts SDL devices to semantic pointer and navigation input.
 void TrialApp::process(const SDL_Event& source) {
     SDL_Event event = source;
@@ -117,4 +126,71 @@ void TrialApp::process(const SDL_Event& source) {
             axis_y_ = direction;
         }
     }
+}
+
+// Reports one currently held semantic direction across keyboard and every
+// connected gamepad; binding translation can replace this polling later.
+std::optional<gview::NavAction> TrialApp::held_navigation() const {
+    const gview::NodeIndex focus = runtime_.focus();
+    const bool editing_text =
+        focus != gview::invalid_node && focus < runtime_.state().size() &&
+        runtime_.state()[focus].editing &&
+        runtime_.view().nodes[focus].source.control == gview::ControlKind::TextInput;
+    const bool* keys = SDL_GetKeyboardState(nullptr);
+    int horizontal = 0;
+    int vertical = 0;
+    if (keys[SDL_SCANCODE_LEFT] || (!editing_text && keys[SDL_SCANCODE_A])) --horizontal;
+    if (keys[SDL_SCANCODE_RIGHT] || (!editing_text && keys[SDL_SCANCODE_D])) ++horizontal;
+    if (keys[SDL_SCANCODE_UP] || (!editing_text && keys[SDL_SCANCODE_W])) --vertical;
+    if (keys[SDL_SCANCODE_DOWN] || (!editing_text && keys[SDL_SCANCODE_S])) ++vertical;
+
+    constexpr Sint16 threshold = 18000;
+    for (SDL_Gamepad* gamepad : gamepads_) {
+        if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT)) --horizontal;
+        if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT)) ++horizontal;
+        if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP)) --vertical;
+        if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN)) ++vertical;
+        const Sint16 x = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX);
+        const Sint16 y = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY);
+        if (x < -threshold) --horizontal;
+        else if (x > threshold) ++horizontal;
+        if (y < -threshold) --vertical;
+        else if (y > threshold) ++vertical;
+    }
+    if (vertical < 0) return gview::NavAction::Up;
+    if (vertical > 0) return gview::NavAction::Down;
+    if (horizontal < 0) return gview::NavAction::Left;
+    if (horizontal > 0) return gview::NavAction::Right;
+    return std::nullopt;
+}
+
+// Emits controlled held-direction repeats independently of desktop keyboard
+// repeat settings and with identical timing for D-pad and analog navigation.
+void TrialApp::update_navigation_repeat() {
+    constexpr Uint64 initial_delay = 360;
+    constexpr Uint64 repeat_interval = 85;
+    if ((authoring_enabled_ && gview::authoring_captures_runtime(authoring_ui_)) ||
+        (authoring_enabled_ && ImGui::GetIO().WantCaptureKeyboard)) {
+        repeated_navigation_.reset();
+        return;
+    }
+    const std::optional<gview::NavAction> held = held_navigation();
+    if (!held) {
+        repeated_navigation_.reset();
+        return;
+    }
+    const Uint64 now = SDL_GetTicks();
+    if (held != repeated_navigation_) {
+        const bool initial_event_present =
+            std::find_if(input_.navigation.begin(), input_.navigation.end(), [&](const auto action) {
+                return action == *held && directional(action);
+            }) != input_.navigation.end();
+        if (!initial_event_present) input_.navigation.push_back(*held);
+        repeated_navigation_ = held;
+        next_navigation_repeat_ = now + initial_delay;
+        return;
+    }
+    if (now < next_navigation_repeat_) return;
+    input_.navigation.push_back(*held);
+    next_navigation_repeat_ = now + repeat_interval;
 }

@@ -97,12 +97,45 @@ bool expect_compound_control_theme() {
                   "ordinary select options remain light");
 }
 
+// What is: Shell structure and themed scroll gutters remain distinct from
+// visible panel recipes.
+bool expect_structural_shell_geometry() {
+    TrialModel play_model;
+    const gview::View play = build_shell_view(play_model, 1280, 720);
+    const bool content_is_structural =
+        std::none_of(play.nodes.begin(), play.nodes.end(), [](const auto& node) {
+            return node.layout_id == "content";
+        });
+
+    gview::View legacy = play;
+    gview::NodeSpec old_content;
+    old_content.layout_id = "content";
+    old_content.style_class = "parchment-ornate";
+    legacy.nodes.push_back(old_content);
+    migrate_authored_view(legacy, play);
+    const bool legacy_removed =
+        std::none_of(legacy.nodes.begin(), legacy.nodes.end(), [](const auto& node) {
+            return node.layout_id == "content";
+        });
+
+    TrialModel controls_model;
+    controls_model.destination = Destination::Controls;
+    const gview::View controls = build_shell_view(controls_model, 1280, 720);
+    const glayout::GraphNode* list = glayout::find_graph_node(controls.layout, "action-list");
+    return expect(content_is_structural, "shell content does not paint a redundant frame") &&
+           expect(legacy_removed, "legacy authored content presentation is retired") &&
+           expect(list && list->clip && list->padding.left >= 18.0f &&
+                      list->padding.right >= 23.0f && list->padding.bottom >= 18.0f,
+                  "scroll lists reserve a themed content gutter");
+}
+
 } // namespace
 
 // Exercises controller semantics and real widgets without moving the user's
 // devices.
 bool run_self_test(TrialApp& app) {
-    bool ok = expect_authored_merge() && expect_compound_control_theme();
+    bool ok = expect_authored_merge() && expect_compound_control_theme() &&
+              expect_structural_shell_geometry();
     for (int screen = 0; screen <= 17; ++screen) {
         app.select_screen(screen);
         app.update();

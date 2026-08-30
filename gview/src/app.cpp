@@ -249,6 +249,7 @@ void TrialApp::update() {
         compile_view(merge_authored_view(authoring_.view(), generated_view_));
         authored_rebuild_ = false;
     }
+    update_navigation_repeat();
     const auto begin = Clock::now();
     gview::Host host;
     host.read = [&](std::string_view key) { return model_.read(key); };

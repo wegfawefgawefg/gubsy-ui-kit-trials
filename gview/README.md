@@ -32,7 +32,9 @@ document scroll. Widths below 1000 or heights below 600 select the compact
 composition used for tablet, landscape phone, and portrait evidence.
 
 Mouse controls use normal hit testing. Arrow keys and WASD produce the same
-semantic navigation actions; gamepads are opened on startup and hot-plugged. Focus
+semantic navigation actions; held directions repeat after a controlled delay
+at the same rate for keyboard, D-pad, and analog stick. Gamepads are opened on
+startup and hot-plugged. Focus
 groups provide generated local geometric movement, group-level exits, exact
 remembered-member re-entry, explicit exceptional edges, dropdown capture/cancel,
 and Back-to-owner behavior instead of moving a synthetic pointer or persisting
@@ -83,6 +85,11 @@ Host model refreshes continue to update semantic content without replacing
 unsaved authoring work. Flow-child dragging reorders siblings, edge/corner
 dragging edits only the affected size axes, and absolute or anchored children
 retain free positional editing.
+Structural workspace nodes remain layout-only instead of acquiring a theme
+frame merely because they group content. Scroll hosts reserve border-safe
+content padding and a right scrollbar gutter; overflowing descendants clip at
+the padded content edge while the host's complete nine-slice frame remains
+visible.
 Older full-view documents are migrated when the generated shell schema
 changes. The current compact-shell migration removes the retired breadcrumb,
 refreshes generated metrics, and retains authored child order and added nodes.

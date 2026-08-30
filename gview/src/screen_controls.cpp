@@ -31,8 +31,7 @@ void bindings(ViewBuilder& ui, std::string_view content) {
     ui.container("binding-workspace", "action-list", glayout::ContainerKind::Column,
                  {glayout::LengthKind::Pixels, 430.0f}, {glayout::LengthKind::Fill, 1.0f}, 5.0f,
                  {12.0f, 10.0f, 12.0f, 10.0f});
-    ui.layout("action-list").clip = true;
-    ui.spec("action-list").control = gview::ControlKind::ScrollArea;
+    ui.scrolling("action-list");
     constexpr const char* actions[]{"Menu Up",  "Menu Down", "Menu Left", "Menu Right",
                                     "Activate", "Cancel",    "Move",      "Look",
                                     "Jump",     "Attack",    "Use",       "Pause"};
