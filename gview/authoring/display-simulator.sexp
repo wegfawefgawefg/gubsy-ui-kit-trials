@@ -1,6 +1,6 @@
 (gview_preview
-  (logical 1280 720)
-  (output 1280 720)
+  (logical 1920 1080)
+  (output 1920 1080)
   (dpi_scale 1)
   (device_pixel_ratio 1)
   (ui_scale 1)

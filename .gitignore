@@ -23,3 +23,9 @@
 *.swp
 *.swo
 *~
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
